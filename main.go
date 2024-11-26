@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -16,6 +17,11 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
+
+// MUST BE SET by go build -ldflags "-X main.version=999"
+// like 0.6.14-0-g26fe727 or 0.6.14-2-g9118702-dirty
+
+var version string // do not remove or modify
 
 const (
 	InitialQuestion = "Send 1 for prayer request or 2 to be added to the intercessors list (to " +
@@ -289,17 +295,17 @@ func delItem(phone, table string) error {
 	return err
 }
 
-func SignUp(txt TextMessage) {
-	if txt.Body == "pray" {
-		new := Person{
-			Name:        "anonomysous",
-			PhoneNumber: txt.PhoneNumber,
-			PrayerCount: "0",
-			SetupStage:  "1",
-		}
+// func SignUp(txt TextMessage) {
+// 	if txt.Body == "pray" {
+// 		new := Person{
+// 			Name:        "anonomysous",
+// 			PhoneNumber: txt.PhoneNumber,
+// 			PrayerCount: "0",
+// 			SetupStage:  "1",
+// 		}
 
-	}
-}
+// 	}
+// }
 
 func mainFlow(txt TextMessage) error {
 
@@ -309,7 +315,9 @@ func mainFlow(txt TextMessage) error {
 	// if text body != pray or stop or cancel && phone number in members: start new prayer request process
 	// else: drop text???
 
-	return err
+	fmt.Printf("Ran %v", txt)
+
+	return nil
 }
 
 func handler(ctx context.Context, req events.APIGatewayProxyRequest) (
@@ -322,7 +330,7 @@ func handler(ctx context.Context, req events.APIGatewayProxyRequest) (
 		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError}, nil
 	}
 
-	err = MainFlow(txt)
+	err = mainFlow(txt)
 	if err != nil {
 		return events.APIGatewayProxyResponse{}, err
 	}
