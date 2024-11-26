@@ -1,0 +1,109 @@
+Transform: AWS::Serverless-2016-10-31
+Resources:
+  Api:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub
+        - ${ResourceName} From Stack ${AWS::StackName}
+        - ResourceName: Api
+      StageName: Prod
+      DefinitionBody:
+        openapi: '3.0'
+        info: {}
+        paths:
+          /:
+            post:
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${PrayerTextFlow.Arn}/invocations
+              responses: {}
+      EndpointConfiguration: REGIONAL
+      TracingEnabled: true
+      Cors:
+        MaxAge: 5
+  ActivePrayers:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: Phone_Number
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        - AttributeName: Phone_Number
+          KeyType: HASH
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+  Intercessors:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: Phone_Number
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        - AttributeName: Phone_Number
+          KeyType: HASH
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+  Members:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: Phone_Number
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        - AttributeName: Phone_Number
+          KeyType: HASH
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+  PrayerTextFlow:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: go1.x
+    Properties:
+      Description: !Sub
+        - Stack ${AWS::StackName} Function ${ResourceName}
+        - ResourceName: PrayerTextFlow
+      CodeUri: .
+      Handler: bootstrap
+      Runtime: provided.al2023
+      MemorySize: 128
+      Timeout: 30
+      Tracing: Active
+      Events:
+        ApiPOST:
+          Type: Api
+          Properties:
+            Path: /
+            Method: POST
+            RestApiId: !Ref Api
+      Environment:
+        Variables:
+          ACTIVE_PRAYERS_TABLE_NAME: !Ref ActivePrayers
+          ACTIVE_PRAYERS_TABLE_ARN: !GetAtt ActivePrayers.Arn
+          INTERCESSORS_TABLE_NAME: !Ref Intercessors
+          INTERCESSORS_TABLE_ARN: !GetAtt Intercessors.Arn
+          MEMBERS_TABLE_NAME: !Ref Members
+          MEMBERS_TABLE_ARN: !GetAtt Members.Arn
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ActivePrayers
+        - DynamoDBCrudPolicy:
+            TableName: !Ref Intercessors
+        - DynamoDBCrudPolicy:
+            TableName: !Ref Members
+  PrayerTextFlowLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${PrayerTextFlow}
+
+Outputs:
+  PrayerTextFlow:
+    Description: "PrayerTextFlow"
+    Value: !Ref PrayerTextFlow
+  API:
+    Description: "API Gateway endpoint URL for the API"
+    Value: !Sub "https://${Api}.execute-api.${AWS::Region}.amazonaws.com/Prod"

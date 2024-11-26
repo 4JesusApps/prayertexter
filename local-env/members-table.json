@@ -1,0 +1,13 @@
+{
+    "TableName": "Members",
+    "KeySchema": [
+      { "AttributeName": "PhoneNumber", "KeyType": "HASH" }
+    ],
+    "AttributeDefinitions": [
+      { "AttributeName": "PhoneNumber", "AttributeType": "S" }
+    ],
+    "ProvisionedThroughput": {
+      "ReadCapacityUnits": 1,
+      "WriteCapacityUnits": 1
+    }
+}
