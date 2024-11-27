@@ -14,4 +14,4 @@ Start ddb and create tables:
 
 Good dynamodb commands:
 1. aws dynamodb list-tables --endpoint-url http://localhost:8000
-2. aws dynamodb execute-statement --statement "select * from Users" --endpoint-url http://localhost:8000
+2. for table in Members Intercessors ActivePrayers; do echo $table; aws dynamodb execute-statement --statement "select * from $table" --endpoint-url http://localhost:8000; echo; done
