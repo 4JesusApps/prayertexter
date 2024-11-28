@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -20,16 +21,12 @@ import (
 // MUST BE SET by go build -ldflags "-X main.version=999"
 // like 0.6.14-0-g26fe727 or 0.6.14-2-g9118702-dirty
 
+//lint:ignore U1000 - var used in Makefile
 var version string // do not remove or modify
 
 const (
-	NameRequest = "Send your name or 2 to stay anonymous"
-	InitialQuestion = "Send 1 for prayer request or 2 to be added to the intercessors list (to pray for others)"
-	PrayerRequestInstructions = "You are now signed up to send prayer requests! Please send them directly to this number."
-	PrayerNumRequest = "Send the max number of prayer texts you are willing to receive and pray for per week."
-	IntercessorInstructions = "You are now signed up to receive prayer requests. Please try to pray for the requests ASAP. Once you are done praying, send 'prayed' back to this number for confirmation."
-	PrayerIntro = "Hello! Please pray for this person:"
-	PrayerConfirmation = "Your prayer request has been sent out!"
+	prayerIntro        = "Hello! Please pray for this person:"
+	prayerConfirmation = "Your prayer request has been sent out!"
 )
 
 type TextMessage struct {
@@ -42,6 +39,7 @@ type Person struct {
 	PhoneNumber string
 	PrayerLimit string
 	SetupStage  string
+	SetupStatus string
 }
 
 type Prayer struct {
@@ -50,8 +48,8 @@ type Prayer struct {
 	Request     string
 }
 
-func (p Person) sendMessage(body string) {
-	sendText(body, p.PhoneNumber)
+func (per Person) sendMessage(body string) {
+	sendText(body, per.PhoneNumber)
 }
 
 func sendText(body string, recipient string) {
@@ -85,15 +83,15 @@ func getDdbClient() *dynamodb.Client {
 	return client
 }
 
-func (p Person) get(table string) Person {
-	resp := getItem(p.PhoneNumber, table)
+func (per Person) get(table string) Person {
+	resp := getItem(per.PhoneNumber, table)
 
-	err := attributevalue.UnmarshalMap(resp.Item, &p)
+	err := attributevalue.UnmarshalMap(resp.Item, &per)
 	if err != nil {
 		log.Fatalf("unmarshal failed, %v", err)
 	}
 
-	return p
+	return per
 }
 
 func (p Prayer) get() Prayer {
@@ -109,11 +107,11 @@ func (p Prayer) get() Prayer {
 	return p
 }
 
-func (p Person) delete() {
+func (per Person) delete() {
 	tables := []string{"Members", "Intercessors"}
 
 	for _, table := range tables {
-		delItem(p.PhoneNumber, table)
+		delItem(per.PhoneNumber, table)
 	}
 }
 
@@ -123,12 +121,13 @@ func (p Prayer) delete() {
 	delItem(p.PhoneNumber, table)
 }
 
-func (p Person) put(table string) {
+func (per Person) put(table string) {
 	data := map[string]types.AttributeValue{
-		"Name":        &types.AttributeValueMemberS{Value: p.Name},
-		"PhoneNumber": &types.AttributeValueMemberS{Value: p.PhoneNumber},
-		"PrayerLimit": &types.AttributeValueMemberN{Value: p.PrayerLimit},
-		"SetupStage":  &types.AttributeValueMemberN{Value: p.SetupStage},
+		"Name":        &types.AttributeValueMemberS{Value: per.Name},
+		"PhoneNumber": &types.AttributeValueMemberS{Value: per.PhoneNumber},
+		"PrayerLimit": &types.AttributeValueMemberS{Value: per.PrayerLimit},
+		"SetupStage":  &types.AttributeValueMemberS{Value: per.SetupStage},
+		"SetupStatus": &types.AttributeValueMemberS{Value: per.SetupStatus},
 	}
 
 	putItem(table, data)
@@ -138,9 +137,9 @@ func (p Prayer) put() {
 	table := "ActivePrayers"
 
 	data := map[string]types.AttributeValue{
+		"People":      &types.AttributeValueMemberSS{Value: p.People},
 		"PhoneNumber": &types.AttributeValueMemberS{Value: p.PhoneNumber},
 		"Request":     &types.AttributeValueMemberS{Value: p.Request},
-		"People":      &types.AttributeValueMemberSS{Value: p.People},
 	}
 
 	putItem(table, data)
@@ -190,75 +189,114 @@ func delItem(phone, table string) {
 	}
 }
 
-func signUp(txt TextMessage, p Person) {
-	switch {
-	// stage 1
-	case txt.Body == "pray" && p.SetupStage == "":
-		p.SetupStage = "1"
-		p.put("Members")
-		p.sendMessage(NameRequest)
-	// stage 2 name request
-	case txt.Body != "2" && p.SetupStage == "1":
-		p.SetupStage = "2"
-		p.Name = txt.Body
-		p.put("Members")
-		p.sendMessage(InitialQuestion)
-	// stage 2 name request
-	case txt.Body == "2" && p.SetupStage == "1":
-		p.SetupStage = "2"
-		p.Name = "anonymous"
-		p.put("Members")
-		p.sendMessage(InitialQuestion)
-	// final stage for member sign up
-	case txt.Body == "1" && p.SetupStage == "2":
-		p.SetupStage = "99"
-		p.put("Members")
-		p.sendMessage(PrayerRequestInstructions)
-	// stage 3 intercessor sign up
-	case txt.Body == "2" && p.SetupStage == "2":
-		p.SetupStage = "3"
-		p.put("Members")
-		p.put("Intercessors")
-		p.sendMessage(PrayerNumRequest)
-	// final stage for intercessor sign up
-	case p.SetupStage == "3":
-		///
+func signUp(txt TextMessage, per Person) {
+	const (
+		nameRequest               = "Send your name or 2 to stay anonymous"
+		memberType                = "Send 1 for prayer request or 2 to be added to the intercessors list (to pray for others)"
+		prayerRequestInstructions = "You are now signed up to send prayer requests! Please send them directly to this number."
+		prayerNumRequest          = "Send the max number of prayer texts you are willing to receive and pray for per week."
+		intercessorInstructions   = "You are now signed up to receive prayer requests. Please try to pray for the requests ASAP. Once you are done praying, send 'prayed' back to this number for confirmation."
+		wrongInput                = "Wrong input received during sign up process. Please try again."
+	)
+
+	if strings.ToLower(txt.Body) == "pray" {
+		// stage 1
+		per.SetupStatus = "in-progress"
+		per.SetupStage = "1"
+		per.put("Members")
+		per.sendMessage(nameRequest)
+	} else if txt.Body != "2" && per.SetupStage == "1" {
+		// stage 2 name request
+		per.SetupStage = "2"
+		per.Name = txt.Body
+		per.put("Members")
+		per.sendMessage(memberType)
+	} else if txt.Body == "2" && per.SetupStage == "1" {
+		// stage 2 name request
+		per.SetupStage = "2"
+		per.Name = "Anonymous"
+		per.put("Members")
+		per.sendMessage(memberType)
+	} else if txt.Body == "1" && per.SetupStage == "2" {
+		// final message for member sign up
+		per.SetupStatus = "completed"
+		per.SetupStage = "99"
+		per.put("Members")
+		per.sendMessage(prayerRequestInstructions)
+	} else if txt.Body == "2" && per.SetupStage == "2" {
+		// stage 3 intercessor sign up
+		per.SetupStage = "3"
+		per.put("Members")
+		per.put("Intercessors")
+		per.sendMessage(prayerNumRequest)
+	} else if per.SetupStage == "3" {
+		// final message for intercessor sign up
+		if _, err := strconv.Atoi(txt.Body); err == nil {
+			per.SetupStatus = "completed"
+			per.SetupStage = "99"
+			per.PrayerLimit = txt.Body
+			per.put("Members")
+			per.put("Intercessors")
+			per.sendMessage(intercessorInstructions)
+		} else {
+			per.sendMessage(wrongInput)
+		}
+	} else {
+		// catch all response for incorrect input
+		per.sendMessage(wrongInput)
+	}
+}
+
+func delUser(per Person) {
+	per.delete()
+	per.sendMessage("You have been removed from prayer texter. If you ever want to sign back up, text the word pray to this number.")
+}
+
+func prayerRequest(txt TextMessage) {
+	// p1 := Person{
+	// 	Name:        "Person 1",
+	// 	PhoneNumber: "111-111-1111",
+	// }
+	// p2 := Person{
+	// 	Name:        "Person 2",
+	// 	PhoneNumber: "222-222-2222",
+	// }
+	// p3 := Person{
+	// 	Name:        "Person 3",
+	// 	PhoneNumber: "222-222-2222",
+	// }
+
+	pryr := Prayer{
+		People:      []string{"111-111-1111", "222-222-2222", "333-333-3333"},
+		PhoneNumber: "888-888-8888",
+		Request:     txt.Body,
+	}
+
+	pryr.put()
+
+	for _, p := range pryr.People {
+		sendText(pryr.Request, p)
 	}
 }
 
 func mainFlow(txt TextMessage) error {
-
-	// if text body == pray: start NEW sign up process (overwrite any existing sign up process)
-	// if text body == stop or cancel: remove from members, intercessors, and sign ups
-	// if text body != pray or stop or cancel && phone number in active sign ups: continue sign up flow
 	// if text body != pray or stop or cancel && phone number in members: start new prayer request process
 	// else: drop text???
+	per := Person{
+		PhoneNumber: txt.PhoneNumber,
+	}
 
-	// person := Person{
-	// 	Name: "Matt",
-	// 	PhoneNumber: "657-217-1678",
-	// 	PrayerLimit: "7",
-	// 	SetupStage: "4",
-	// }
+	per = per.get("Members")
 
-	// prayer := Prayer{
-	// 	People: []string{"person1", "person2", "person3"},
-	// 	PhoneNumber: "777-777-7777",
-	// 	Request: "Please help me!!!",
-	// }
-
-	// person.put("Members")
-	// person.put("Intercessors")
-	// prayer.put()
-
-	// var newperson Person
-	// newperson.PhoneNumber = "657-217-1678"
-	// newperson = newperson.get("Members")
-
-	// fmt.Printf("newperson: %v\n", newperson)
-
-	// person.delete()
-	// prayer.delete()
+	if strings.ToLower(txt.Body) == "pray" || per.SetupStatus == "in-progress" {
+		signUp(txt, per)
+	} else if strings.ToLower(txt.Body) == "cancel" || strings.ToLower(txt.Body) == "stop" {
+		delUser(per)
+	} else if per.SetupStatus == "completed" {
+		prayerRequest(txt)
+	} else if per.SetupStatus == "" {
+		log.Printf("%v is not a registered user, dropping message", per.PhoneNumber)
+	}
 
 	return nil
 }
