@@ -2,7 +2,9 @@
     "makefile.configureOnOpen": false,
     "cSpell.words": [
         "attributevalue",
+        "clnt",
         "ldflags",
+        "pryr",
         "texter"
     ]
 }

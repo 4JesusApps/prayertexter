@@ -24,28 +24,24 @@ import (
 //lint:ignore U1000 - var used in Makefile
 var version string // do not remove or modify
 
-const (
-	prayerIntro        = "Hello! Please pray for this person:"
-	prayerConfirmation = "Your prayer request has been sent out!"
-)
-
 type TextMessage struct {
 	Body        string `json:"body"`
 	PhoneNumber string `json:"phone-number"`
 }
 
 type Person struct {
-	Name        string
-	PhoneNumber string
-	PrayerLimit string
-	SetupStage  string
-	SetupStatus string
+	Name               string
+	PhoneNumber        string
+	PrayerConfirmation string
+	PrayerLimit        string
+	SetupStage         string
+	SetupStatus        string
 }
 
 type Prayer struct {
-	People      []string
-	PhoneNumber string
-	Request     string
+	Intercessors []Person
+	PhoneNumber  string
+	Request      string
 }
 
 func (per Person) sendMessage(body string) {
@@ -59,28 +55,26 @@ func sendText(body string, recipient string) {
 
 func getDdbClient() *dynamodb.Client {
 	cfg, err := config.LoadDefaultConfig(context.TODO())
-
 	if err != nil {
 		log.Fatalf("unable to load SDK config, %v", err)
 	}
 
 	local, err := strconv.ParseBool(os.Getenv("AWS_SAM_LOCAL"))
-
 	if err != nil {
-		log.Fatalf("unable to convert string to boolean, %v", err)
+		log.Fatalf("unable to convert AWS_SAM_LOCAL value to boolean, %v", err)
 	}
 
-	var client *dynamodb.Client
+	var clnt *dynamodb.Client
 
 	if local {
-		client = dynamodb.NewFromConfig(cfg, func(o *dynamodb.Options) {
+		clnt = dynamodb.NewFromConfig(cfg, func(o *dynamodb.Options) {
 			o.BaseEndpoint = aws.String("http://dynamodb:8000")
 		})
 	} else {
-		client = dynamodb.NewFromConfig(cfg)
+		clnt = dynamodb.NewFromConfig(cfg)
 	}
 
-	return client
+	return clnt
 }
 
 func (per Person) get(table string) Person {
@@ -88,7 +82,7 @@ func (per Person) get(table string) Person {
 
 	err := attributevalue.UnmarshalMap(resp.Item, &per)
 	if err != nil {
-		log.Fatalf("unmarshal failed, %v", err)
+		log.Fatalf("unmarshal failed for get person, %v", err)
 	}
 
 	return per
@@ -101,7 +95,7 @@ func (p Prayer) get() Prayer {
 
 	err := attributevalue.UnmarshalMap(resp.Item, &p)
 	if err != nil {
-		log.Fatalf("unmarshal failed, %v", err)
+		log.Fatalf("unmarshal failed for get prayer, %v", err)
 	}
 
 	return p
@@ -122,12 +116,9 @@ func (p Prayer) delete() {
 }
 
 func (per Person) put(table string) {
-	data := map[string]types.AttributeValue{
-		"Name":        &types.AttributeValueMemberS{Value: per.Name},
-		"PhoneNumber": &types.AttributeValueMemberS{Value: per.PhoneNumber},
-		"PrayerLimit": &types.AttributeValueMemberS{Value: per.PrayerLimit},
-		"SetupStage":  &types.AttributeValueMemberS{Value: per.SetupStage},
-		"SetupStatus": &types.AttributeValueMemberS{Value: per.SetupStatus},
+	data, err := attributevalue.MarshalMap(per)
+	if err != nil {
+		log.Fatalf("unmarshal failed, for put person, %v", err)
 	}
 
 	putItem(table, data)
@@ -136,63 +127,62 @@ func (per Person) put(table string) {
 func (p Prayer) put() {
 	table := "ActivePrayers"
 
-	data := map[string]types.AttributeValue{
-		"People":      &types.AttributeValueMemberSS{Value: p.People},
-		"PhoneNumber": &types.AttributeValueMemberS{Value: p.PhoneNumber},
-		"Request":     &types.AttributeValueMemberS{Value: p.Request},
+	data, err := attributevalue.MarshalMap(p)
+	if err != nil {
+		log.Fatalf("unmarshal failed for put prayer, %v", err)
 	}
 
 	putItem(table, data)
 }
 
-func getItem(phone, table string) *dynamodb.GetItemOutput {
-	client := getDdbClient()
+func getItem(key, table string) *dynamodb.GetItemOutput {
+	clnt := getDdbClient()
 
-	resp, err := client.GetItem(context.TODO(), &dynamodb.GetItemInput{
+	resp, err := clnt.GetItem(context.TODO(), &dynamodb.GetItemInput{
 		TableName: &table,
 		Key: map[string]types.AttributeValue{
-			"PhoneNumber": &types.AttributeValueMemberS{Value: phone},
+			"PhoneNumber": &types.AttributeValueMemberS{Value: key},
 		},
 	})
 
 	if err != nil {
-		log.Fatalf("unable to get item: %v", err)
+		log.Fatalf("unable to get item, %v", err)
 	}
 
 	return resp
 }
 
 func putItem(table string, data map[string]types.AttributeValue) {
-	client := getDdbClient()
+	clnt := getDdbClient()
 
-	_, err := client.PutItem(context.TODO(), &dynamodb.PutItemInput{
+	_, err := clnt.PutItem(context.TODO(), &dynamodb.PutItemInput{
 		TableName: &table,
 		Item:      data,
 	})
 	if err != nil {
-		log.Fatalf("unable to put item: %v", err)
+		log.Fatalf("unable to put item, %v", err)
 	}
 }
 
-func delItem(phone, table string) {
-	client := getDdbClient()
+func delItem(key, table string) {
+	clnt := getDdbClient()
 
-	_, err := client.DeleteItem(context.TODO(), &dynamodb.DeleteItemInput{
+	_, err := clnt.DeleteItem(context.TODO(), &dynamodb.DeleteItemInput{
 		TableName: &table,
 		Key: map[string]types.AttributeValue{
-			"PhoneNumber": &types.AttributeValueMemberS{Value: phone},
+			"PhoneNumber": &types.AttributeValueMemberS{Value: key},
 		},
 	})
 
 	if err != nil {
-		log.Fatalf("unable to delete item: %v", err)
+		log.Fatalf("unable to delete item, %v", err)
 	}
 }
 
 func signUp(txt TextMessage, per Person) {
 	const (
-		nameRequest               = "Send your name or 2 to stay anonymous"
-		memberType                = "Send 1 for prayer request or 2 to be added to the intercessors list (to pray for others)"
+		nameRequest               = "Text your name, or 2 to stay anonymous"
+		memberType                = "Text 1 for prayer request, or 2 to be added to the intercessors list (to pray for others)"
 		prayerRequestInstructions = "You are now signed up to send prayer requests! Please send them directly to this number."
 		prayerNumRequest          = "Send the max number of prayer texts you are willing to receive and pray for per week."
 		intercessorInstructions   = "You are now signed up to receive prayer requests. Please try to pray for the requests ASAP. Once you are done praying, send 'prayed' back to this number for confirmation."
@@ -253,35 +243,43 @@ func delUser(per Person) {
 }
 
 func prayerRequest(txt TextMessage) {
-	// p1 := Person{
-	// 	Name:        "Person 1",
-	// 	PhoneNumber: "111-111-1111",
-	// }
-	// p2 := Person{
-	// 	Name:        "Person 2",
-	// 	PhoneNumber: "222-222-2222",
-	// }
-	// p3 := Person{
-	// 	Name:        "Person 3",
-	// 	PhoneNumber: "222-222-2222",
-	// }
+
+	// need logic to handle when same number sends in multiple prayer requests
+
+	const (
+		prayerIntro        = "Hello! Please pray for this person:\n"
+		prayerConfirmation = "Your prayer request has been sent out!"
+	)
+
+	p1 := Person{
+		Name:        "Person 1",
+		PhoneNumber: "111-111-1111",
+	}
+	p2 := Person{
+		Name:        "Person 2",
+		PhoneNumber: "222-222-2222",
+	}
+	p3 := Person{
+		Name:        "Person 3",
+		PhoneNumber: "333-333-3333",
+	}
 
 	pryr := Prayer{
-		People:      []string{"111-111-1111", "222-222-2222", "333-333-3333"},
-		PhoneNumber: "888-888-8888",
-		Request:     txt.Body,
+		Intercessors: []Person{p1, p2, p3},
+		PhoneNumber:  txt.PhoneNumber,
+		Request:      txt.Body,
 	}
 
 	pryr.put()
 
-	for _, p := range pryr.People {
-		sendText(pryr.Request, p)
+	for _, p := range pryr.Intercessors {
+		sendText(prayerIntro+pryr.Request, p.PhoneNumber)
 	}
+
+	sendText(prayerConfirmation, pryr.PhoneNumber)
 }
 
 func mainFlow(txt TextMessage) error {
-	// if text body != pray or stop or cancel && phone number in members: start new prayer request process
-	// else: drop text???
 	per := Person{
 		PhoneNumber: txt.PhoneNumber,
 	}
@@ -307,7 +305,7 @@ func handler(ctx context.Context, req events.APIGatewayProxyRequest) (
 
 	err := json.Unmarshal([]byte(req.Body), &txt)
 	if err != nil {
-		log.Fatalf("failed to unmarshal api gateway request. error - %s\n", err.Error())
+		log.Fatalf("failed to unmarshal api gateway request, %v", err.Error())
 		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError}, nil
 	}
 
@@ -318,7 +316,7 @@ func handler(ctx context.Context, req events.APIGatewayProxyRequest) (
 
 	return events.APIGatewayProxyResponse{
 		StatusCode: 200,
-		Body:       "Prayer flow completed successfully",
+		Body:       "Completed Successfully",
 	}, nil
 }
 
