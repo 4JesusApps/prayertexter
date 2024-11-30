@@ -6,4 +6,4 @@ ifeq ($(VERSION),)
 endif
 
 build:
-	GOARCH=amd64 GOOS=linux go build -ldflags "-X main.version=${VERSION}" -o bootstrap main.go
+	GOARCH=amd64 GOOS=linux go build -ldflags "-X main.version=${VERSION}" -o bootstrap

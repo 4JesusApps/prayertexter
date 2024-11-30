@@ -16,7 +16,7 @@ Resources:
               x-amazon-apigateway-integration:
                 httpMethod: POST
                 type: aws_proxy
-                uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${PrayerTextFlow.Arn}/invocations
+                uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${PrayerTexter.Arn}/invocations
               responses: {}
       EndpointConfiguration: REGIONAL
       TracingEnabled: true
@@ -26,11 +26,11 @@ Resources:
     Type: AWS::DynamoDB::Table
     Properties:
       AttributeDefinitions:
-        - AttributeName: Phone_Number
+        - AttributeName: IntercessorPhone
           AttributeType: S
       BillingMode: PAY_PER_REQUEST
       KeySchema:
-        - AttributeName: Phone_Number
+        - AttributeName: IntercessorPhone
           KeyType: HASH
       StreamSpecification:
         StreamViewType: NEW_AND_OLD_IMAGES
@@ -38,11 +38,11 @@ Resources:
     Type: AWS::DynamoDB::Table
     Properties:
       AttributeDefinitions:
-        - AttributeName: Phone_Number
+        - AttributeName: Phone
           AttributeType: S
       BillingMode: PAY_PER_REQUEST
       KeySchema:
-        - AttributeName: Phone_Number
+        - AttributeName: Phone
           KeyType: HASH
       StreamSpecification:
         StreamViewType: NEW_AND_OLD_IMAGES
@@ -50,22 +50,22 @@ Resources:
     Type: AWS::DynamoDB::Table
     Properties:
       AttributeDefinitions:
-        - AttributeName: Phone_Number
+        - AttributeName: Phone
           AttributeType: S
       BillingMode: PAY_PER_REQUEST
       KeySchema:
-        - AttributeName: Phone_Number
+        - AttributeName: Phone
           KeyType: HASH
       StreamSpecification:
         StreamViewType: NEW_AND_OLD_IMAGES
-  PrayerTextFlow:
+  PrayerTexter:
     Type: AWS::Serverless::Function
     Metadata:
       BuildMethod: go1.x
     Properties:
       Description: !Sub
         - Stack ${AWS::StackName} Function ${ResourceName}
-        - ResourceName: PrayerTextFlow
+        - ResourceName: PrayerTexter
       CodeUri: .
       Handler: bootstrap
       Runtime: provided.al2023
@@ -94,16 +94,16 @@ Resources:
             TableName: !Ref Intercessors
         - DynamoDBCrudPolicy:
             TableName: !Ref Members
-  PrayerTextFlowLogGroup:
+  PrayerTexterLogGroup:
     Type: AWS::Logs::LogGroup
     DeletionPolicy: Retain
     Properties:
-      LogGroupName: !Sub /aws/lambda/${PrayerTextFlow}
+      LogGroupName: !Sub /aws/lambda/${PrayerTexter}
 
 Outputs:
-  PrayerTextFlow:
-    Description: "PrayerTextFlow"
-    Value: !Ref PrayerTextFlow
+  PrayerTexter:
+    Description: "PrayerTexter"
+    Value: !Ref PrayerTexter
   API:
     Description: "API Gateway endpoint URL for the API"
     Value: !Sub "https://${Api}.execute-api.${AWS::Region}.amazonaws.com/Prod"

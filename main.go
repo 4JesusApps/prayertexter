@@ -5,17 +5,11 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
 // MUST BE SET by go build -ldflags "-X main.version=999"
@@ -29,154 +23,9 @@ type TextMessage struct {
 	PhoneNumber string `json:"phone-number"`
 }
 
-type Person struct {
-	Name               string
-	PhoneNumber        string
-	PrayerConfirmation string
-	PrayerLimit        string
-	SetupStage         string
-	SetupStatus        string
-}
-
-type Prayer struct {
-	Intercessors []Person
-	PhoneNumber  string
-	Request      string
-}
-
-func (per Person) sendMessage(body string) {
-	sendText(body, per.PhoneNumber)
-}
-
 func sendText(body string, recipient string) {
 	log.Printf("Sending to: %v\n", recipient)
 	log.Printf("Body: %v\n", body)
-}
-
-func getDdbClient() *dynamodb.Client {
-	cfg, err := config.LoadDefaultConfig(context.TODO())
-	if err != nil {
-		log.Fatalf("unable to load SDK config, %v", err)
-	}
-
-	local, err := strconv.ParseBool(os.Getenv("AWS_SAM_LOCAL"))
-	if err != nil {
-		log.Fatalf("unable to convert AWS_SAM_LOCAL value to boolean, %v", err)
-	}
-
-	var clnt *dynamodb.Client
-
-	if local {
-		clnt = dynamodb.NewFromConfig(cfg, func(o *dynamodb.Options) {
-			o.BaseEndpoint = aws.String("http://dynamodb:8000")
-		})
-	} else {
-		clnt = dynamodb.NewFromConfig(cfg)
-	}
-
-	return clnt
-}
-
-func (per Person) get(table string) Person {
-	resp := getItem(per.PhoneNumber, table)
-
-	err := attributevalue.UnmarshalMap(resp.Item, &per)
-	if err != nil {
-		log.Fatalf("unmarshal failed for get person, %v", err)
-	}
-
-	return per
-}
-
-func (p Prayer) get() Prayer {
-	table := "ActivePrayers"
-
-	resp := getItem(p.PhoneNumber, table)
-
-	err := attributevalue.UnmarshalMap(resp.Item, &p)
-	if err != nil {
-		log.Fatalf("unmarshal failed for get prayer, %v", err)
-	}
-
-	return p
-}
-
-func (per Person) delete() {
-	tables := []string{"Members", "Intercessors"}
-
-	for _, table := range tables {
-		delItem(per.PhoneNumber, table)
-	}
-}
-
-func (p Prayer) delete() {
-	table := "ActivePrayers"
-
-	delItem(p.PhoneNumber, table)
-}
-
-func (per Person) put(table string) {
-	data, err := attributevalue.MarshalMap(per)
-	if err != nil {
-		log.Fatalf("unmarshal failed, for put person, %v", err)
-	}
-
-	putItem(table, data)
-}
-
-func (p Prayer) put() {
-	table := "ActivePrayers"
-
-	data, err := attributevalue.MarshalMap(p)
-	if err != nil {
-		log.Fatalf("unmarshal failed for put prayer, %v", err)
-	}
-
-	putItem(table, data)
-}
-
-func getItem(key, table string) *dynamodb.GetItemOutput {
-	clnt := getDdbClient()
-
-	resp, err := clnt.GetItem(context.TODO(), &dynamodb.GetItemInput{
-		TableName: &table,
-		Key: map[string]types.AttributeValue{
-			"PhoneNumber": &types.AttributeValueMemberS{Value: key},
-		},
-	})
-
-	if err != nil {
-		log.Fatalf("unable to get item, %v", err)
-	}
-
-	return resp
-}
-
-func putItem(table string, data map[string]types.AttributeValue) {
-	clnt := getDdbClient()
-
-	_, err := clnt.PutItem(context.TODO(), &dynamodb.PutItemInput{
-		TableName: &table,
-		Item:      data,
-	})
-	if err != nil {
-		log.Fatalf("unable to put item, %v", err)
-	}
-}
-
-func delItem(key, table string) {
-	clnt := getDdbClient()
-
-	_, err := clnt.DeleteItem(context.TODO(), &dynamodb.DeleteItemInput{
-		TableName: &table,
-		Key: map[string]types.AttributeValue{
-			"PhoneNumber": &types.AttributeValueMemberS{Value: key},
-		},
-	})
-
-	if err != nil {
-		log.Fatalf("unable to delete item, %v", err)
-	}
 }
 
 func signUp(txt TextMessage, per Person) {
@@ -237,51 +86,50 @@ func signUp(txt TextMessage, per Person) {
 	}
 }
 
-func delUser(per Person) {
-	per.delete()
-	per.sendMessage("You have been removed from prayer texter. If you ever want to sign back up, text the word pray to this number.")
+func intercessorSelector() {
+	
 }
 
-func prayerRequest(txt TextMessage) {
-
-	// need logic to handle when same number sends in multiple prayer requests
-
+func prayerRequest(txt TextMessage, per Person) {
 	const (
 		prayerIntro        = "Hello! Please pray for this person:\n"
 		prayerConfirmation = "Your prayer request has been sent out!"
 	)
 
-	p1 := Person{
-		Name:        "Person 1",
-		PhoneNumber: "111-111-1111",
+	int1 := Person{
+		Name:  "Person 1",
+		Phone: "111-111-1111",
 	}
-	p2 := Person{
-		Name:        "Person 2",
-		PhoneNumber: "222-222-2222",
+	int2 := Person{
+		Name:  "Person 2",
+		Phone: "222-222-2222",
 	}
-	p3 := Person{
-		Name:        "Person 3",
-		PhoneNumber: "333-333-3333",
-	}
-
-	pryr := Prayer{
-		Intercessors: []Person{p1, p2, p3},
-		PhoneNumber:  txt.PhoneNumber,
-		Request:      txt.Body,
+	int3 := Person{
+		Name:  "Person 3",
+		Phone: "333-333-3333",
 	}
 
-	pryr.put()
-
-	for _, p := range pryr.Intercessors {
-		sendText(prayerIntro+pryr.Request, p.PhoneNumber)
+	for _, i := range []Person{int1, int2, int3} {
+		pryr := Prayer{
+			Intercessor:      i,
+			IntercessorPhone: i.Phone,
+			Request:          txt.Body,
+			Requestor:        per,
+		}
+		pryr.put()
+		sendText(prayerIntro+pryr.Request, i.Phone)
 	}
 
-	sendText(prayerConfirmation, pryr.PhoneNumber)
+	sendText(prayerConfirmation, per.Phone)
 }
 
 func mainFlow(txt TextMessage) error {
+	const (
+		removeUser = "You have been removed from prayer texter. If you ever want to sign back up, text the word pray to this number."
+	)
+
 	per := Person{
-		PhoneNumber: txt.PhoneNumber,
+		Phone: txt.PhoneNumber,
 	}
 
 	per = per.get("Members")
@@ -289,11 +137,12 @@ func mainFlow(txt TextMessage) error {
 	if strings.ToLower(txt.Body) == "pray" || per.SetupStatus == "in-progress" {
 		signUp(txt, per)
 	} else if strings.ToLower(txt.Body) == "cancel" || strings.ToLower(txt.Body) == "stop" {
-		delUser(per)
+		per.delete()
+		per.sendMessage(removeUser)
 	} else if per.SetupStatus == "completed" {
-		prayerRequest(txt)
+		prayerRequest(txt, per)
 	} else if per.SetupStatus == "" {
-		log.Printf("%v is not a registered user, dropping message", per.PhoneNumber)
+		log.Printf("%v is not a registered user, dropping message", per.Phone)
 	}
 
 	return nil

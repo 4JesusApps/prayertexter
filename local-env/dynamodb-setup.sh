@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-cd ~/OneDrive/Documents/Personal/4JesusApps/CODE/local-env
+cd ~/OneDrive/Documents/Personal/4JesusApps/prayer-texter/local-env
 sudo docker compose down
 sudo docker compose up -d
 sleep 5
