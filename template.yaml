@@ -34,6 +34,18 @@ Resources:
           KeyType: HASH
       StreamSpecification:
         StreamViewType: NEW_AND_OLD_IMAGES
+  General:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: General
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        - AttributeName: General
+          KeyType: HASH
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
   Intercessors:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -83,6 +95,8 @@ Resources:
         Variables:
           ACTIVE_PRAYERS_TABLE_NAME: !Ref ActivePrayers
           ACTIVE_PRAYERS_TABLE_ARN: !GetAtt ActivePrayers.Arn
+          ACTIVE_PRAYERS_TABLE_NAME: !Ref General
+          ACTIVE_PRAYERS_TABLE_ARN: !GetAtt General.Arn
           INTERCESSORS_TABLE_NAME: !Ref Intercessors
           INTERCESSORS_TABLE_ARN: !GetAtt Intercessors.Arn
           MEMBERS_TABLE_NAME: !Ref Members
@@ -90,6 +104,8 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref ActivePrayers
+        - DynamoDBCrudPolicy:
+            TableName: !Ref General
         - DynamoDBCrudPolicy:
             TableName: !Ref Intercessors
         - DynamoDBCrudPolicy:

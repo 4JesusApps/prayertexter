@@ -10,6 +10,7 @@ import (
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 )
 
 // MUST BE SET by go build -ldflags "-X main.version=999"
@@ -86,8 +87,17 @@ func signUp(txt TextMessage, per Person) {
 	}
 }
 
-func intercessorSelector() {
-	
+func getIntercessors() []Person {
+	out := getAllItems("Intercessors")
+
+	intercessors := []Person{}
+
+	err := attributevalue.UnmarshalListOfMaps(out.Items, &intercessors)
+	if err != nil {
+		log.Fatalf("unmarshal failed for scan items on intercessors table, %v", err)
+	}
+
+	return intercessors
 }
 
 func prayerRequest(txt TextMessage, per Person) {
@@ -121,6 +131,8 @@ func prayerRequest(txt TextMessage, per Person) {
 	}
 
 	sendText(prayerConfirmation, per.Phone)
+
+	getIntercessors()
 }
 
 func mainFlow(txt TextMessage) error {

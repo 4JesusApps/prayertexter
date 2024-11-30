@@ -14,11 +14,13 @@ import (
 
 func getDdbClient() *dynamodb.Client {
 	cfg, err := config.LoadDefaultConfig(context.TODO())
+
 	if err != nil {
 		log.Fatalf("unable to load SDK config, %v", err)
 	}
 
 	local, err := strconv.ParseBool(os.Getenv("AWS_SAM_LOCAL"))
+
 	if err != nil {
 		log.Fatalf("unable to convert AWS_SAM_LOCAL value to boolean, %v", err)
 	}
@@ -39,7 +41,7 @@ func getDdbClient() *dynamodb.Client {
 func getItem(attr, key, table string) *dynamodb.GetItemOutput {
 	clnt := getDdbClient()
 
-	resp, err := clnt.GetItem(context.TODO(), &dynamodb.GetItemInput{
+	out, err := clnt.GetItem(context.TODO(), &dynamodb.GetItemInput{
 		TableName: &table,
 		Key: map[string]types.AttributeValue{
 			attr: &types.AttributeValueMemberS{Value: key},
@@ -50,7 +52,7 @@ func getItem(attr, key, table string) *dynamodb.GetItemOutput {
 		log.Fatalf("unable to get item, %v", err)
 	}
 
-	return resp
+	return out
 }
 
 func putItem(table string, data map[string]types.AttributeValue) {
@@ -60,6 +62,7 @@ func putItem(table string, data map[string]types.AttributeValue) {
 		TableName: &table,
 		Item:      data,
 	})
+
 	if err != nil {
 		log.Fatalf("unable to put item, %v", err)
 	}
@@ -78,4 +81,18 @@ func delItem(attr, key, table string) {
 	if err != nil {
 		log.Fatalf("unable to delete item, %v", err)
 	}
+}
+
+func getAllItems(table string) *dynamodb.ScanOutput {
+	clnt := getDdbClient()
+
+	out, err := clnt.Scan(context.TODO(), &dynamodb.ScanInput{
+        TableName: aws.String(table),
+    })
+
+    if err != nil {
+		log.Fatalf("unable to scan items, %v", err)
+	}
+
+    return out
 }
