@@ -1,10 +1,10 @@
 {
     "TableName": "General",
     "KeySchema": [
-      { "AttributeName": "General", "KeyType": "HASH" }
+      { "AttributeName": "Name", "KeyType": "HASH" }
     ],
     "AttributeDefinitions": [
-      { "AttributeName": "General", "AttributeType": "S" }
+      { "AttributeName": "Name", "AttributeType": "S" }
     ],
     "ProvisionedThroughput": {
       "ReadCapacityUnits": 1,

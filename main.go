@@ -10,7 +10,6 @@ import (
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 )
 
 // MUST BE SET by go build -ldflags "-X main.version=999"
@@ -18,6 +17,11 @@ import (
 
 //lint:ignore U1000 - var used in Makefile
 var version string // do not remove or modify
+
+const (
+	intercessorsTable = "Intercessors"
+	membersTable      = "Members"
+)
 
 type TextMessage struct {
 	Body        string `json:"body"`
@@ -29,7 +33,7 @@ func sendText(body string, recipient string) {
 	log.Printf("Body: %v\n", body)
 }
 
-func signUp(txt TextMessage, per Person) {
+func signUp(txt TextMessage, p Person) {
 	const (
 		nameRequest               = "Text your name, or 2 to stay anonymous"
 		memberType                = "Text 1 for prayer request, or 2 to be added to the intercessors list (to pray for others)"
@@ -41,66 +45,53 @@ func signUp(txt TextMessage, per Person) {
 
 	if strings.ToLower(txt.Body) == "pray" {
 		// stage 1
-		per.SetupStatus = "in-progress"
-		per.SetupStage = "1"
-		per.put("Members")
-		per.sendMessage(nameRequest)
-	} else if txt.Body != "2" && per.SetupStage == "1" {
+		p.SetupStatus = "in-progress"
+		p.SetupStage = 1
+		p.put(membersTable)
+		p.sendMessage(nameRequest)
+	} else if txt.Body != "2" && p.SetupStage == 1 {
 		// stage 2 name request
-		per.SetupStage = "2"
-		per.Name = txt.Body
-		per.put("Members")
-		per.sendMessage(memberType)
-	} else if txt.Body == "2" && per.SetupStage == "1" {
+		p.SetupStage = 2
+		p.Name = txt.Body
+		p.put(membersTable)
+		p.sendMessage(memberType)
+	} else if txt.Body == "2" && p.SetupStage == 1 {
 		// stage 2 name request
-		per.SetupStage = "2"
-		per.Name = "Anonymous"
-		per.put("Members")
-		per.sendMessage(memberType)
-	} else if txt.Body == "1" && per.SetupStage == "2" {
+		p.SetupStage = 2
+		p.Name = "Anonymous"
+		p.put(membersTable)
+		p.sendMessage(memberType)
+	} else if txt.Body == "1" && p.SetupStage == 2 {
 		// final message for member sign up
-		per.SetupStatus = "completed"
-		per.SetupStage = "99"
-		per.put("Members")
-		per.sendMessage(prayerRequestInstructions)
-	} else if txt.Body == "2" && per.SetupStage == "2" {
+		p.SetupStatus = "completed"
+		p.SetupStage = 99
+		p.put(membersTable)
+		p.sendMessage(prayerRequestInstructions)
+	} else if txt.Body == "2" && p.SetupStage == 2 {
 		// stage 3 intercessor sign up
-		per.SetupStage = "3"
-		per.put("Members")
-		per.put("Intercessors")
-		per.sendMessage(prayerNumRequest)
-	} else if per.SetupStage == "3" {
+		p.SetupStage = 3
+		p.put(membersTable)
+		p.put(intercessorsTable)
+		p.sendMessage(prayerNumRequest)
+	} else if p.SetupStage == 3 {
 		// final message for intercessor sign up
-		if _, err := strconv.Atoi(txt.Body); err == nil {
-			per.SetupStatus = "completed"
-			per.SetupStage = "99"
-			per.PrayerLimit = txt.Body
-			per.put("Members")
-			per.put("Intercessors")
-			per.sendMessage(intercessorInstructions)
+		if num, err := strconv.Atoi(txt.Body); err == nil {
+			p.SetupStatus = "completed"
+			p.SetupStage = 99
+			p.PrayerLimit = num
+			p.put(membersTable)
+			p.put(intercessorsTable)
+			p.sendMessage(intercessorInstructions)
 		} else {
-			per.sendMessage(wrongInput)
+			p.sendMessage(wrongInput)
 		}
 	} else {
 		// catch all response for incorrect input
-		per.sendMessage(wrongInput)
+		p.sendMessage(wrongInput)
 	}
 }
 
-func getIntercessors() []Person {
-	out := getAllItems("Intercessors")
-
-	intercessors := []Person{}
-
-	err := attributevalue.UnmarshalListOfMaps(out.Items, &intercessors)
-	if err != nil {
-		log.Fatalf("unmarshal failed for scan items on intercessors table, %v", err)
-	}
-
-	return intercessors
-}
-
-func prayerRequest(txt TextMessage, per Person) {
+func prayerRequest(txt TextMessage, p Person) {
 	const (
 		prayerIntro        = "Hello! Please pray for this person:\n"
 		prayerConfirmation = "Your prayer request has been sent out!"
@@ -124,15 +115,13 @@ func prayerRequest(txt TextMessage, per Person) {
 			Intercessor:      i,
 			IntercessorPhone: i.Phone,
 			Request:          txt.Body,
-			Requestor:        per,
+			Requestor:        p,
 		}
 		pryr.put()
 		sendText(prayerIntro+pryr.Request, i.Phone)
 	}
 
-	sendText(prayerConfirmation, per.Phone)
-
-	getIntercessors()
+	sendText(prayerConfirmation, p.Phone)
 }
 
 func mainFlow(txt TextMessage) error {
@@ -140,21 +129,21 @@ func mainFlow(txt TextMessage) error {
 		removeUser = "You have been removed from prayer texter. If you ever want to sign back up, text the word pray to this number."
 	)
 
-	per := Person{
+	p := Person{
 		Phone: txt.PhoneNumber,
 	}
 
-	per = per.get("Members")
+	p = p.get(membersTable)
 
-	if strings.ToLower(txt.Body) == "pray" || per.SetupStatus == "in-progress" {
-		signUp(txt, per)
+	if strings.ToLower(txt.Body) == "pray" || p.SetupStatus == "in-progress" {
+		signUp(txt, p)
 	} else if strings.ToLower(txt.Body) == "cancel" || strings.ToLower(txt.Body) == "stop" {
-		per.delete()
-		per.sendMessage(removeUser)
-	} else if per.SetupStatus == "completed" {
-		prayerRequest(txt, per)
-	} else if per.SetupStatus == "" {
-		log.Printf("%v is not a registered user, dropping message", per.Phone)
+		p.delete()
+		p.sendMessage(removeUser)
+	} else if p.SetupStatus == "completed" {
+		prayerRequest(txt, p)
+	} else if p.SetupStatus == "" {
+		log.Printf("%v is not a registered user, dropping message", p.Phone)
 	}
 
 	return nil

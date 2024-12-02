@@ -14,8 +14,8 @@ type Prayer struct {
 }
 
 const (
-	prayerTable = "ActivePrayers"
 	prayerAttribute = "IntercessorPhone"
+	prayerTable     = "ActivePrayers"
 )
 
 func (p Prayer) get() Prayer {
