@@ -17,3 +17,9 @@ Test:
 Good dynamodb commands:
 1. aws dynamodb list-tables --endpoint-url http://localhost:8000
 2. for table in ActivePrayers General Intercessors Members; do echo $table; aws dynamodb execute-statement --statement "select * from $table" --endpoint-url http://localhost:8000; echo; done
+
+TODO:
+- add way to remove intercessor from intercessor list when prayer count == prayer limit
+- add way to generate new intercessors list once per week (to reset prayer counts)
+- prevent situation where prayer has 0 available intercessors (most likely because they have active prayers)
+- how to regen intercessors list and not lose prayer count??? update intercessors list and intercessors table?

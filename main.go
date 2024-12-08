@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -18,151 +19,175 @@ import (
 //lint:ignore U1000 - var used in Makefile
 var version string // do not remove or modify
 
-const (
-	intercessorsTable = "Intercessors"
-	membersTable      = "Members"
-)
-
 type TextMessage struct {
-	Body        string `json:"body"`
-	PhoneNumber string `json:"phone-number"`
+	Body  string `json:"body"`
+	Phone string `json:"phone-number"`
 }
 
-func sendText(body string, recipient string) {
-	log.Printf("Sending to: %v\n", recipient)
-	log.Printf("Body: %v\n", body)
-}
-
-func signUp(txt TextMessage, p Person) {
+func signUp(txt TextMessage, mem Member) {
 	const (
-		nameRequest               = "Text your name, or 2 to stay anonymous"
-		memberType                = "Text 1 for prayer request, or 2 to be added to the intercessors list (to pray for others)"
-		prayerRequestInstructions = "You are now signed up to send prayer requests! Please send them directly to this number."
-		prayerNumRequest          = "Send the max number of prayer texts you are willing to receive and pray for per week."
-		intercessorInstructions   = "You are now signed up to receive prayer requests. Please try to pray for the requests ASAP. Once you are done praying, send 'prayed' back to this number for confirmation."
-		wrongInput                = "Wrong input received during sign up process. Please try again."
+		nameRequest             = "Text your name, or 2 to stay anonymous"
+		memberTypeRequest       = "Text 1 for prayer request, or 2 to be added to the intercessors list (to pray for others)"
+		prayerInstructions      = "You are now signed up to send prayer requests! Please send them directly to this number."
+		prayerNumRequest        = "Send the max number of prayer texts you are willing to receive and pray for per week."
+		intercessorInstructions = "You are now signed up to receive prayer requests. Please try to pray for the requests ASAP. Once you are done praying, send 'prayed' back to this number for confirmation."
+		wrongInput              = "Wrong input received during sign up process. Please try again."
 	)
 
 	if strings.ToLower(txt.Body) == "pray" {
 		// stage 1
-		p.SetupStatus = "in-progress"
-		p.SetupStage = 1
-		p.put(membersTable)
-		p.sendMessage(nameRequest)
-	} else if txt.Body != "2" && p.SetupStage == 1 {
+		mem.SetupStatus = "in-progress"
+		mem.SetupStage = 1
+		mem.put(memberTable)
+		mem.sendMessage(nameRequest)
+	} else if txt.Body != "2" && mem.SetupStage == 1 {
 		// stage 2 name request
-		p.SetupStage = 2
-		p.Name = txt.Body
-		p.put(membersTable)
-		p.sendMessage(memberType)
-	} else if txt.Body == "2" && p.SetupStage == 1 {
+		mem.SetupStage = 2
+		mem.Name = txt.Body
+		mem.put(memberTable)
+		mem.sendMessage(memberTypeRequest)
+	} else if txt.Body == "2" && mem.SetupStage == 1 {
 		// stage 2 name request
-		p.SetupStage = 2
-		p.Name = "Anonymous"
-		p.put(membersTable)
-		p.sendMessage(memberType)
-	} else if txt.Body == "1" && p.SetupStage == 2 {
+		mem.SetupStage = 2
+		mem.Name = "Anonymous"
+		mem.put(memberTable)
+		mem.sendMessage(memberTypeRequest)
+	} else if txt.Body == "1" && mem.SetupStage == 2 {
 		// final message for member sign up
-		p.SetupStatus = "completed"
-		p.SetupStage = 99
-		p.put(membersTable)
-		p.sendMessage(prayerRequestInstructions)
-	} else if txt.Body == "2" && p.SetupStage == 2 {
+		mem.SetupStatus = "completed"
+		mem.SetupStage = 99
+		mem.Intercessor = false
+		mem.put(memberTable)
+		mem.sendMessage(prayerInstructions)
+	} else if txt.Body == "2" && mem.SetupStage == 2 {
 		// stage 3 intercessor sign up
-		p.SetupStage = 3
-		p.put(membersTable)
-		p.put(intercessorsTable)
-		p.sendMessage(prayerNumRequest)
-	} else if p.SetupStage == 3 {
+		mem.SetupStage = 3
+		mem.Intercessor = true
+		mem.put(memberTable)
+		mem.sendMessage(prayerNumRequest)
+	} else if mem.SetupStage == 3 {
 		// final message for intercessor sign up
 		if num, err := strconv.Atoi(txt.Body); err == nil {
-			p.SetupStatus = "completed"
-			p.SetupStage = 99
-			p.PrayerLimit = num
-			p.put(membersTable)
-			p.put(intercessorsTable)
-			p.sendMessage(intercessorInstructions)
+			phones := IntercessorPhones{}.get()
+			phones = phones.addPhone(mem.Phone)
+			phones.put()
+
+			mem.SetupStatus = "completed"
+			mem.SetupStage = 99
+			mem.WeeklyPrayerLimit = num
+			mem.put(memberTable)
+			mem.sendMessage(intercessorInstructions)
 		} else {
-			p.sendMessage(wrongInput)
+			mem.sendMessage(wrongInput)
 		}
 	} else {
 		// catch all response for incorrect input
-		p.sendMessage(wrongInput)
+		mem.sendMessage(wrongInput)
 	}
 }
 
-func prayerRequest(txt TextMessage, p Person) {
+func findIntercessors() []Member {
+	var intercessors []Member
+
+	for len(intercessors) < numIntercessorsPerPrayer {
+		allPhones := IntercessorPhones{}.get()
+		randPhones := allPhones.genRandPhones()
+
+		for _, phn := range randPhones {
+			intr := Member{Phone: phn}.get(memberTable)
+
+			if intr.PrayerCount < intr.WeeklyPrayerLimit {
+				intercessors = append(intercessors, intr)
+				intr.PrayerCount += 1
+				allPhones = allPhones.delPhone(intr.Phone)
+				intr.put(memberTable)
+
+				if intr.WeeklyPrayerDate == "" {
+					intr.WeeklyPrayerDate = time.Now().Format(time.RFC3339)
+					intr.put(memberTable)
+				}
+			} else if intr.PrayerCount >= intr.WeeklyPrayerLimit {
+				currentTime := time.Now()
+				previousTime, err := time.Parse(time.RFC3339, intr.WeeklyPrayerDate)
+				if err != nil {
+					log.Fatalf("date parse failed, %v", err)
+				}
+
+				diff := currentTime.Sub(previousTime).Hours()
+				// reset prayer counter if time between now and weekly prayer date is greater than
+				// 7 days
+				if (diff / 24) > 7 {
+					intercessors = append(intercessors, intr)
+					intr.PrayerCount = 1
+					allPhones = allPhones.delPhone(intr.Phone)
+					intr.WeeklyPrayerDate = time.Now().Format(time.RFC3339)
+					intr.put(memberTable)
+				} else if (diff / 24) < 7 {
+					allPhones = allPhones.delPhone(intr.Phone)
+				}
+			}
+		}
+	}
+
+	return intercessors
+}
+
+func prayerRequest(txt TextMessage, mem Member) {
 	const (
 		prayerIntro        = "Hello! Please pray for this person:\n"
 		prayerConfirmation = "Your prayer request has been sent out!"
 	)
 
-	int1 := Person{
-		Name:  "Person 1",
-		Phone: "111-111-1111",
-	}
-	int2 := Person{
-		Name:  "Person 2",
-		Phone: "222-222-2222",
-	}
-	int3 := Person{
-		Name:  "Person 3",
-		Phone: "333-333-3333",
-	}
+	intercessors := findIntercessors()
 
-	for _, i := range []Person{int1, int2, int3} {
+	for _, intr := range intercessors {
 		pryr := Prayer{
-			Intercessor:      i,
-			IntercessorPhone: i.Phone,
+			Intercessor:      intr,
+			IntercessorPhone: intr.Phone,
 			Request:          txt.Body,
-			Requestor:        p,
+			Requestor:        mem,
 		}
 		pryr.put()
-		sendText(prayerIntro+pryr.Request, i.Phone)
+		intr.sendMessage(prayerIntro+pryr.Request)
 	}
 
-	sendText(prayerConfirmation, p.Phone)
+	mem.sendMessage(prayerConfirmation)
 }
 
-func mainFlow(txt TextMessage) error {
+func mainFlow(txt TextMessage) {
 	const (
 		removeUser = "You have been removed from prayer texter. If you ever want to sign back up, text the word pray to this number."
 	)
 
-	p := Person{
-		Phone: txt.PhoneNumber,
-	}
+	mem := Member{Phone: txt.Phone}.get(memberTable)
 
-	p = p.get(membersTable)
-
-	if strings.ToLower(txt.Body) == "pray" || p.SetupStatus == "in-progress" {
-		signUp(txt, p)
+	if strings.ToLower(txt.Body) == "pray" || mem.SetupStatus == "in-progress" {
+		signUp(txt, mem)
 	} else if strings.ToLower(txt.Body) == "cancel" || strings.ToLower(txt.Body) == "stop" {
-		p.delete()
-		p.sendMessage(removeUser)
-	} else if p.SetupStatus == "completed" {
-		prayerRequest(txt, p)
-	} else if p.SetupStatus == "" {
-		log.Printf("%v is not a registered user, dropping message", p.Phone)
+		mem.delete()
+		if mem.Intercessor {
+			phones := IntercessorPhones{}.get()
+			phones = phones.delPhone(mem.Phone)
+			phones.put()
+		}
+		mem.sendMessage(removeUser)
+	} else if mem.SetupStatus == "completed" {
+		prayerRequest(txt, mem)
+	} else if mem.SetupStatus == "" {
+		log.Printf("%v is not a registered user, dropping message", mem.Phone)
 	}
-
-	return nil
 }
 
 func handler(ctx context.Context, req events.APIGatewayProxyRequest) (
 	events.APIGatewayProxyResponse, error) {
 	txt := TextMessage{}
 
-	err := json.Unmarshal([]byte(req.Body), &txt)
-	if err != nil {
+	if err := json.Unmarshal([]byte(req.Body), &txt); err != nil {
 		log.Fatalf("failed to unmarshal api gateway request, %v", err.Error())
 		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError}, nil
 	}
 
-	err = mainFlow(txt)
-	if err != nil {
-		return events.APIGatewayProxyResponse{}, err
-	}
+	mainFlow(txt)
 
 	return events.APIGatewayProxyResponse{
 		StatusCode: 200,

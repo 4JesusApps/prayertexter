@@ -7,10 +7,10 @@ import (
 )
 
 type Prayer struct {
-	Intercessor      Person
+	Intercessor      Member
 	IntercessorPhone string
 	Request          string
-	Requestor        Person
+	Requestor        Member
 }
 
 const (
@@ -21,8 +21,7 @@ const (
 func (p Prayer) get() Prayer {
 	resp := getItem(prayerAttribute, p.IntercessorPhone, prayerTable)
 
-	err := attributevalue.UnmarshalMap(resp.Item, &p)
-	if err != nil {
+	if err := attributevalue.UnmarshalMap(resp.Item, &p); err != nil {
 		log.Fatalf("unmarshal failed for get prayer, %v", err)
 	}
 

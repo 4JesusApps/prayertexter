@@ -46,18 +46,6 @@ Resources:
           KeyType: HASH
       StreamSpecification:
         StreamViewType: NEW_AND_OLD_IMAGES
-  Intercessors:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      AttributeDefinitions:
-        - AttributeName: Phone
-          AttributeType: S
-      BillingMode: PAY_PER_REQUEST
-      KeySchema:
-        - AttributeName: Phone
-          KeyType: HASH
-      StreamSpecification:
-        StreamViewType: NEW_AND_OLD_IMAGES
   Members:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -97,8 +85,6 @@ Resources:
           ACTIVE_PRAYERS_TABLE_ARN: !GetAtt ActivePrayers.Arn
           ACTIVE_PRAYERS_TABLE_NAME: !Ref General
           ACTIVE_PRAYERS_TABLE_ARN: !GetAtt General.Arn
-          INTERCESSORS_TABLE_NAME: !Ref Intercessors
-          INTERCESSORS_TABLE_ARN: !GetAtt Intercessors.Arn
           MEMBERS_TABLE_NAME: !Ref Members
           MEMBERS_TABLE_ARN: !GetAtt Members.Arn
       Policies:
@@ -106,8 +92,6 @@ Resources:
             TableName: !Ref ActivePrayers
         - DynamoDBCrudPolicy:
             TableName: !Ref General
-        - DynamoDBCrudPolicy:
-            TableName: !Ref Intercessors
         - DynamoDBCrudPolicy:
             TableName: !Ref Members
   PrayerTexterLogGroup:
