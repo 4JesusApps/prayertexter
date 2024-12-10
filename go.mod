@@ -1,4 +1,4 @@
-module main
+module prayertexter
 
 go 1.23.2
 
