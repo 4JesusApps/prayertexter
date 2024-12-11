@@ -31,8 +31,8 @@ func (m Member) sendMessage(body string) {
 	sendText(body, m.Phone)
 }
 
-func (m Member) get(table string) Member {
-	resp := getItem(memberAttribute, m.Phone, table)
+func (m Member) get() Member {
+	resp := getItem(memberAttribute, m.Phone, memberTable)
 
 	if err := attributevalue.UnmarshalMap(resp.Item, &m); err != nil {
 		log.Fatalf("unmarshal failed for get member, %v", err)
@@ -41,13 +41,13 @@ func (m Member) get(table string) Member {
 	return m
 }
 
-func (m Member) put(table string) {
+func (m Member) put() {
 	data, err := attributevalue.MarshalMap(m)
 	if err != nil {
 		log.Fatalf("unmarshal failed for put member, %v", err)
 	}
 
-	putItem(table, data)
+	putItem(memberTable, data)
 }
 
 func (m Member) delete() {

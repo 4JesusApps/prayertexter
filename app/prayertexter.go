@@ -28,32 +28,32 @@ func signUp(txt TextMessage, mem Member) {
 		// stage 1
 		mem.SetupStatus = "in-progress"
 		mem.SetupStage = 1
-		mem.put(memberTable)
+		mem.put()
 		mem.sendMessage(nameRequest)
 	} else if txt.Body != "2" && mem.SetupStage == 1 {
 		// stage 2 name request
 		mem.SetupStage = 2
 		mem.Name = txt.Body
-		mem.put(memberTable)
+		mem.put()
 		mem.sendMessage(memberTypeRequest)
 	} else if txt.Body == "2" && mem.SetupStage == 1 {
 		// stage 2 name request
 		mem.SetupStage = 2
 		mem.Name = "Anonymous"
-		mem.put(memberTable)
+		mem.put()
 		mem.sendMessage(memberTypeRequest)
 	} else if txt.Body == "1" && mem.SetupStage == 2 {
 		// final message for member sign up
 		mem.SetupStatus = "completed"
 		mem.SetupStage = 99
 		mem.Intercessor = false
-		mem.put(memberTable)
+		mem.put()
 		mem.sendMessage(prayerInstructions)
 	} else if txt.Body == "2" && mem.SetupStage == 2 {
 		// stage 3 intercessor sign up
 		mem.SetupStage = 3
 		mem.Intercessor = true
-		mem.put(memberTable)
+		mem.put()
 		mem.sendMessage(prayerNumRequest)
 	} else if mem.SetupStage == 3 {
 		// final message for intercessor sign up
@@ -65,7 +65,7 @@ func signUp(txt TextMessage, mem Member) {
 			mem.SetupStatus = "completed"
 			mem.SetupStage = 99
 			mem.WeeklyPrayerLimit = num
-			mem.put(memberTable)
+			mem.put()
 			mem.sendMessage(intercessorInstructions)
 		} else {
 			mem.sendMessage(wrongInput)
@@ -84,17 +84,17 @@ func findIntercessors() []Member {
 		randPhones := allPhones.genRandPhones()
 
 		for _, phn := range randPhones {
-			intr := Member{Phone: phn}.get(memberTable)
+			intr := Member{Phone: phn}.get()
 
 			if intr.PrayerCount < intr.WeeklyPrayerLimit {
 				intercessors = append(intercessors, intr)
 				intr.PrayerCount += 1
 				allPhones = allPhones.delPhone(intr.Phone)
-				intr.put(memberTable)
+				intr.put()
 
 				if intr.WeeklyPrayerDate == "" {
 					intr.WeeklyPrayerDate = time.Now().Format(time.RFC3339)
-					intr.put(memberTable)
+					intr.put()
 				}
 			} else if intr.PrayerCount >= intr.WeeklyPrayerLimit {
 				currentTime := time.Now()
@@ -111,7 +111,7 @@ func findIntercessors() []Member {
 					intr.PrayerCount = 1
 					allPhones = allPhones.delPhone(intr.Phone)
 					intr.WeeklyPrayerDate = time.Now().Format(time.RFC3339)
-					intr.put(memberTable)
+					intr.put()
 				} else if (diff / 24) < 7 {
 					allPhones = allPhones.delPhone(intr.Phone)
 				}
@@ -149,7 +149,9 @@ func MainFlow(txt TextMessage) {
 		removeUser = "You have been removed from prayer texter. If you ever want to sign back up, text the word pray to this number."
 	)
 
-	mem := Member{Phone: txt.Phone}.get(memberTable)
+	
+
+	mem := Member{Phone: txt.Phone}.get()
 
 	if strings.ToLower(txt.Body) == "pray" || mem.SetupStatus == "in-progress" {
 		signUp(txt, mem)
