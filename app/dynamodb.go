@@ -12,6 +12,15 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
+type DDBClient interface {
+    GetItem(ctx context.Context, input *dynamodb.GetItemInput, opts ...func(
+		*dynamodb.Options)) (*dynamodb.GetItemOutput, error)
+    PutItem(ctx context.Context, input *dynamodb.PutItemInput, opts ...func(
+		*dynamodb.Options)) (*dynamodb.PutItemOutput, error)
+    DeleteItem(ctx context.Context, input *dynamodb.DeleteItemInput, opts ...func(
+		*dynamodb.Options)) (*dynamodb.DeleteItemOutput, error)
+}
+
 func getDdbClient() *dynamodb.Client {
 	cfg, err := config.LoadDefaultConfig(context.TODO())
 	if err != nil {
@@ -36,9 +45,7 @@ func getDdbClient() *dynamodb.Client {
 	return clnt
 }
 
-func getItem(attr, key, table string) *dynamodb.GetItemOutput {
-	clnt := getDdbClient()
-
+func getItem(clnt DDBClient, attr, key, table string) *dynamodb.GetItemOutput {
 	out, err := clnt.GetItem(context.TODO(), &dynamodb.GetItemInput{
 		TableName: &table,
 		Key: map[string]types.AttributeValue{
@@ -53,9 +60,7 @@ func getItem(attr, key, table string) *dynamodb.GetItemOutput {
 	return out
 }
 
-func putItem(table string, data map[string]types.AttributeValue) {
-	clnt := getDdbClient()
-
+func putItem(clnt DDBClient, table string, data map[string]types.AttributeValue) {
 	_, err := clnt.PutItem(context.TODO(), &dynamodb.PutItemInput{
 		TableName: &table,
 		Item:      data,
@@ -66,9 +71,7 @@ func putItem(table string, data map[string]types.AttributeValue) {
 	}
 }
 
-func delItem(attr, key, table string) {
-	clnt := getDdbClient()
-
+func delItem(clnt DDBClient, attr, key, table string) {
 	_, err := clnt.DeleteItem(context.TODO(), &dynamodb.DeleteItemInput{
 		TableName: &table,
 		Key: map[string]types.AttributeValue{

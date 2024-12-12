@@ -18,25 +18,23 @@ const (
 	prayerTable     = "ActivePrayers"
 )
 
-func (p Prayer) get() Prayer {
-	resp := getItem(prayerAttribute, p.IntercessorPhone, prayerTable)
+func (p *Prayer) get(clnt DDBClient) {
+	resp := getItem(clnt, prayerAttribute, p.IntercessorPhone, prayerTable)
 
 	if err := attributevalue.UnmarshalMap(resp.Item, &p); err != nil {
 		log.Fatalf("unmarshal failed for get prayer, %v", err)
 	}
-
-	return p
 }
 
-func (p Prayer) delete() {
-	delItem(prayerAttribute, p.IntercessorPhone, prayerTable)
+func (p *Prayer) delete(clnt DDBClient) {
+	delItem(clnt, prayerAttribute, p.IntercessorPhone, prayerTable)
 }
 
-func (p Prayer) put() {
+func (p *Prayer) put(clnt DDBClient) {
 	data, err := attributevalue.MarshalMap(p)
 	if err != nil {
 		log.Fatalf("unmarshal failed for put prayer, %v", err)
 	}
 
-	putItem(prayerTable, data)
+	putItem(clnt, prayerTable, data)
 }

@@ -14,7 +14,7 @@ type TextMessage struct {
 }
 
 
-func signUp(txt TextMessage, mem Member) {
+func signUp(clnt DDBClient, txt TextMessage, mem Member) {
 	const (
 		nameRequest             = "Text your name, or 2 to stay anonymous"
 		memberTypeRequest       = "Text 1 for prayer request, or 2 to be added to the intercessors list (to pray for others)"
@@ -28,44 +28,45 @@ func signUp(txt TextMessage, mem Member) {
 		// stage 1
 		mem.SetupStatus = "in-progress"
 		mem.SetupStage = 1
-		mem.put()
+		mem.put(clnt)
 		mem.sendMessage(nameRequest)
 	} else if txt.Body != "2" && mem.SetupStage == 1 {
 		// stage 2 name request
 		mem.SetupStage = 2
 		mem.Name = txt.Body
-		mem.put()
+		mem.put(clnt)
 		mem.sendMessage(memberTypeRequest)
 	} else if txt.Body == "2" && mem.SetupStage == 1 {
 		// stage 2 name request
 		mem.SetupStage = 2
 		mem.Name = "Anonymous"
-		mem.put()
+		mem.put(clnt)
 		mem.sendMessage(memberTypeRequest)
 	} else if txt.Body == "1" && mem.SetupStage == 2 {
 		// final message for member sign up
 		mem.SetupStatus = "completed"
 		mem.SetupStage = 99
 		mem.Intercessor = false
-		mem.put()
+		mem.put(clnt)
 		mem.sendMessage(prayerInstructions)
 	} else if txt.Body == "2" && mem.SetupStage == 2 {
 		// stage 3 intercessor sign up
 		mem.SetupStage = 3
 		mem.Intercessor = true
-		mem.put()
+		mem.put(clnt)
 		mem.sendMessage(prayerNumRequest)
 	} else if mem.SetupStage == 3 {
 		// final message for intercessor sign up
 		if num, err := strconv.Atoi(txt.Body); err == nil {
-			phones := IntercessorPhones{}.get()
-			phones = phones.addPhone(mem.Phone)
-			phones.put()
+			phones := IntercessorPhones{}
+			phones.get(clnt)
+			phones.addPhone(mem.Phone)
+			phones.put(clnt)
 
 			mem.SetupStatus = "completed"
 			mem.SetupStage = 99
 			mem.WeeklyPrayerLimit = num
-			mem.put()
+			mem.put(clnt)
 			mem.sendMessage(intercessorInstructions)
 		} else {
 			mem.sendMessage(wrongInput)
@@ -76,25 +77,27 @@ func signUp(txt TextMessage, mem Member) {
 	}
 }
 
-func findIntercessors() []Member {
+func findIntercessors(clnt DDBClient) []Member {
 	var intercessors []Member
 
 	for len(intercessors) < numIntercessorsPerPrayer {
-		allPhones := IntercessorPhones{}.get()
+		allPhones := IntercessorPhones{}
+		allPhones.get(clnt)
 		randPhones := allPhones.genRandPhones()
 
 		for _, phn := range randPhones {
-			intr := Member{Phone: phn}.get()
+			intr := Member{Phone: phn}
+			intr.get(clnt)
 
 			if intr.PrayerCount < intr.WeeklyPrayerLimit {
 				intercessors = append(intercessors, intr)
-				intr.PrayerCount += 1
-				allPhones = allPhones.delPhone(intr.Phone)
-				intr.put()
+				intr.PrayerCount = 1
+				allPhones.delPhone(intr.Phone)
+				intr.put(clnt)
 
 				if intr.WeeklyPrayerDate == "" {
 					intr.WeeklyPrayerDate = time.Now().Format(time.RFC3339)
-					intr.put()
+					intr.put(clnt)
 				}
 			} else if intr.PrayerCount >= intr.WeeklyPrayerLimit {
 				currentTime := time.Now()
@@ -109,11 +112,11 @@ func findIntercessors() []Member {
 				if (diff / 24) > 7 {
 					intercessors = append(intercessors, intr)
 					intr.PrayerCount = 1
-					allPhones = allPhones.delPhone(intr.Phone)
+					allPhones.delPhone(intr.Phone)
 					intr.WeeklyPrayerDate = time.Now().Format(time.RFC3339)
-					intr.put()
+					intr.put(clnt)
 				} else if (diff / 24) < 7 {
-					allPhones = allPhones.delPhone(intr.Phone)
+					allPhones.delPhone(intr.Phone)
 				}
 			}
 		}
@@ -122,13 +125,13 @@ func findIntercessors() []Member {
 	return intercessors
 }
 
-func prayerRequest(txt TextMessage, mem Member) {
+func prayerRequest(clnt DDBClient, txt TextMessage, mem Member) {
 	const (
 		prayerIntro        = "Hello! Please pray for this person:\n"
 		prayerConfirmation = "Your prayer request has been sent out!"
 	)
 
-	intercessors := findIntercessors()
+	intercessors := findIntercessors(clnt)
 
 	for _, intr := range intercessors {
 		pryr := Prayer{
@@ -137,7 +140,7 @@ func prayerRequest(txt TextMessage, mem Member) {
 			Request:          txt.Body,
 			Requestor:        mem,
 		}
-		pryr.put()
+		pryr.put(clnt)
 		intr.sendMessage(prayerIntro+pryr.Request)
 	}
 
@@ -149,22 +152,23 @@ func MainFlow(txt TextMessage) {
 		removeUser = "You have been removed from prayer texter. If you ever want to sign back up, text the word pray to this number."
 	)
 
-	
+	clnt := getDdbClient()
 
-	mem := Member{Phone: txt.Phone}.get()
+	mem := Member{Phone: txt.Phone}
 
 	if strings.ToLower(txt.Body) == "pray" || mem.SetupStatus == "in-progress" {
-		signUp(txt, mem)
+		signUp(clnt, txt, mem)
 	} else if strings.ToLower(txt.Body) == "cancel" || strings.ToLower(txt.Body) == "stop" {
-		mem.delete()
+		mem.delete(clnt)
 		if mem.Intercessor {
-			phones := IntercessorPhones{}.get()
-			phones = phones.delPhone(mem.Phone)
-			phones.put()
+			phones := IntercessorPhones{}
+			phones.get(clnt)
+			phones.delPhone(mem.Phone)
+			phones.put(clnt)
 		}
 		mem.sendMessage(removeUser)
 	} else if mem.SetupStatus == "completed" {
-		prayerRequest(txt, mem)
+		prayerRequest(clnt, txt, mem)
 	} else if mem.SetupStatus == "" {
 		log.Printf("%v is not a registered user, dropping message", mem.Phone)
 	}

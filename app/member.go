@@ -27,29 +27,27 @@ func sendText(body string, recipient string) {
 	log.Printf("Body: %v\n", body)
 }
 
-func (m Member) sendMessage(body string) {
+func (m *Member) sendMessage(body string) {
 	sendText(body, m.Phone)
 }
 
-func (m Member) get() Member {
-	resp := getItem(memberAttribute, m.Phone, memberTable)
+func (m *Member) get(clnt DDBClient) {
+	resp := getItem(clnt, memberAttribute, m.Phone, memberTable)
 
 	if err := attributevalue.UnmarshalMap(resp.Item, &m); err != nil {
 		log.Fatalf("unmarshal failed for get member, %v", err)
 	}
-
-	return m
 }
 
-func (m Member) put() {
+func (m *Member) put(clnt DDBClient) {
 	data, err := attributevalue.MarshalMap(m)
 	if err != nil {
 		log.Fatalf("unmarshal failed for put member, %v", err)
 	}
 
-	putItem(memberTable, data)
+	putItem(clnt, memberTable, data)
 }
 
-func (m Member) delete() {
-	delItem(memberAttribute, m.Phone, memberTable)
+func (m *Member) delete(clnt DDBClient) {
+	delItem(clnt, memberAttribute, m.Phone, memberTable)
 }

@@ -19,17 +19,15 @@ const (
 	numIntercessorsPerPrayer   = 2
 )
 
-func (i IntercessorPhones) get() IntercessorPhones {
-	resp := getItem(IntercessorPhonesAttribute, IntercessorPhonesKey, IntercessorPhonesTable)
+func (i *IntercessorPhones) get(clnt DDBClient) {
+	resp := getItem(clnt, IntercessorPhonesAttribute, IntercessorPhonesKey, IntercessorPhonesTable)
 
 	if err := attributevalue.UnmarshalMap(resp.Item, &i); err != nil {
 		log.Fatalf("unmarshal failed for get intercessor phones, %v", err)
 	}
-
-	return i
 }
 
-func (i IntercessorPhones) put() {
+func (i *IntercessorPhones) put(clnt DDBClient) {
 	i.Name = IntercessorPhonesKey
 
 	data, err := attributevalue.MarshalMap(i)
@@ -37,16 +35,14 @@ func (i IntercessorPhones) put() {
 		log.Fatalf("marshal failed for put intercessor phones, %v", err)
 	}
 
-	putItem(IntercessorPhonesTable, data)
+	putItem(clnt, IntercessorPhonesTable, data)
 }
 
-func (i IntercessorPhones) addPhone(phone string) IntercessorPhones {
+func (i *IntercessorPhones) addPhone(phone string) {
 	i.Phones = append(i.Phones, phone)
-
-	return i
 }
 
-func (i IntercessorPhones) delPhone(phone string) IntercessorPhones {
+func (i *IntercessorPhones) delPhone(phone string) {
 	var newPhones []string
 
 	for _, p := range i.Phones {
@@ -56,11 +52,9 @@ func (i IntercessorPhones) delPhone(phone string) IntercessorPhones {
 	}
 
 	i.Phones = newPhones
-
-	return i
 }
 
-func (i IntercessorPhones) genRandPhones() []string {
+func (i *IntercessorPhones) genRandPhones() []string {
 	var phones []string
 
 	for len(phones) < numIntercessorsPerPrayer {
