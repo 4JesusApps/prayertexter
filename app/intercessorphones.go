@@ -1,7 +1,7 @@
 package prayertexter
 
 import (
-	"log"
+	"log/slog"
 	"math/rand"
 
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
@@ -19,23 +19,36 @@ const (
 	numIntercessorsPerPrayer   = 2
 )
 
-func (i *IntercessorPhones) get(clnt DDBClient) {
-	resp := getItem(clnt, IntercessorPhonesAttribute, IntercessorPhonesKey, IntercessorPhonesTable)
+func (i *IntercessorPhones) get(clnt DDBConnecter) error {
+	resp, err := getItem(clnt, IntercessorPhonesAttribute, IntercessorPhonesKey, IntercessorPhonesTable)
+	if err != nil {
+		slog.Error("get IntercessorPhones failed")
+		return err
+	}
 
 	if err := attributevalue.UnmarshalMap(resp.Item, &i); err != nil {
-		log.Fatalf("unmarshal failed for get intercessor phones, %v", err)
+		slog.Error("unmarshal failed for get IntercessorPhones")
+		return err
 	}
+
+	return nil
 }
 
-func (i *IntercessorPhones) put(clnt DDBClient) {
+func (i *IntercessorPhones) put(clnt DDBConnecter) error {
 	i.Name = IntercessorPhonesKey
 
 	data, err := attributevalue.MarshalMap(i)
 	if err != nil {
-		log.Fatalf("marshal failed for put intercessor phones, %v", err)
+		slog.Error("marshal failed for put IntercessorPhones")
+		return err
 	}
 
-	putItem(clnt, IntercessorPhonesTable, data)
+	if err := putItem(clnt, IntercessorPhonesTable, data); err != nil {
+		slog.Error("put IntercessorPhones failed")
+		return err
+	}
+
+	return nil
 }
 
 func (i *IntercessorPhones) addPhone(phone string) {

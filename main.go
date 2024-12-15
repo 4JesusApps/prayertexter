@@ -3,9 +3,9 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
-	"prayertexter/app"
+	prayertexter "prayertexter/app"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -17,16 +17,24 @@ import (
 //lint:ignore U1000 - var used in Makefile
 var version string // do not remove or modify
 
-func handler(ctx context.Context, req events.APIGatewayProxyRequest) (
-	events.APIGatewayProxyResponse, error) {
+func handler(ctx context.Context,
+	req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	txt := prayertexter.TextMessage{}
 
 	if err := json.Unmarshal([]byte(req.Body), &txt); err != nil {
-		log.Fatalf("failed to unmarshal api gateway request, %v", err.Error())
-		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError}, nil
+		slog.Error("failed to unmarshal api gateway request", "error", err.Error())
+		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError}, err
 	}
 
-	prayertexter.MainFlow(txt)
+	clnt, err := prayertexter.GetDdbClient()
+	if err != nil {
+		slog.Error("unmarshal failed for api gateway request", "error", err.Error())
+		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError}, err
+	}
+
+	txtsvc := prayertexter.FakeTextService{}
+
+	prayertexter.MainFlow(txt, clnt, txtsvc)
 
 	return events.APIGatewayProxyResponse{
 		StatusCode: 200,

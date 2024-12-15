@@ -1,7 +1,7 @@
 package prayertexter
 
 import (
-	"log"
+	"log/slog"
 
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 )
@@ -22,32 +22,49 @@ const (
 	memberTable     = "Members"
 )
 
-func sendText(body string, recipient string) {
-	log.Printf("Sending to: %v\n", recipient)
-	log.Printf("Body: %v\n", body)
-}
-
-func (m *Member) sendMessage(body string) {
-	sendText(body, m.Phone)
-}
-
-func (m *Member) get(clnt DDBClient) {
-	resp := getItem(clnt, memberAttribute, m.Phone, memberTable)
+func (m *Member) get(clnt DDBConnecter) error {
+	resp, err := getItem(clnt, memberAttribute, m.Phone, memberTable)
+	if err != nil {
+		slog.Error("get Member failed")
+		return err
+	}
 
 	if err := attributevalue.UnmarshalMap(resp.Item, &m); err != nil {
-		log.Fatalf("unmarshal failed for get member, %v", err)
+		slog.Error("unmarshal failed for get member")
+		return err
 	}
+
+	return nil
 }
 
-func (m *Member) put(clnt DDBClient) {
+func (m *Member) put(clnt DDBConnecter) error {
 	data, err := attributevalue.MarshalMap(m)
 	if err != nil {
-		log.Fatalf("unmarshal failed for put member, %v", err)
+		slog.Error("marshal failed for put Member")
+		return err
 	}
 
-	putItem(clnt, memberTable, data)
+	if err := putItem(clnt, memberTable, data); err != nil {
+		slog.Error("put Member failed")
+		return err
+	}
+
+	return nil
 }
 
-func (m *Member) delete(clnt DDBClient) {
-	delItem(clnt, memberAttribute, m.Phone, memberTable)
+func (m *Member) delete(clnt DDBConnecter) error {
+	if err := delItem(clnt, memberAttribute, m.Phone, memberTable); err != nil {
+		slog.Error("delete Member failed")
+		return err
+	}
+
+	return nil
+}
+
+func (m *Member) sendMessage(sndr TextSender, body string) error {
+	message := TextMessage{
+		Body:  body,
+		Phone: m.Phone,
+	}
+	return sndr.SendText(message)
 }

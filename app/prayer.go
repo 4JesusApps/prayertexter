@@ -1,7 +1,7 @@
 package prayertexter
 
 import (
-	"log"
+	"log/slog"
 
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 )
@@ -18,23 +18,41 @@ const (
 	prayerTable     = "ActivePrayers"
 )
 
-func (p *Prayer) get(clnt DDBClient) {
-	resp := getItem(clnt, prayerAttribute, p.IntercessorPhone, prayerTable)
+func (p *Prayer) get(clnt DDBConnecter) error {
+	resp, err := getItem(clnt, prayerAttribute, p.IntercessorPhone, prayerTable)
+	if err != nil {
+		slog.Error("get Prayer failed")
+		return err
+	}
 
 	if err := attributevalue.UnmarshalMap(resp.Item, &p); err != nil {
-		log.Fatalf("unmarshal failed for get prayer, %v", err)
+		slog.Error("unmarshal failed for get Prayer")
+		return err
 	}
+
+	return nil
 }
 
-func (p *Prayer) delete(clnt DDBClient) {
-	delItem(clnt, prayerAttribute, p.IntercessorPhone, prayerTable)
+func (p *Prayer) delete(clnt DDBConnecter) error {
+	if err := delItem(clnt, prayerAttribute, p.IntercessorPhone, prayerTable); err != nil {
+		slog.Error("delete Prayer failed")
+		return err
+	}
+
+	return nil
 }
 
-func (p *Prayer) put(clnt DDBClient) {
+func (p *Prayer) put(clnt DDBConnecter) error {
 	data, err := attributevalue.MarshalMap(p)
 	if err != nil {
-		log.Fatalf("unmarshal failed for put prayer, %v", err)
+		slog.Error("unmarshal failed for put Prayer")
+		return err
 	}
 
-	putItem(clnt, prayerTable, data)
+	if err := putItem(clnt, prayerTable, data); err != nil {
+		slog.Error("put Prayer failed")
+		return err
+	}
+
+	return nil
 }

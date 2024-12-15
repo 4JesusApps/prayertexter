@@ -2,7 +2,7 @@ package prayertexter
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"os"
 	"strconv"
 
@@ -12,24 +12,29 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
-type DDBClient interface {
-    GetItem(ctx context.Context, input *dynamodb.GetItemInput, opts ...func(
-		*dynamodb.Options)) (*dynamodb.GetItemOutput, error)
-    PutItem(ctx context.Context, input *dynamodb.PutItemInput, opts ...func(
-		*dynamodb.Options)) (*dynamodb.PutItemOutput, error)
-    DeleteItem(ctx context.Context, input *dynamodb.DeleteItemInput, opts ...func(
-		*dynamodb.Options)) (*dynamodb.DeleteItemOutput, error)
+type DDBConnecter interface {
+	GetItem(ctx context.Context,
+		input *dynamodb.GetItemInput,
+		opts ...func(*dynamodb.Options)) (*dynamodb.GetItemOutput, error)
+	PutItem(ctx context.Context,
+		input *dynamodb.PutItemInput,
+		opts ...func(*dynamodb.Options)) (*dynamodb.PutItemOutput, error)
+	DeleteItem(ctx context.Context,
+		input *dynamodb.DeleteItemInput,
+		opts ...func(*dynamodb.Options)) (*dynamodb.DeleteItemOutput, error)
 }
 
-func getDdbClient() *dynamodb.Client {
+func GetDdbClient() (*dynamodb.Client, error) {
 	cfg, err := config.LoadDefaultConfig(context.TODO())
 	if err != nil {
-		log.Fatalf("unable to load aws-sdk-go-v2 config, %v", err)
+		slog.Error("unable to load aws-sdk-go-v2 config")
+		return nil, err
 	}
 
 	local, err := strconv.ParseBool(os.Getenv("AWS_SAM_LOCAL"))
 	if err != nil {
-		log.Fatalf("unable to convert AWS_SAM_LOCAL value to boolean, %v", err)
+		slog.Error("unable to convert AWS_SAM_LOCAL value to boolean")
+		return nil, err
 	}
 
 	var clnt *dynamodb.Client
@@ -42,10 +47,10 @@ func getDdbClient() *dynamodb.Client {
 		clnt = dynamodb.NewFromConfig(cfg)
 	}
 
-	return clnt
+	return clnt, nil
 }
 
-func getItem(clnt DDBClient, attr, key, table string) *dynamodb.GetItemOutput {
+func getItem(clnt DDBConnecter, attr, key, table string) (*dynamodb.GetItemOutput, error) {
 	out, err := clnt.GetItem(context.TODO(), &dynamodb.GetItemInput{
 		TableName: &table,
 		Key: map[string]types.AttributeValue{
@@ -53,25 +58,19 @@ func getItem(clnt DDBClient, attr, key, table string) *dynamodb.GetItemOutput {
 		},
 	})
 
-	if err != nil {
-		log.Fatalf("unable to get item, %v", err)
-	}
-
-	return out
+	return out, err
 }
 
-func putItem(clnt DDBClient, table string, data map[string]types.AttributeValue) {
+func putItem(clnt DDBConnecter, table string, data map[string]types.AttributeValue) error {
 	_, err := clnt.PutItem(context.TODO(), &dynamodb.PutItemInput{
 		TableName: &table,
 		Item:      data,
 	})
 
-	if err != nil {
-		log.Fatalf("unable to put item, %v", err)
-	}
+	return err
 }
 
-func delItem(clnt DDBClient, attr, key, table string) {
+func delItem(clnt DDBConnecter, attr, key, table string) error {
 	_, err := clnt.DeleteItem(context.TODO(), &dynamodb.DeleteItemInput{
 		TableName: &table,
 		Key: map[string]types.AttributeValue{
@@ -79,7 +78,5 @@ func delItem(clnt DDBClient, attr, key, table string) {
 		},
 	})
 
-	if err != nil {
-		log.Fatalf("unable to delete item, %v", err)
-	}
+	return err
 }
