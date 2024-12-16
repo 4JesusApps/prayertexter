@@ -20,5 +20,7 @@ Good dynamodb commands:
 
 TODO:
 - prevent situation where prayer has 0 available intercessors (most likely because they have active prayers)
+- prevent infinite look when looking for intercessors (if none)
 - prevent lambda from running multiple times due to failure (return from main func???, pass errors upwards???)
 - idempotency with potential for multiple calls with same data
+- add check into find intercessors that checks their number in active prayers

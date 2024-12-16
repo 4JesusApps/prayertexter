@@ -13,14 +13,14 @@ type IntercessorPhones struct {
 }
 
 const (
-	IntercessorPhonesAttribute = "Name"
-	IntercessorPhonesKey       = "IntercessorPhones"
-	IntercessorPhonesTable     = "General"
+	intercessorPhonesAttribute = "Name"
+	intercessorPhonesKey       = "IntercessorPhones"
+	intercessorPhonesTable     = "General"
 	numIntercessorsPerPrayer   = 2
 )
 
 func (i *IntercessorPhones) get(clnt DDBConnecter) error {
-	resp, err := getItem(clnt, IntercessorPhonesAttribute, IntercessorPhonesKey, IntercessorPhonesTable)
+	resp, err := getItem(clnt, intercessorPhonesAttribute, intercessorPhonesKey, intercessorPhonesTable)
 	if err != nil {
 		slog.Error("get IntercessorPhones failed")
 		return err
@@ -35,7 +35,7 @@ func (i *IntercessorPhones) get(clnt DDBConnecter) error {
 }
 
 func (i *IntercessorPhones) put(clnt DDBConnecter) error {
-	i.Name = IntercessorPhonesKey
+	i.Name = intercessorPhonesKey
 
 	data, err := attributevalue.MarshalMap(i)
 	if err != nil {
@@ -43,7 +43,7 @@ func (i *IntercessorPhones) put(clnt DDBConnecter) error {
 		return err
 	}
 
-	if err := putItem(clnt, IntercessorPhonesTable, data); err != nil {
+	if err := putItem(clnt, intercessorPhonesTable, data); err != nil {
 		slog.Error("put IntercessorPhones failed")
 		return err
 	}

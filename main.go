@@ -17,8 +17,7 @@ import (
 //lint:ignore U1000 - var used in Makefile
 var version string // do not remove or modify
 
-func handler(ctx context.Context,
-	req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+func handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	txt := prayertexter.TextMessage{}
 
 	if err := json.Unmarshal([]byte(req.Body), &txt); err != nil {
@@ -36,10 +35,7 @@ func handler(ctx context.Context,
 
 	prayertexter.MainFlow(txt, clnt, txtsvc)
 
-	return events.APIGatewayProxyResponse{
-		StatusCode: 200,
-		Body:       "Completed Successfully",
-	}, nil
+	return events.APIGatewayProxyResponse{StatusCode: 200, Body: "Completed Successfully"}, nil
 }
 
 func main() {
