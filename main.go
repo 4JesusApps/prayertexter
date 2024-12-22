@@ -27,7 +27,7 @@ func handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.API
 
 	clnt, err := prayertexter.GetDdbClient()
 	if err != nil {
-		slog.Error("unmarshal failed for api gateway request", "error", err.Error())
+		slog.Error("failed to get dynamodb client", "error", err.Error())
 		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError}, err
 	}
 

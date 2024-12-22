@@ -24,3 +24,4 @@ TODO:
 - prevent lambda from running multiple times due to failure (return from main func???, pass errors upwards???)
 - idempotency with potential for multiple calls with same data
 - add check into find intercessors that checks their number in active prayers
+- separate marshal and unmarshal map out into separate functions (for member and prayer) so they can be used in unit testing and not duplicated

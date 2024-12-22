@@ -22,14 +22,14 @@ const (
 	memberTable     = "Members"
 )
 
-func (m *Member) get(clnt DDBConnecter) error {
-	resp, err := getItem(clnt, memberAttribute, m.Phone, memberTable)
+func (mem *Member) get(clnt DDBConnecter) error {
+	resp, err := getItem(clnt, memberAttribute, mem.Phone, memberTable)
 	if err != nil {
 		slog.Error("get Member failed")
 		return err
 	}
 
-	if err := attributevalue.UnmarshalMap(resp.Item, &m); err != nil {
+	if err := attributevalue.UnmarshalMap(resp.Item, &mem); err != nil {
 		slog.Error("unmarshal failed for get member")
 		return err
 	}
@@ -37,8 +37,8 @@ func (m *Member) get(clnt DDBConnecter) error {
 	return nil
 }
 
-func (m *Member) put(clnt DDBConnecter) error {
-	data, err := attributevalue.MarshalMap(m)
+func (mem *Member) put(clnt DDBConnecter) error {
+	data, err := attributevalue.MarshalMap(mem)
 	if err != nil {
 		slog.Error("marshal failed for put Member")
 		return err
@@ -52,8 +52,8 @@ func (m *Member) put(clnt DDBConnecter) error {
 	return nil
 }
 
-func (m *Member) delete(clnt DDBConnecter) error {
-	if err := delItem(clnt, memberAttribute, m.Phone, memberTable); err != nil {
+func (mem *Member) delete(clnt DDBConnecter) error {
+	if err := delItem(clnt, memberAttribute, mem.Phone, memberTable); err != nil {
 		slog.Error("delete Member failed")
 		return err
 	}
@@ -61,10 +61,10 @@ func (m *Member) delete(clnt DDBConnecter) error {
 	return nil
 }
 
-func (m *Member) sendMessage(sndr TextSender, body string) error {
+func (mem *Member) sendMessage(sndr TextSender, body string) error {
 	message := TextMessage{
 		Body:  body,
-		Phone: m.Phone,
+		Phone: mem.Phone,
 	}
 	return sndr.SendText(message)
 }

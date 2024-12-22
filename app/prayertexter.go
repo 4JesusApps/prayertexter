@@ -9,6 +9,7 @@ import (
 
 func MainFlow(txt TextMessage, clnt DDBConnecter, sndr TextSender) error {
 	mem := Member{Phone: txt.Phone}
+	mem.get(clnt)
 
 	if strings.ToLower(txt.Body) == "pray" || mem.SetupStatus == "in-progress" {
 		if err := signUpFlow(txt, mem, clnt, sndr); err != nil {
@@ -211,10 +212,10 @@ func findIntercessors(clnt DDBConnecter) ([]Member, error) {
 	var intercessors []Member
 
 	allPhones := IntercessorPhones{}
-		if err := allPhones.get(clnt); err != nil {
-			slog.Error("get phone list failed during find intercessors")
-			return nil, err
-		}
+	if err := allPhones.get(clnt); err != nil {
+		slog.Error("get phone list failed during find intercessors")
+		return nil, err
+	}
 
 	for len(intercessors) < numIntercessorsPerPrayer {
 		randPhones := allPhones.genRandPhones()
