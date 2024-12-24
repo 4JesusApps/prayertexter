@@ -9,10 +9,12 @@ import (
 
 func MainFlow(txt TextMessage, clnt DDBConnecter, sndr TextSender) error {
 	mem := Member{Phone: txt.Phone}
-	mem.get(clnt)
+	if err := mem.get(clnt); err != nil {
+		return err
+	}
 
 	if strings.ToLower(txt.Body) == "pray" || mem.SetupStatus == "in-progress" {
-		if err := signUpFlow(txt, mem, clnt, sndr); err != nil {
+		if err := signUp(txt, mem, clnt, sndr); err != nil {
 			return err
 		}
 	} else if strings.ToLower(txt.Body) == "cancel" || strings.ToLower(txt.Body) == "stop" {
@@ -30,7 +32,7 @@ func MainFlow(txt TextMessage, clnt DDBConnecter, sndr TextSender) error {
 	return nil
 }
 
-func signUpFlow(txt TextMessage, mem Member, clnt DDBConnecter, sndr TextSender) error {
+func signUp(txt TextMessage, mem Member, clnt DDBConnecter, sndr TextSender) error {
 	if strings.ToLower(txt.Body) == "pray" {
 		if err := signUpStageOne(mem, clnt, sndr); err != nil {
 			return err
