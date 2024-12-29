@@ -3,6 +3,7 @@ package prayertexter
 import (
 	"errors"
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
@@ -13,8 +14,9 @@ import (
 type TestCase struct {
 	description           string
 	txt                   TextMessage
-	expectedMember        Member
+	expectedMembers       []Member
 	expectedPhones        IntercessorPhones
+	expectedPrayers       []Prayer
 	expectedDeleteItemKey string
 
 	mockGetItemOutputs   []*dynamodb.GetItemOutput
@@ -27,6 +29,23 @@ type TestCase struct {
 	expectedDeleteItemCalls int
 }
 
+func testNumOfDdbCalls(ddbMock *MockDDBConnecter, t *testing.T, test TestCase) {
+	if ddbMock.GetItemCalls != test.expectedGetItemCalls {
+		t.Errorf("expected GetItem to be called %v, got %v",
+			test.expectedGetItemCalls, ddbMock.GetItemCalls)
+	}
+
+	if ddbMock.PutItemCalls != test.expectedPutItemCalls {
+		t.Errorf("expected PutItem to be called %v, got %v",
+			test.expectedPutItemCalls, ddbMock.PutItemCalls)
+	}
+
+	if ddbMock.DeleteItemCalls != test.expectedDeleteItemCalls {
+		t.Errorf("expected DeleteItem to be called %v, got %v",
+			test.expectedDeleteItemCalls, ddbMock.DeleteItemCalls)
+	}
+}
+
 func TestMainFlowSignUp(t *testing.T) {
 	testCases := []TestCase{
 		{
@@ -37,10 +56,12 @@ func TestMainFlowSignUp(t *testing.T) {
 				Phone: "123-456-7890",
 			},
 
-			expectedMember: Member{
-				Phone:       "123-456-7890",
-				SetupStage:  1,
-				SetupStatus: "in-progress",
+			expectedMembers: []Member{
+				{
+					Phone:       "123-456-7890",
+					SetupStage:  1,
+					SetupStatus: "in-progress",
+				},
 			},
 
 			expectedGetItemCalls: 1,
@@ -54,10 +75,12 @@ func TestMainFlowSignUp(t *testing.T) {
 				Phone: "123-456-7890",
 			},
 
-			expectedMember: Member{
-				Phone:       "123-456-7890",
-				SetupStage:  1,
-				SetupStatus: "in-progress",
+			expectedMembers: []Member{
+				{
+					Phone:       "123-456-7890",
+					SetupStage:  1,
+					SetupStatus: "in-progress",
+				},
 			},
 
 			expectedGetItemCalls: 1,
@@ -91,11 +114,13 @@ func TestMainFlowSignUp(t *testing.T) {
 				},
 			},
 
-			expectedMember: Member{
-				Name:        "John Doe",
-				Phone:       "123-456-7890",
-				SetupStage:  2,
-				SetupStatus: "in-progress",
+			expectedMembers: []Member{
+				{
+					Name:        "John Doe",
+					Phone:       "123-456-7890",
+					SetupStage:  2,
+					SetupStatus: "in-progress",
+				},
 			},
 
 			expectedGetItemCalls: 1,
@@ -119,11 +144,13 @@ func TestMainFlowSignUp(t *testing.T) {
 				},
 			},
 
-			expectedMember: Member{
-				Name:        "Anonymous",
-				Phone:       "123-456-7890",
-				SetupStage:  2,
-				SetupStatus: "in-progress",
+			expectedMembers: []Member{
+				{
+					Name:        "Anonymous",
+					Phone:       "123-456-7890",
+					SetupStage:  2,
+					SetupStatus: "in-progress",
+				},
 			},
 
 			expectedGetItemCalls: 1,
@@ -148,12 +175,14 @@ func TestMainFlowSignUp(t *testing.T) {
 				},
 			},
 
-			expectedMember: Member{
-				Intercessor: false,
-				Name:        "John Doe",
-				Phone:       "123-456-7890",
-				SetupStage:  99,
-				SetupStatus: "completed",
+			expectedMembers: []Member{
+				{
+					Intercessor: false,
+					Name:        "John Doe",
+					Phone:       "123-456-7890",
+					SetupStage:  99,
+					SetupStatus: "completed",
+				},
 			},
 
 			expectedGetItemCalls: 1,
@@ -178,12 +207,14 @@ func TestMainFlowSignUp(t *testing.T) {
 				},
 			},
 
-			expectedMember: Member{
-				Intercessor: true,
-				Name:        "John Doe",
-				Phone:       "123-456-7890",
-				SetupStage:  3,
-				SetupStatus: "in-progress",
+			expectedMembers: []Member{
+				{
+					Intercessor: true,
+					Name:        "John Doe",
+					Phone:       "123-456-7890",
+					SetupStage:  3,
+					SetupStatus: "in-progress",
+				},
 			},
 
 			expectedGetItemCalls: 1,
@@ -219,14 +250,16 @@ func TestMainFlowSignUp(t *testing.T) {
 				},
 			},
 
-			expectedMember: Member{
-				Intercessor:       true,
-				Name:              "John Doe",
-				Phone:             "123-456-7890",
-				SetupStage:        99,
-				SetupStatus:       "completed",
-				WeeklyPrayerDate:  "dummy date/time",
-				WeeklyPrayerLimit: 10,
+			expectedMembers: []Member{
+				{
+					Intercessor:       true,
+					Name:              "John Doe",
+					Phone:             "123-456-7890",
+					SetupStage:        99,
+					SetupStatus:       "completed",
+					WeeklyPrayerDate:  "dummy date/time",
+					WeeklyPrayerLimit: 10,
+				},
 			},
 
 			expectedPhones: IntercessorPhones{
@@ -286,25 +319,17 @@ func TestMainFlowSignUp(t *testing.T) {
 			ddbMock.PutItemErrors = test.mockPutItemErrors
 
 			if len(ddbMock.GetItemErrors) > 0 || len(ddbMock.PutItemErrors) > 0 {
-				// handles MainFlow signUp failures due to  GetItem or PutItem mock errors
+				// handles failures for error mocks
 				if err := MainFlow(test.txt, ddbMock, txtsvc); err == nil {
-					t.Fatalf("expected error %v, got nil", err)
+					t.Fatalf("expected error, got nil")
 				}
 			} else {
-				// handles MainFlow signUp success test cases
+				// handles success test cases
 				if err := MainFlow(test.txt, ddbMock, txtsvc); err != nil {
 					t.Fatalf("unexpected error starting MainFlow: %v", err)
 				}
 
-				if ddbMock.GetItemCalls != test.expectedGetItemCalls {
-					t.Errorf("expected GetItem to be called %v, got %v",
-						test.expectedGetItemCalls, ddbMock.GetItemCalls)
-				}
-
-				if ddbMock.PutItemCalls != test.expectedPutItemCalls {
-					t.Errorf("expected PutItem to be called %v, got %v",
-						test.expectedPutItemCalls, ddbMock.PutItemCalls)
-				}
+				testNumOfDdbCalls(ddbMock, t, test)
 
 				var input dynamodb.PutItemInput
 
@@ -332,8 +357,8 @@ func TestMainFlowSignUp(t *testing.T) {
 					mem.WeeklyPrayerDate = "dummy date/time"
 				}
 
-				if mem != test.expectedMember {
-					t.Errorf("expected Member %v, got %v", test.expectedMember, mem)
+				if mem != test.expectedMembers[0] {
+					t.Errorf("expected Member %v, got %v", test.expectedMembers[0], mem)
 				}
 
 				// this gets tested for signUpFinalIntercessorMessage only
@@ -433,16 +458,7 @@ func TestMainFlowSignUpWrongInputs(t *testing.T) {
 				t.Fatalf("unexpected error starting MainFlow: %v", err)
 			}
 
-			if ddbMock.GetItemCalls != test.expectedGetItemCalls {
-				t.Errorf("expected GetItem to be called %v, got %v",
-					test.expectedGetItemCalls, ddbMock.GetItemCalls)
-			}
-
-			if ddbMock.PutItemCalls != test.expectedPutItemCalls {
-				t.Errorf("expected PutItem to be called %v, got %v",
-					test.expectedPutItemCalls, ddbMock.PutItemCalls)
-			}
-
+			testNumOfDdbCalls(ddbMock, t, test)
 		})
 	}
 }
@@ -534,34 +550,22 @@ func TestMainFlowMemberDelete(t *testing.T) {
 			ddbMock.DeleteItemErrors = test.mockDeleteItemErrors
 
 			if len(ddbMock.DeleteItemErrors) > 0 {
-				// handles MainFlow memberDelete failures due to DeleteItem mock errors
+				// handles failures for error mocks
 				if err := MainFlow(test.txt, ddbMock, txtsvc); err == nil {
-					t.Fatalf("expected error %v, got nil", err)
+					t.Fatalf("expected error, got nil")
 				}
 			} else {
-				// handles MainFlow memberDelete success test cases
+				// handles success test cases
 				if err := MainFlow(test.txt, ddbMock, txtsvc); err != nil {
 					t.Fatalf("unexpected error starting MainFlow: %v", err)
 				}
 
-				if ddbMock.GetItemCalls != test.expectedGetItemCalls {
-					t.Errorf("expected GetItem to be called %v, got %v",
-						test.expectedGetItemCalls, ddbMock.GetItemCalls)
-				}
-
-				if ddbMock.PutItemCalls != test.expectedPutItemCalls {
-					t.Errorf("expected PutItem to be called %v, got %v",
-						test.expectedPutItemCalls, ddbMock.PutItemCalls)
-				}
-
-				if ddbMock.DeleteItemCalls != test.expectedDeleteItemCalls {
-					t.Errorf("expected DeleteItem to be called %v, got %v",
-						test.expectedDeleteItemCalls, ddbMock.DeleteItemCalls)
-				}
+				testNumOfDdbCalls(ddbMock, t, test)
 
 				delInput := ddbMock.DeleteItemInputs[0]
 				if *delInput.TableName != memberTable {
-					t.Errorf("expected Member table name %v, got %v", memberTable, *delInput.TableName)
+					t.Errorf("expected Member table name %v, got %v",
+						memberTable, *delInput.TableName)
 				}
 
 				mem := Member{}
@@ -590,6 +594,286 @@ func TestMainFlowMemberDelete(t *testing.T) {
 						t.Errorf("expected IntercessorPhones %v, got %v",
 							test.expectedPhones, phones)
 					}
+				}
+			}
+		})
+	}
+}
+
+func TestMainFlowPrayerRequest(t *testing.T) {
+
+	// getMember (initial in MainFlow)
+	// getIntPhones (inside findIntercessors)
+	// getMember (inside findIntercessors) (2 times)
+	// putMember (inside findIntercessors) (2 times)
+	// putPrayer (end of prayerRequest) (2 times)
+
+	testCases := []TestCase{
+		{
+			description: "Successful simple prayer request flow",
+
+			txt: TextMessage{
+				Body:  "I need prayer for...",
+				Phone: "123-456-7890",
+			},
+
+			mockGetItemOutputs: []*dynamodb.GetItemOutput{
+				{
+					Item: map[string]types.AttributeValue{
+						"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
+						"Phone":       &types.AttributeValueMemberS{Value: "123-456-7890"},
+						"SetupStatus": &types.AttributeValueMemberS{Value: "completed"},
+					},
+				},
+				{
+					Item: map[string]types.AttributeValue{
+						"Name": &types.AttributeValueMemberS{Value: intercessorPhonesKey},
+						"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
+							&types.AttributeValueMemberS{Value: "111-111-1111"},
+							&types.AttributeValueMemberS{Value: "222-222-2222"},
+						}},
+					},
+				},
+				{
+					Item: map[string]types.AttributeValue{
+						"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
+						"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
+						"Phone":             &types.AttributeValueMemberS{Value: "111-111-1111"},
+						"PrayerCount":       &types.AttributeValueMemberN{Value: "0"},
+						"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "2024-12-01T01:00:00Z"},
+						"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
+					},
+				},
+				{
+					Item: map[string]types.AttributeValue{
+						"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
+						"Name":              &types.AttributeValueMemberS{Value: "Intercessor2"},
+						"Phone":             &types.AttributeValueMemberS{Value: "222-222-2222"},
+						"PrayerCount":       &types.AttributeValueMemberN{Value: "0"},
+						"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "2024-12-01T01:00:00Z"},
+						"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
+					},
+				},
+			},
+
+			expectedMembers: []Member{
+				{
+					Intercessor:       true,
+					Name:              "Intercessor1",
+					Phone:             "111-111-1111",
+					PrayerCount:       1,
+					WeeklyPrayerDate:  "dummy date/time",
+					WeeklyPrayerLimit: 5,
+				},
+				{
+					Intercessor:       true,
+					Name:              "Intercessor2",
+					Phone:             "222-222-2222",
+					PrayerCount:       1,
+					WeeklyPrayerDate:  "dummy date/time",
+					WeeklyPrayerLimit: 5,
+				},
+			},
+
+			expectedPrayers: []Prayer{
+				{
+					Intercessor: Member{
+						Intercessor:       true,
+						Name:              "Intercessor1",
+						Phone:             "111-111-1111",
+						PrayerCount:       1,
+						WeeklyPrayerDate:  "dummy date/time",
+						WeeklyPrayerLimit: 5},
+					IntercessorPhone: "111-111-1111",
+					Request:          "I need prayer for...",
+					Requestor: Member{
+						Name:        "John Doe",
+						Phone:       "123-456-7890",
+						SetupStatus: "completed"},
+				},
+				{
+					Intercessor: Member{
+						Intercessor:       true,
+						Name:              "Intercessor2",
+						Phone:             "222-222-2222",
+						PrayerCount:       1,
+						WeeklyPrayerDate:  "dummy date/time",
+						WeeklyPrayerLimit: 5},
+					IntercessorPhone: "222-222-2222",
+					Request:          "I need prayer for...",
+					Requestor: Member{
+						Name:        "John Doe",
+						Phone:       "123-456-7890",
+						SetupStatus: "completed"},
+				},
+			},
+
+			expectedGetItemCalls: 4,
+			expectedPutItemCalls: 4,
+		},
+	}
+
+	for _, test := range testCases {
+		txtsvc := FakeTextService{}
+		ddbMock := &MockDDBConnecter{}
+
+		t.Run(test.description, func(t *testing.T) {
+			ddbMock.GetItemOutputs = test.mockGetItemOutputs
+			ddbMock.GetItemErrors = test.mockGetItemErrors
+			ddbMock.PutItemErrors = test.mockPutItemErrors
+
+			if len(ddbMock.GetItemErrors) > 0 || len(ddbMock.PutItemErrors) > 0 {
+				// handles failures for error mocks
+				if err := MainFlow(test.txt, ddbMock, txtsvc); err == nil {
+					t.Fatalf("expected error, got nil")
+				}
+			} else {
+				// handles success test cases
+				if err := MainFlow(test.txt, ddbMock, txtsvc); err != nil {
+					t.Fatalf("unexpected error starting MainFlow: %v", err)
+				}
+
+				testNumOfDdbCalls(ddbMock, t, test)
+
+				// this tests the first two items (Members) from PutItemInputs
+				for i := 0; i < 2; i++ {
+					input := ddbMock.PutItemInputs[i]
+
+					if *input.TableName != memberTable {
+						t.Errorf("expected Member table name %v, got %v",
+							memberTable, *input.TableName)
+					}
+
+					mem := Member{}
+					if err := attributevalue.UnmarshalMap(input.Item, &mem); err != nil {
+						t.Fatalf("failed to unmarshal to Member: %v", err)
+					}
+
+					// change date/time to dummy time to avoid mocking time.Now()
+					mem.WeeklyPrayerDate = "dummy date/time"
+
+					if mem != test.expectedMembers[i] {
+						t.Errorf("expected Member %v, got %v", test.expectedMembers[i], mem)
+					}
+				}
+
+				// this tests the last two items (Prayers) from PutItemInputs
+				for i := 2; i < 4; i++ {
+					input := ddbMock.PutItemInputs[i]
+
+					if *input.TableName != prayerTable {
+						t.Errorf("expected Prayer table name %v, got %v",
+							prayerTable, *input.TableName)
+					}
+
+					pryr := Prayer{}
+					if err := attributevalue.UnmarshalMap(input.Item, &pryr); err != nil {
+						t.Fatalf("failed to unmarshal to Prayer: %v", err)
+					}
+
+					pryr.Intercessor.WeeklyPrayerDate = "dummy date/time"
+
+					if pryr != test.expectedPrayers[i-2] {
+						t.Errorf("expected Prayer %v, got %v", test.expectedPrayers[i-2], pryr)
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestFindIntercessors(t *testing.T) {
+	testCases := []TestCase{
+		{
+			description: "...",
+
+			mockGetItemOutputs: []*dynamodb.GetItemOutput{
+				{
+					Item: map[string]types.AttributeValue{
+						"Name": &types.AttributeValueMemberS{Value: intercessorPhonesKey},
+						"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
+							&types.AttributeValueMemberS{Value: "111-111-1111"},
+							&types.AttributeValueMemberS{Value: "222-222-2222"},
+						}},
+					},
+				},
+				{
+					Item: map[string]types.AttributeValue{
+						"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
+						"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
+						"Phone":             &types.AttributeValueMemberS{Value: "111-111-1111"},
+						"PrayerCount":       &types.AttributeValueMemberN{Value: "0"},
+						"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "2024-12-01T01:00:00Z"},
+						"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
+					},
+				},
+				{
+					Item: map[string]types.AttributeValue{
+						"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
+						"Name":              &types.AttributeValueMemberS{Value: "Intercessor2"},
+						"Phone":             &types.AttributeValueMemberS{Value: "222-222-2222"},
+						"PrayerCount":       &types.AttributeValueMemberN{Value: "0"},
+						"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "2024-12-01T01:00:00Z"},
+						"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
+					},
+				},
+			},
+
+			expectedMembers: []Member{
+				{
+					Intercessor:       true,
+					Name:              "Intercessor1",
+					Phone:             "111-111-1111",
+					PrayerCount:       1,
+					WeeklyPrayerDate:  "dummy date/time",
+					WeeklyPrayerLimit: 5,
+				},
+				{
+					Intercessor:       true,
+					Name:              "Intercessor2",
+					Phone:             "222-222-2222",
+					PrayerCount:       1,
+					WeeklyPrayerDate:  "dummy date/time",
+					WeeklyPrayerLimit: 5,
+				},
+			},
+
+			expectedGetItemCalls: 3,
+			expectedPutItemCalls: 2,
+		},
+	}
+
+	for _, test := range testCases {
+		ddbMock := &MockDDBConnecter{}
+
+		t.Run(test.description, func(t *testing.T) {
+			ddbMock.GetItemOutputs = test.mockGetItemOutputs
+			ddbMock.GetItemErrors = test.mockGetItemErrors
+			ddbMock.PutItemErrors = test.mockPutItemErrors
+
+			if len(ddbMock.GetItemErrors) > 0 || len(ddbMock.PutItemErrors) > 0 {
+				// handles failures for error mocks
+				if _, err := findIntercessors(ddbMock, false); err == nil {
+					t.Fatalf("expected error, got nil")
+				}
+			} else {
+				// handles success test cases
+				intercessors, err := findIntercessors(ddbMock, false)
+				if err != nil {
+					t.Fatalf("unexpected error starting findIntercessors: %v", err)
+				}
+
+				testNumOfDdbCalls(ddbMock, t, test)
+
+				/// need to have test that checks get input/output keys match
+				/// need to add as general function to add to other tests
+
+				for i := range intercessors {
+					intercessors[i].WeeklyPrayerDate = "dummy date/time"
+				}
+
+				if !slices.Equal(intercessors, test.expectedMembers) {
+					t.Errorf("expected []Member %v, got %v", test.expectedMembers, intercessors)
 				}
 			}
 		})

@@ -210,7 +210,44 @@ func memberDelete(mem Member, clnt DDBConnecter, sndr TextSender) error {
 	return nil
 }
 
-func findIntercessors(clnt DDBConnecter) ([]Member, error) {
+func prayerRequest(txt TextMessage, mem Member, clnt DDBConnecter, sndr TextSender) error {
+	const (
+		prayerIntro        = "Hello! Please pray for this person:\n"
+		prayerConfirmation = "Your prayer request has been sent out!"
+	)
+
+	intercessors, err := findIntercessors(clnt, true)
+	if err != nil {
+		slog.Error("failed to find intercessors during prayer request")
+		return err
+	}
+
+	for _, intr := range intercessors {
+		pryr := Prayer{
+			Intercessor:      intr,
+			IntercessorPhone: intr.Phone,
+			Request:          txt.Body,
+			Requestor:        mem,
+		}
+		if err := pryr.put(clnt); err != nil {
+			slog.Error("failed to put prayer during prayer request")
+			return err
+		}
+		if err := intr.sendMessage(sndr, prayerIntro+pryr.Request); err != nil {
+			slog.Error("message send to intercessor failed during prayer request")
+			return err
+		}
+	}
+
+	if err := mem.sendMessage(sndr, prayerConfirmation); err != nil {
+		slog.Error("message send to member failed during prayer request")
+		return err
+	}
+
+	return nil
+}
+
+func findIntercessors(clnt DDBConnecter, isRandom bool) ([]Member, error) {
 	var intercessors []Member
 
 	allPhones := IntercessorPhones{}
@@ -220,7 +257,11 @@ func findIntercessors(clnt DDBConnecter) ([]Member, error) {
 	}
 
 	for len(intercessors) < numIntercessorsPerPrayer {
-		randPhones := allPhones.genRandPhones()
+		randPhones, err := allPhones.genRandPhones(isRandom)
+		if err != nil {
+			slog.Error("failed to find enough intercessors")
+			return nil, err
+		}
 
 		for _, phn := range randPhones {
 			intr := Member{Phone: phn}
@@ -230,8 +271,8 @@ func findIntercessors(clnt DDBConnecter) ([]Member, error) {
 			}
 
 			if intr.PrayerCount < intr.WeeklyPrayerLimit {
-				intercessors = append(intercessors, intr)
 				intr.PrayerCount += 1
+				intercessors = append(intercessors, intr)
 				allPhones.delPhone(intr.Phone)
 				if err := intr.put(clnt); err != nil {
 					slog.Error("put intercessor failed during find intercessors - +1 count")
@@ -249,10 +290,10 @@ func findIntercessors(clnt DDBConnecter) ([]Member, error) {
 				// reset prayer counter if time between now and weekly prayer date is greater than
 				// 7 days and select intercessor
 				if (diff / 24) > 7 {
-					intercessors = append(intercessors, intr)
 					intr.PrayerCount = 1
-					allPhones.delPhone(intr.Phone)
 					intr.WeeklyPrayerDate = time.Now().Format(time.RFC3339)
+					intercessors = append(intercessors, intr)
+					allPhones.delPhone(intr.Phone)
 					if err := intr.put(clnt); err != nil {
 						slog.Error("put intercessor failed during find intercessors - count reset")
 						return nil, err
@@ -265,38 +306,4 @@ func findIntercessors(clnt DDBConnecter) ([]Member, error) {
 	}
 
 	return intercessors, nil
-}
-
-func prayerRequest(txt TextMessage, mem Member, clnt DDBConnecter, sndr TextSender) error {
-	const (
-		prayerIntro        = "Hello! Please pray for this person:\n"
-		prayerConfirmation = "Your prayer request has been sent out!"
-	)
-
-	intercessors, err := findIntercessors(clnt)
-	if err != nil {
-		slog.Error("failed to find intercessors during prayer request")
-		return err
-	}
-
-	for _, intr := range intercessors {
-		pryr := Prayer{
-			Intercessor:      intr,
-			IntercessorPhone: intr.Phone,
-			Request:          txt.Body,
-			Requestor:        mem,
-		}
-		if err := pryr.put(clnt); err != nil {
-			slog.Error("failed to put prayer during prayer request")
-			return err
-		}
-		intr.sendMessage(sndr, prayerIntro+pryr.Request)
-	}
-
-	if err := mem.sendMessage(sndr, prayerConfirmation); err != nil {
-		slog.Error("message send failed during prayer request")
-		return err
-	}
-
-	return nil
 }

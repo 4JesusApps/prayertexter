@@ -1,6 +1,7 @@
 package prayertexter
 
 import (
+	"errors"
 	"log/slog"
 	"math/rand"
 
@@ -20,7 +21,8 @@ const (
 )
 
 func (i *IntercessorPhones) get(clnt DDBConnecter) error {
-	resp, err := getItem(clnt, intercessorPhonesAttribute, intercessorPhonesKey, intercessorPhonesTable)
+	resp, err := getItem(clnt, intercessorPhonesAttribute, intercessorPhonesKey,
+		intercessorPhonesTable)
 	if err != nil {
 		slog.Error("get IntercessorPhones failed")
 		return err
@@ -67,13 +69,26 @@ func (i *IntercessorPhones) delPhone(phone string) {
 	i.Phones = newPhones
 }
 
-func (i *IntercessorPhones) genRandPhones() []string {
-	var phones []string
+func (i *IntercessorPhones) genRandPhones(isRandom bool) ([]string, error) {
+	var selectedPhones []string
 
-	for len(phones) < numIntercessorsPerPrayer {
-		p := i.Phones[rand.Intn(len(i.Phones))]
-		phones = append(phones, p)
+	if len(i.Phones) < numIntercessorsPerPrayer {
+		err := "unable to generate phones; ran out of available phones"
+		slog.Error(err)
+		return nil, errors.New(err)
 	}
 
-	return phones
+	// isRandom should always be true. isRandom == false is for unit tests only
+	// this may be a bad implementation to help unit tests; other option is to use interface for
+	// math/rand which I did not like any better
+	for len(selectedPhones) < numIntercessorsPerPrayer {
+		if isRandom {
+			p := i.Phones[rand.Intn(len(i.Phones))]
+			selectedPhones = append(selectedPhones, p)
+		} else if !isRandom {
+			selectedPhones = append(selectedPhones, i.Phones[:numIntercessorsPerPrayer]...)
+		}
+	}
+
+	return selectedPhones, nil
 }
