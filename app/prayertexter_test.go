@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
@@ -27,6 +28,8 @@ type TestCase struct {
 	expectedGetItemCalls    int
 	expectedPutItemCalls    int
 	expectedDeleteItemCalls int
+
+	expectedError bool
 }
 
 func testNumOfDdbCalls(ddbMock *MockDDBConnecter, t *testing.T, test TestCase) {
@@ -785,7 +788,10 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 func TestFindIntercessors(t *testing.T) {
 	testCases := []TestCase{
 		{
-			description: "...",
+			// this mocks the get member outputs so we do not need to worry about the math/rand part
+			// #3 gets selected because the date is past 7 days; date + counter gets reset
+			// #5 gets chosen because it has 1 prayer slot available
+			description: "This should pick #3 and #5 intercessors based on prayer counts/dates",
 
 			mockGetItemOutputs: []*dynamodb.GetItemOutput{
 				{
@@ -794,6 +800,9 @@ func TestFindIntercessors(t *testing.T) {
 						"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
 							&types.AttributeValueMemberS{Value: "111-111-1111"},
 							&types.AttributeValueMemberS{Value: "222-222-2222"},
+							&types.AttributeValueMemberS{Value: "333-333-3333"},
+							&types.AttributeValueMemberS{Value: "444-444-4444"},
+							&types.AttributeValueMemberS{Value: "555-555-5555"},
 						}},
 					},
 				},
@@ -802,8 +811,8 @@ func TestFindIntercessors(t *testing.T) {
 						"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
 						"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
 						"Phone":             &types.AttributeValueMemberS{Value: "111-111-1111"},
-						"PrayerCount":       &types.AttributeValueMemberN{Value: "0"},
-						"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "2024-12-01T01:00:00Z"},
+						"PrayerCount":       &types.AttributeValueMemberN{Value: "5"},
+						"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
 						"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 					},
 				},
@@ -812,8 +821,38 @@ func TestFindIntercessors(t *testing.T) {
 						"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
 						"Name":              &types.AttributeValueMemberS{Value: "Intercessor2"},
 						"Phone":             &types.AttributeValueMemberS{Value: "222-222-2222"},
-						"PrayerCount":       &types.AttributeValueMemberN{Value: "0"},
-						"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "2024-12-01T01:00:00Z"},
+						"PrayerCount":       &types.AttributeValueMemberN{Value: "100"},
+						"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().AddDate(0, 0, -2).Format(time.RFC3339)},
+						"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "100"},
+					},
+				},
+				{
+					Item: map[string]types.AttributeValue{
+						"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
+						"Name":              &types.AttributeValueMemberS{Value: "Intercessor3"},
+						"Phone":             &types.AttributeValueMemberS{Value: "333-333-3333"},
+						"PrayerCount":       &types.AttributeValueMemberN{Value: "15"},
+						"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().AddDate(0, 0, -7).Format(time.RFC3339)},
+						"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "15"},
+					},
+				},
+				{
+					Item: map[string]types.AttributeValue{
+						"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
+						"Name":              &types.AttributeValueMemberS{Value: "Intercessor4"},
+						"Phone":             &types.AttributeValueMemberS{Value: "444-444-4444"},
+						"PrayerCount":       &types.AttributeValueMemberN{Value: "9"},
+						"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().AddDate(0, 0, -6).Format(time.RFC3339)},
+						"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "9"},
+					},
+				},
+				{
+					Item: map[string]types.AttributeValue{
+						"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
+						"Name":              &types.AttributeValueMemberS{Value: "Intercessor5"},
+						"Phone":             &types.AttributeValueMemberS{Value: "555-555-5555"},
+						"PrayerCount":       &types.AttributeValueMemberN{Value: "4"},
+						"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
 						"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 					},
 				},
@@ -822,24 +861,72 @@ func TestFindIntercessors(t *testing.T) {
 			expectedMembers: []Member{
 				{
 					Intercessor:       true,
-					Name:              "Intercessor1",
-					Phone:             "111-111-1111",
+					Name:              "Intercessor3",
+					Phone:             "333-333-3333",
 					PrayerCount:       1,
 					WeeklyPrayerDate:  "dummy date/time",
-					WeeklyPrayerLimit: 5,
+					WeeklyPrayerLimit: 15,
 				},
 				{
 					Intercessor:       true,
-					Name:              "Intercessor2",
-					Phone:             "222-222-2222",
-					PrayerCount:       1,
+					Name:              "Intercessor5",
+					Phone:             "555-555-5555",
+					PrayerCount:       5,
 					WeeklyPrayerDate:  "dummy date/time",
 					WeeklyPrayerLimit: 5,
 				},
 			},
 
-			expectedGetItemCalls: 3,
+			expectedGetItemCalls: 6,
 			expectedPutItemCalls: 2,
+		},
+		{
+			description: "This should fail with no available intercessors",
+
+			expectedError: true,
+
+			mockGetItemOutputs: []*dynamodb.GetItemOutput{
+				{
+					Item: map[string]types.AttributeValue{
+						"Name": &types.AttributeValueMemberS{Value: intercessorPhonesKey},
+						"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
+							&types.AttributeValueMemberS{Value: "111-111-1111"},
+							&types.AttributeValueMemberS{Value: "222-222-2222"},
+							&types.AttributeValueMemberS{Value: "333-333-3333"},
+						}},
+					},
+				},
+				{
+					Item: map[string]types.AttributeValue{
+						"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
+						"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
+						"Phone":             &types.AttributeValueMemberS{Value: "111-111-1111"},
+						"PrayerCount":       &types.AttributeValueMemberN{Value: "5"},
+						"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
+						"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
+					},
+				},
+				{
+					Item: map[string]types.AttributeValue{
+						"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
+						"Name":              &types.AttributeValueMemberS{Value: "Intercessor2"},
+						"Phone":             &types.AttributeValueMemberS{Value: "222-222-2222"},
+						"PrayerCount":       &types.AttributeValueMemberN{Value: "5"},
+						"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
+						"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
+					},
+				},
+				{
+					Item: map[string]types.AttributeValue{
+						"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
+						"Name":              &types.AttributeValueMemberS{Value: "Intercessor3"},
+						"Phone":             &types.AttributeValueMemberS{Value: "333-333-3333"},
+						"PrayerCount":       &types.AttributeValueMemberN{Value: "4"},
+						"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
+						"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
+					},
+				},
+			},
 		},
 	}
 
@@ -851,25 +938,32 @@ func TestFindIntercessors(t *testing.T) {
 			ddbMock.GetItemErrors = test.mockGetItemErrors
 			ddbMock.PutItemErrors = test.mockPutItemErrors
 
-			if len(ddbMock.GetItemErrors) > 0 || len(ddbMock.PutItemErrors) > 0 {
+			if len(ddbMock.GetItemErrors) > 0 || len(ddbMock.PutItemErrors) > 0 || test.expectedError {
 				// handles failures for error mocks
-				if _, err := findIntercessors(ddbMock, false); err == nil {
+				if _, err := findIntercessors(ddbMock); err == nil {
 					t.Fatalf("expected error, got nil")
 				}
 			} else {
 				// handles success test cases
-				intercessors, err := findIntercessors(ddbMock, false)
+				intercessors, err := findIntercessors(ddbMock)
 				if err != nil {
 					t.Fatalf("unexpected error starting findIntercessors: %v", err)
 				}
 
 				testNumOfDdbCalls(ddbMock, t, test)
 
-				/// need to have test that checks get input/output keys match
-				/// need to add as general function to add to other tests
-
-				for i := range intercessors {
-					intercessors[i].WeeklyPrayerDate = "dummy date/time"
+				current_date := time.Now().Truncate(time.Minute)
+				for indx, intrcsr := range intercessors {
+					prayer_date, err := time.Parse(time.RFC3339, intrcsr.WeeklyPrayerDate)
+					if err != nil {
+						t.Fatalf("date parse failed during find intercessors: %v", err)
+					}
+					prayer_date = prayer_date.Truncate(time.Minute)
+					if current_date.Equal(prayer_date) {
+						intercessors[indx].WeeklyPrayerDate = "dummy date/time"
+					} else {
+						t.Fatalf("expected dates to match: %v %v", current_date, prayer_date)
+					}
 				}
 
 				if !slices.Equal(intercessors, test.expectedMembers) {

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log/slog"
 	"math/rand"
+	"slices"
 
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 )
@@ -69,25 +70,26 @@ func (i *IntercessorPhones) delPhone(phone string) {
 	i.Phones = newPhones
 }
 
-func (i *IntercessorPhones) genRandPhones(isRandom bool) ([]string, error) {
+func (i *IntercessorPhones) genRandPhones() ([]string, error) {
 	var selectedPhones []string
 
-	if len(i.Phones) < numIntercessorsPerPrayer {
-		err := "unable to generate phones; ran out of available phones"
+	if len(i.Phones) == 0 {
+		err := "unable to generate phones; phone list is empty"
 		slog.Error(err)
 		return nil, errors.New(err)
 	}
 
-	// isRandom should always be true. isRandom == false is for unit tests only
-	// this may be a bad implementation to help unit tests; other option is to use interface for
-	// math/rand which I did not like any better
+	if len(i.Phones) <= numIntercessorsPerPrayer {
+		selectedPhones = append(selectedPhones, i.Phones...)
+		return selectedPhones, nil
+	}
+
 	for len(selectedPhones) < numIntercessorsPerPrayer {
-		if isRandom {
-			p := i.Phones[rand.Intn(len(i.Phones))]
-			selectedPhones = append(selectedPhones, p)
-		} else if !isRandom {
-			selectedPhones = append(selectedPhones, i.Phones[:numIntercessorsPerPrayer]...)
+		phone := i.Phones[rand.Intn(len(i.Phones))]
+		if slices.Contains(selectedPhones, phone) {
+			continue
 		}
+		selectedPhones = append(selectedPhones, phone)
 	}
 
 	return selectedPhones, nil

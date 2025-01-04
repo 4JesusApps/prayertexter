@@ -216,7 +216,7 @@ func prayerRequest(txt TextMessage, mem Member, clnt DDBConnecter, sndr TextSend
 		prayerConfirmation = "Your prayer request has been sent out!"
 	)
 
-	intercessors, err := findIntercessors(clnt, true)
+	intercessors, err := findIntercessors(clnt)
 	if err != nil {
 		slog.Error("failed to find intercessors during prayer request")
 		return err
@@ -247,7 +247,7 @@ func prayerRequest(txt TextMessage, mem Member, clnt DDBConnecter, sndr TextSend
 	return nil
 }
 
-func findIntercessors(clnt DDBConnecter, isRandom bool) ([]Member, error) {
+func findIntercessors(clnt DDBConnecter) ([]Member, error) {
 	var intercessors []Member
 
 	allPhones := IntercessorPhones{}
@@ -257,7 +257,7 @@ func findIntercessors(clnt DDBConnecter, isRandom bool) ([]Member, error) {
 	}
 
 	for len(intercessors) < numIntercessorsPerPrayer {
-		randPhones, err := allPhones.genRandPhones(isRandom)
+		randPhones, err := allPhones.genRandPhones()
 		if err != nil {
 			slog.Error("failed to find enough intercessors")
 			return nil, err
