@@ -25,7 +25,6 @@ const (
 func (mem *Member) get(clnt DDBConnecter) error {
 	resp, err := getItem(clnt, memberAttribute, mem.Phone, memberTable)
 	if err != nil {
-		slog.Error("get Member failed")
 		return err
 	}
 
@@ -45,7 +44,6 @@ func (mem *Member) put(clnt DDBConnecter) error {
 	}
 
 	if err := putItem(clnt, memberTable, data); err != nil {
-		slog.Error("put Member failed")
 		return err
 	}
 
@@ -54,7 +52,6 @@ func (mem *Member) put(clnt DDBConnecter) error {
 
 func (mem *Member) delete(clnt DDBConnecter) error {
 	if err := delItem(clnt, memberAttribute, mem.Phone, memberTable); err != nil {
-		slog.Error("delete Member failed")
 		return err
 	}
 

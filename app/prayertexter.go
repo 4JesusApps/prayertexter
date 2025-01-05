@@ -17,16 +17,20 @@ func MainFlow(txt TextMessage, clnt DDBConnecter, sndr TextSender) error {
 		if err := signUp(txt, mem, clnt, sndr); err != nil {
 			return err
 		}
+	} else if mem.SetupStatus == "" {
+		slog.Warn("non registered user, dropping message", "member", mem.Phone)
 	} else if strings.ToLower(txt.Body) == "cancel" || strings.ToLower(txt.Body) == "stop" {
 		if err := memberDelete(mem, clnt, sndr); err != nil {
+			return err
+		}
+	} else if strings.ToLower(txt.Body) == "prayed" {
+		if err := completePrayer(mem, clnt, sndr); err != nil {
 			return err
 		}
 	} else if mem.SetupStatus == "completed" {
 		if err := prayerRequest(txt, mem, clnt, sndr); err != nil {
 			return err
 		}
-	} else if mem.SetupStatus == "" {
-		slog.Warn("non registered user, dropping message", "member", mem.Phone)
 	}
 
 	return nil
@@ -211,11 +215,6 @@ func memberDelete(mem Member, clnt DDBConnecter, sndr TextSender) error {
 }
 
 func prayerRequest(txt TextMessage, mem Member, clnt DDBConnecter, sndr TextSender) error {
-	const (
-		prayerIntro        = "Hello! Please pray for this person:\n"
-		prayerConfirmation = "Your prayer request has been sent out!"
-	)
-
 	intercessors, err := findIntercessors(clnt)
 	if err != nil {
 		slog.Error("failed to find intercessors during prayer request")
@@ -233,13 +232,13 @@ func prayerRequest(txt TextMessage, mem Member, clnt DDBConnecter, sndr TextSend
 			slog.Error("failed to put prayer during prayer request")
 			return err
 		}
-		if err := intr.sendMessage(sndr, prayerIntro+pryr.Request); err != nil {
+		if err := intr.sendMessage(sndr, msgPrayerIntro+pryr.Request); err != nil {
 			slog.Error("message send to intercessor failed during prayer request")
 			return err
 		}
 	}
 
-	if err := mem.sendMessage(sndr, prayerConfirmation); err != nil {
+	if err := mem.sendMessage(sndr, msgPrayerSentOut); err != nil {
 		slog.Error("message send to member failed during prayer request")
 		return err
 	}
@@ -306,4 +305,28 @@ func findIntercessors(clnt DDBConnecter) ([]Member, error) {
 	}
 
 	return intercessors, nil
+}
+
+func completePrayer(mem Member, clnt DDBConnecter, sndr TextSender) error {
+	pryr := Prayer{IntercessorPhone: mem.Phone}
+	if err := pryr.get(clnt); err != nil {
+		slog.Error("get prayer failed during complete prayer stage")
+		return err
+	}
+
+	// this means that the get prayer did not return an active prayer
+	if pryr.Request == "" {
+		mem.sendMessage(sndr, msgNoActivePrayer)
+		return nil
+	}
+
+	pryr.Intercessor.sendMessage(sndr, msgPrayerThankYou)
+	pryr.Requestor.sendMessage(sndr, msgPrayerConfirmation)
+
+	if err := pryr.delete(clnt); err != nil {
+		slog.Error("delete prayer failed during complete prayer stage")
+		return err
+	}
+
+	return nil
 }

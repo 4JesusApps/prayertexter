@@ -25,7 +25,6 @@ func (i *IntercessorPhones) get(clnt DDBConnecter) error {
 	resp, err := getItem(clnt, intercessorPhonesAttribute, intercessorPhonesKey,
 		intercessorPhonesTable)
 	if err != nil {
-		slog.Error("get IntercessorPhones failed")
 		return err
 	}
 
@@ -47,7 +46,6 @@ func (i *IntercessorPhones) put(clnt DDBConnecter) error {
 	}
 
 	if err := putItem(clnt, intercessorPhonesTable, data); err != nil {
-		slog.Error("put IntercessorPhones failed")
 		return err
 	}
 

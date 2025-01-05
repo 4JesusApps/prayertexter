@@ -21,7 +21,6 @@ const (
 func (p *Prayer) get(clnt DDBConnecter) error {
 	resp, err := getItem(clnt, prayerAttribute, p.IntercessorPhone, prayerTable)
 	if err != nil {
-		slog.Error("get Prayer failed")
 		return err
 	}
 
@@ -35,7 +34,6 @@ func (p *Prayer) get(clnt DDBConnecter) error {
 
 func (p *Prayer) delete(clnt DDBConnecter) error {
 	if err := delItem(clnt, prayerAttribute, p.IntercessorPhone, prayerTable); err != nil {
-		slog.Error("delete Prayer failed")
 		return err
 	}
 
@@ -45,12 +43,11 @@ func (p *Prayer) delete(clnt DDBConnecter) error {
 func (p *Prayer) put(clnt DDBConnecter) error {
 	data, err := attributevalue.MarshalMap(p)
 	if err != nil {
-		slog.Error("unmarshal failed for put Prayer")
+		slog.Error("marshal failed for put Prayer")
 		return err
 	}
 
 	if err := putItem(clnt, prayerTable, data); err != nil {
-		slog.Error("put Prayer failed")
 		return err
 	}
 
