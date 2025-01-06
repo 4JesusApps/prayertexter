@@ -19,6 +19,7 @@ func MainFlow(txt TextMessage, clnt DDBConnecter, sndr TextSender) error {
 		}
 	} else if mem.SetupStatus == "" {
 		slog.Warn("non registered user, dropping message", "member", mem.Phone)
+
 	} else if strings.ToLower(txt.Body) == "cancel" || strings.ToLower(txt.Body) == "stop" {
 		if err := memberDelete(mem, clnt, sndr); err != nil {
 			return err
@@ -215,6 +216,13 @@ func memberDelete(mem Member, clnt DDBConnecter, sndr TextSender) error {
 }
 
 func prayerRequest(txt TextMessage, mem Member, clnt DDBConnecter, sndr TextSender) error {
+	profanity := txt.checkProfanity()
+	if profanity != "" {
+		msg := strings.Replace(msgProfanityFound, "PLACEHOLDER", profanity, 1)
+		mem.sendMessage(sndr, msg)
+		return nil
+	}
+
 	intercessors, err := findIntercessors(clnt)
 	if err != nil {
 		slog.Error("failed to find intercessors during prayer request")
@@ -232,7 +240,9 @@ func prayerRequest(txt TextMessage, mem Member, clnt DDBConnecter, sndr TextSend
 			slog.Error("failed to put prayer during prayer request")
 			return err
 		}
-		if err := intr.sendMessage(sndr, msgPrayerIntro+pryr.Request); err != nil {
+
+		msg := strings.Replace(msgPrayerIntro, "PLACEHOLDER", mem.Name, 1)
+		if err := intr.sendMessage(sndr, msg+pryr.Request); err != nil {
 			slog.Error("message send to intercessor failed during prayer request")
 			return err
 		}
@@ -321,7 +331,9 @@ func completePrayer(mem Member, clnt DDBConnecter, sndr TextSender) error {
 	}
 
 	pryr.Intercessor.sendMessage(sndr, msgPrayerThankYou)
-	pryr.Requestor.sendMessage(sndr, msgPrayerConfirmation)
+
+	msg := strings.Replace(msgPrayerConfirmation, "PLACEHOLDER", mem.Name, 1)
+	pryr.Requestor.sendMessage(sndr, msg)
 
 	if err := pryr.delete(clnt); err != nil {
 		slog.Error("delete prayer failed during complete prayer stage")

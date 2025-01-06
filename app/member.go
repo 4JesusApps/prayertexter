@@ -63,5 +63,5 @@ func (mem *Member) sendMessage(sndr TextSender, body string) error {
 		Body:  body,
 		Phone: mem.Phone,
 	}
-	return sndr.SendText(message)
+	return sndr.sendText(message)
 }

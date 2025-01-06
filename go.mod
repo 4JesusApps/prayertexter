@@ -11,9 +11,11 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/dynamodbstreams v1.24.6 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery v1.10.5 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
+	golang.org/x/text v0.20.0 // indirect
 )
 
 require (
+	github.com/TwiN/go-away v1.6.14
 	github.com/aws/aws-sdk-go-v2 v1.32.5
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.46 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue v1.15.17
