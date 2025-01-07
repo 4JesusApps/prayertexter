@@ -7,18 +7,24 @@ import (
 )
 
 type MockDDBConnecter struct {
-	GetItemCalls   int
-	GetItemInputs  []dynamodb.GetItemInput
-	GetItemOutputs []*dynamodb.GetItemOutput
-	GetItemErrors  []error
+	GetItemCalls    int
+	PutItemCalls    int
+	DeleteItemCalls int
 
-	PutItemCalls  int
-	PutItemInputs []dynamodb.PutItemInput
-	PutItemErrors []error
-
-	DeleteItemCalls  int
+	GetItemInputs    []dynamodb.GetItemInput
+	PutItemInputs    []dynamodb.PutItemInput
 	DeleteItemInputs []dynamodb.DeleteItemInput
-	DeleteItemErrors []error
+
+	GetItemResults []struct {
+		Output *dynamodb.GetItemOutput
+		Error  error
+	}
+	PutItemResults []struct {
+		Error error
+	}
+	DeleteItemResults []struct {
+		Error error
+	}
 }
 
 func (mock *MockDDBConnecter) GetItem(ctx context.Context,
@@ -28,24 +34,13 @@ func (mock *MockDDBConnecter) GetItem(ctx context.Context,
 	mock.GetItemCalls++
 	mock.GetItemInputs = append(mock.GetItemInputs, *input)
 
-	output := &dynamodb.GetItemOutput{}
-
-	var err error
-
-	if len(mock.GetItemOutputs) > 0 {
-		output = mock.GetItemOutputs[0]
-		// This removes the first get output from the slice once it is used in a mock
-		// this allows for supplying multiple get outputs for different get methods
-		mock.GetItemOutputs = mock.GetItemOutputs[1:]
-	}
-	if len(mock.GetItemErrors) > 0 {
-		err = mock.GetItemErrors[0]
-		// This removes the first error from the slice once it is used in a mock
-		// this allows for supplying multiple errors for different get methods
-		mock.GetItemErrors = mock.GetItemErrors[1:]
+	// Default result if no results are configured
+	if len(mock.GetItemResults) <= mock.GetItemCalls-1 {
+		return &dynamodb.GetItemOutput{}, nil
 	}
 
-	return output, err
+	result := mock.GetItemResults[mock.GetItemCalls-1]
+	return result.Output, result.Error
 }
 
 func (mock *MockDDBConnecter) PutItem(ctx context.Context,
@@ -55,16 +50,13 @@ func (mock *MockDDBConnecter) PutItem(ctx context.Context,
 	mock.PutItemCalls++
 	mock.PutItemInputs = append(mock.PutItemInputs, *input)
 
-	var err error
-
-	if len(mock.PutItemErrors) > 0 {
-		err = mock.PutItemErrors[0]
-		// This removes the first error from the slice once it is used in a mock
-		// this allows for supplying multiple errors for different put methods
-		mock.PutItemErrors = mock.PutItemErrors[1:]
+	// Default result if no results are configured
+	if len(mock.PutItemResults) <= mock.PutItemCalls-1 {
+		return &dynamodb.PutItemOutput{}, nil
 	}
 
-	return nil, err
+	result := mock.PutItemResults[mock.PutItemCalls-1]
+	return nil, result.Error
 }
 
 func (mock *MockDDBConnecter) DeleteItem(ctx context.Context,
@@ -74,13 +66,11 @@ func (mock *MockDDBConnecter) DeleteItem(ctx context.Context,
 	mock.DeleteItemCalls++
 	mock.DeleteItemInputs = append(mock.DeleteItemInputs, *input)
 
-	var err error
-	if len(mock.DeleteItemErrors) > 0 {
-		err = mock.DeleteItemErrors[0]
-		// This removes the first error from the slice once it is used in a mock
-		// this allows for supplying multiple errors for different delete methods
-		mock.DeleteItemErrors = mock.DeleteItemErrors[1:]
+	// Default result if no results are configured
+	if len(mock.DeleteItemResults) <= mock.DeleteItemCalls-1 {
+		return &dynamodb.DeleteItemOutput{}, nil
 	}
 
-	return nil, err
+	result := mock.DeleteItemResults[mock.DeleteItemCalls-1]
+	return nil, result.Error
 }
