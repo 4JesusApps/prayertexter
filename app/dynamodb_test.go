@@ -2,6 +2,7 @@ package prayertexter
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 )
@@ -34,8 +35,8 @@ func (mock *MockDDBConnecter) GetItem(ctx context.Context,
 	mock.GetItemCalls++
 	mock.GetItemInputs = append(mock.GetItemInputs, *input)
 
-	// Default result if no results are configured
 	if len(mock.GetItemResults) <= mock.GetItemCalls-1 {
+		slog.Warn("no GetItem mock loaded; returning empty output and nil error")
 		return &dynamodb.GetItemOutput{}, nil
 	}
 
@@ -50,8 +51,8 @@ func (mock *MockDDBConnecter) PutItem(ctx context.Context,
 	mock.PutItemCalls++
 	mock.PutItemInputs = append(mock.PutItemInputs, *input)
 
-	// Default result if no results are configured
 	if len(mock.PutItemResults) <= mock.PutItemCalls-1 {
+		slog.Warn("no PutItem mock loaded; returning empty output and nil error")
 		return &dynamodb.PutItemOutput{}, nil
 	}
 
@@ -66,8 +67,8 @@ func (mock *MockDDBConnecter) DeleteItem(ctx context.Context,
 	mock.DeleteItemCalls++
 	mock.DeleteItemInputs = append(mock.DeleteItemInputs, *input)
 
-	// Default result if no results are configured
 	if len(mock.DeleteItemResults) <= mock.DeleteItemCalls-1 {
+		slog.Warn("no DeleteItem mock loaded; returning empty output and nil error")
 		return &dynamodb.DeleteItemOutput{}, nil
 	}
 
