@@ -330,7 +330,7 @@ func completePrayer(mem Member, clnt DDBConnecter, sndr TextSender) error {
 		return nil
 	}
 
-	pryr.Intercessor.sendMessage(sndr, msgPrayerThankYou)
+	mem.sendMessage(sndr, msgPrayerThankYou)
 
 	msg := strings.Replace(msgPrayerConfirmation, "PLACEHOLDER", mem.Name, 1)
 	pryr.Requestor.sendMessage(sndr, msg)

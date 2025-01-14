@@ -4,6 +4,7 @@ import (
 	"errors"
 	"reflect"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -43,7 +44,7 @@ type TestCase struct {
 	}
 }
 
-func testNumOfDdbCalls(ddbMock *MockDDBConnecter, t *testing.T, test TestCase) {
+func testNumMethodCalls(ddbMock *MockDDBConnecter, txtMock *MockTextService, t *testing.T, test TestCase) {
 	if ddbMock.GetItemCalls != test.expectedGetItemCalls {
 		t.Errorf("expected GetItem to be called %v, got %v",
 			test.expectedGetItemCalls, ddbMock.GetItemCalls)
@@ -57,6 +58,50 @@ func testNumOfDdbCalls(ddbMock *MockDDBConnecter, t *testing.T, test TestCase) {
 	if ddbMock.DeleteItemCalls != test.expectedDeleteItemCalls {
 		t.Errorf("expected DeleteItem to be called %v, got %v",
 			test.expectedDeleteItemCalls, ddbMock.DeleteItemCalls)
+	}
+
+	if txtMock.SendTextCalls != test.expectedSendTextCalls {
+		t.Errorf("expected SendText to be called %v, got %v",
+			test.expectedSendTextCalls, txtMock.SendTextCalls)
+	}
+}
+
+func testMember(input dynamodb.PutItemInput, index int, t *testing.T, test TestCase) {
+	if *input.TableName != memberTable {
+		t.Errorf("expected Member table name %v, got %v", memberTable, *input.TableName)
+	}
+
+	mem := Member{}
+	if err := attributevalue.UnmarshalMap(input.Item, &mem); err != nil {
+		t.Fatalf("failed to unmarshal to Member: %v", err)
+	}
+
+	// change date/time to dummy time to avoid mocking time.Now()
+	if mem.WeeklyPrayerDate != "" {
+		mem.WeeklyPrayerDate = "dummy date/time"
+	}
+
+	if mem != test.expectedMembers[index] {
+		t.Errorf("expected Member %v, got %v", test.expectedMembers[0], mem)
+	}
+}
+
+func testTxtMessages(txtMock *MockTextService, t *testing.T, test TestCase) {
+	for i, txt := range txtMock.SendTextInputs {
+		// Some text messages use PLACEHOLDER and replace that with the txt recipients name
+		// Therefor to make testing easier, the message body is replaced by the msg constant
+		if strings.Contains(txt.Body, "Hello! Please pray for") {
+			txt.Body = msgPrayerIntro
+		} else if strings.Contains(txt.Body, "There was profanity found in your prayer request:") {
+			txt.Body = msgProfanityFound
+		} else if strings.Contains(txt.Body, "You're prayer request has been prayed for by") {
+			txt.Body = msgPrayerConfirmation
+		}
+
+		if txt != test.expectedTexts[i] {
+			t.Errorf("expected txt %v, got %v",
+				test.expectedTexts[i], txt)
+		}
 	}
 }
 
@@ -78,8 +123,16 @@ func TestMainFlowSignUp(t *testing.T) {
 				},
 			},
 
-			expectedGetItemCalls: 1,
-			expectedPutItemCalls: 1,
+			expectedTexts: []TextMessage{
+				{
+					Body:  msgNameRequest,
+					Phone: "123-456-7890",
+				},
+			},
+
+			expectedGetItemCalls:  1,
+			expectedPutItemCalls:  1,
+			expectedSendTextCalls: 1,
 		},
 		{
 			description: "Sign up stage ONE: user texts the word Pray (capitol P) to start sign up process",
@@ -97,8 +150,16 @@ func TestMainFlowSignUp(t *testing.T) {
 				},
 			},
 
-			expectedGetItemCalls: 1,
-			expectedPutItemCalls: 1,
+			expectedTexts: []TextMessage{
+				{
+					Body:  msgNameRequest,
+					Phone: "123-456-7890",
+				},
+			},
+
+			expectedGetItemCalls:  1,
+			expectedPutItemCalls:  1,
+			expectedSendTextCalls: 1,
 		},
 		{
 			description: "Sign up stage ONE: get Member error",
@@ -154,8 +215,16 @@ func TestMainFlowSignUp(t *testing.T) {
 				},
 			},
 
-			expectedGetItemCalls: 1,
-			expectedPutItemCalls: 1,
+			expectedTexts: []TextMessage{
+				{
+					Body:  msgMemberTypeRequest,
+					Phone: "123-456-7890",
+				},
+			},
+
+			expectedGetItemCalls:  1,
+			expectedPutItemCalls:  1,
+			expectedSendTextCalls: 1,
 		},
 		{
 			description: "Sign up stage TWO-B: user texts 2 to remain anonymous",
@@ -190,8 +259,16 @@ func TestMainFlowSignUp(t *testing.T) {
 				},
 			},
 
-			expectedGetItemCalls: 1,
-			expectedPutItemCalls: 1,
+			expectedTexts: []TextMessage{
+				{
+					Body:  msgMemberTypeRequest,
+					Phone: "123-456-7890",
+				},
+			},
+
+			expectedGetItemCalls:  1,
+			expectedPutItemCalls:  1,
+			expectedSendTextCalls: 1,
 		},
 		{
 			description: "Sign up final prayer message: user texts 1 which means they do not want to be an intercessor",
@@ -228,8 +305,16 @@ func TestMainFlowSignUp(t *testing.T) {
 				},
 			},
 
-			expectedGetItemCalls: 1,
-			expectedPutItemCalls: 1,
+			expectedTexts: []TextMessage{
+				{
+					Body:  msgPrayerInstructions,
+					Phone: "123-456-7890",
+				},
+			},
+
+			expectedGetItemCalls:  1,
+			expectedPutItemCalls:  1,
+			expectedSendTextCalls: 1,
 		},
 		{
 			description: "Sign up stage THREE: user texts 2 which means they want to be an intercessor",
@@ -266,8 +351,16 @@ func TestMainFlowSignUp(t *testing.T) {
 				},
 			},
 
-			expectedGetItemCalls: 1,
-			expectedPutItemCalls: 1,
+			expectedTexts: []TextMessage{
+				{
+					Body:  msgPrayerNumRequest,
+					Phone: "123-456-7890",
+				},
+			},
+
+			expectedGetItemCalls:  1,
+			expectedPutItemCalls:  1,
+			expectedSendTextCalls: 1,
 		},
 		{
 			description: "Sign up final intercessor message: user texts the number of prayers they are willing to receive per week",
@@ -330,8 +423,16 @@ func TestMainFlowSignUp(t *testing.T) {
 				},
 			},
 
-			expectedGetItemCalls: 2,
-			expectedPutItemCalls: 2,
+			expectedTexts: []TextMessage{
+				{
+					Body:  msgIntercessorInstructions,
+					Phone: "123-456-7890",
+				},
+			},
+
+			expectedGetItemCalls:  2,
+			expectedPutItemCalls:  2,
+			expectedSendTextCalls: 1,
 		},
 		{
 			description: "Sign up final intercessor message: put IntercessorPhones error",
@@ -387,7 +488,7 @@ func TestMainFlowSignUp(t *testing.T) {
 	}
 
 	for _, test := range testCases {
-		txtsvc := FakeTextService{}
+		txtMock := &MockTextService{}
 		ddbMock := &MockDDBConnecter{}
 
 		t.Run(test.description, func(t *testing.T) {
@@ -396,17 +497,18 @@ func TestMainFlowSignUp(t *testing.T) {
 
 			if test.expectedError {
 				// handles failures for error mocks
-				if err := MainFlow(test.txt, ddbMock, txtsvc); err == nil {
+				if err := MainFlow(test.txt, ddbMock, txtMock); err == nil {
 					t.Fatalf("expected error, got nil")
 				}
-				testNumOfDdbCalls(ddbMock, t, test)
+				testNumMethodCalls(ddbMock, txtMock, t, test)
 			} else {
 				// handles success test cases
-				if err := MainFlow(test.txt, ddbMock, txtsvc); err != nil {
+				if err := MainFlow(test.txt, ddbMock, txtMock); err != nil {
 					t.Fatalf("unexpected error starting MainFlow: %v", err)
 				}
 
-				testNumOfDdbCalls(ddbMock, t, test)
+				testNumMethodCalls(ddbMock, txtMock, t, test)
+				testTxtMessages(txtMock, t, test)
 
 				var input dynamodb.PutItemInput
 
@@ -419,24 +521,8 @@ func TestMainFlowSignUp(t *testing.T) {
 					// to be changed accordingly here
 					input = ddbMock.PutItemInputs[1]
 				}
-
-				if *input.TableName != memberTable {
-					t.Errorf("expected Member table name %v, got %v", memberTable, *input.TableName)
-				}
-
-				mem := Member{}
-				if err := attributevalue.UnmarshalMap(input.Item, &mem); err != nil {
-					t.Fatalf("failed to unmarshal to Member: %v", err)
-				}
-
-				// change date/time to dummy time to avoid mocking time.Now()
-				if mem.WeeklyPrayerDate != "" {
-					mem.WeeklyPrayerDate = "dummy date/time"
-				}
-
-				if mem != test.expectedMembers[0] {
-					t.Errorf("expected Member %v, got %v", test.expectedMembers[0], mem)
-				}
+				
+				testMember(input, 0, t, test)
 
 				// this gets tested for signUpFinalIntercessorMessage only
 				// signUpFinalIntercessorMessage has 2 different put methods used
@@ -501,7 +587,15 @@ func TestMainFlowSignUpWrongInputs(t *testing.T) {
 				},
 			},
 
-			expectedGetItemCalls: 1,
+			expectedTexts: []TextMessage{
+				{
+					Body:  msgWrongInput,
+					Phone: "123-456-7890",
+				},
+			},
+
+			expectedGetItemCalls:  1,
+			expectedSendTextCalls: 1,
 		},
 		{
 			description: "Sign up final intercessor message: did not send number as expected",
@@ -529,22 +623,31 @@ func TestMainFlowSignUpWrongInputs(t *testing.T) {
 				},
 			},
 
-			expectedGetItemCalls: 1,
+			expectedTexts: []TextMessage{
+				{
+					Body:  msgWrongInput,
+					Phone: "123-456-7890",
+				},
+			},
+
+			expectedGetItemCalls:  1,
+			expectedSendTextCalls: 1,
 		},
 	}
 
 	for _, test := range testCases {
-		txtsvc := FakeTextService{}
+		txtMock := &MockTextService{}
 		ddbMock := &MockDDBConnecter{}
 
 		t.Run(test.description, func(t *testing.T) {
 			ddbMock.GetItemResults = test.mockGetItemResults
 
-			if err := MainFlow(test.txt, ddbMock, txtsvc); err != nil {
+			if err := MainFlow(test.txt, ddbMock, txtMock); err != nil {
 				t.Fatalf("unexpected error starting MainFlow: %v", err)
 			}
 
-			testNumOfDdbCalls(ddbMock, t, test)
+			testNumMethodCalls(ddbMock, txtMock, t, test)
+			testTxtMessages(txtMock, t, test)
 		})
 	}
 }
@@ -576,9 +679,17 @@ func TestMainFlowMemberDelete(t *testing.T) {
 				},
 			},
 
+			expectedTexts: []TextMessage{
+				{
+					Body:  msgRemoveUser,
+					Phone: "123-456-7890",
+				},
+			},
+
 			expectedDeleteItemKey:   "123-456-7890",
 			expectedGetItemCalls:    1,
 			expectedDeleteItemCalls: 1,
+			expectedSendTextCalls:   1,
 		},
 		{
 			description: "Delete intercessor member with STOP txt - phone list changes",
@@ -629,10 +740,18 @@ func TestMainFlowMemberDelete(t *testing.T) {
 				},
 			},
 
+			expectedTexts: []TextMessage{
+				{
+					Body:  msgRemoveUser,
+					Phone: "123-456-7890",
+				},
+			},
+
 			expectedDeleteItemKey:   "123-456-7890",
 			expectedGetItemCalls:    2,
 			expectedPutItemCalls:    1,
 			expectedDeleteItemCalls: 1,
+			expectedSendTextCalls:   1,
 		},
 		{
 			description: "Delete member - expected error on DelItem",
@@ -675,7 +794,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 	}
 
 	for _, test := range testCases {
-		txtsvc := FakeTextService{}
+		txtMock := &MockTextService{}
 		ddbMock := &MockDDBConnecter{}
 
 		t.Run(test.description, func(t *testing.T) {
@@ -684,17 +803,18 @@ func TestMainFlowMemberDelete(t *testing.T) {
 
 			if test.expectedError {
 				// handles failures for error mocks
-				if err := MainFlow(test.txt, ddbMock, txtsvc); err == nil {
+				if err := MainFlow(test.txt, ddbMock, txtMock); err == nil {
 					t.Fatalf("expected error, got nil")
 				}
-				testNumOfDdbCalls(ddbMock, t, test)
+				testNumMethodCalls(ddbMock, txtMock, t, test)
 			} else {
 				// handles success test cases
-				if err := MainFlow(test.txt, ddbMock, txtsvc); err != nil {
+				if err := MainFlow(test.txt, ddbMock, txtMock); err != nil {
 					t.Fatalf("unexpected error starting MainFlow: %v", err)
 				}
 
-				testNumOfDdbCalls(ddbMock, t, test)
+				testNumMethodCalls(ddbMock, txtMock, t, test)
+				testTxtMessages(txtMock, t, test)
 
 				delInput := ddbMock.DeleteItemInputs[0]
 				if *delInput.TableName != memberTable {
@@ -876,8 +996,24 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				},
 			},
 
-			expectedGetItemCalls: 4,
-			expectedPutItemCalls: 4,
+			expectedTexts: []TextMessage{
+				{
+					Body:  msgPrayerIntro,
+					Phone: "111-111-1111",
+				},
+				{
+					Body:  msgPrayerIntro,
+					Phone: "222-222-2222",
+				},
+				{
+					Body:  msgPrayerSentOut,
+					Phone: "123-456-7890",
+				},
+			},
+
+			expectedGetItemCalls:  4,
+			expectedPutItemCalls:  4,
+			expectedSendTextCalls: 3,
 		},
 		{
 			description: "Profanity detected",
@@ -904,7 +1040,15 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				},
 			},
 
-			expectedGetItemCalls: 1,
+			expectedTexts: []TextMessage{
+				{
+					Body:  msgProfanityFound,
+					Phone: "123-456-7890",
+				},
+			},
+
+			expectedGetItemCalls:  1,
+			expectedSendTextCalls: 1,
 		},
 		{
 			description: "Error with first put Member in findIntercessors",
@@ -988,7 +1132,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 	}
 
 	for _, test := range testCases {
-		txtsvc := FakeTextService{}
+		txtMock := &MockTextService{}
 		ddbMock := &MockDDBConnecter{}
 
 		t.Run(test.description, func(t *testing.T) {
@@ -997,39 +1141,24 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 
 			if test.expectedError {
 				// handles failures for error mocks
-				if err := MainFlow(test.txt, ddbMock, txtsvc); err == nil {
+				if err := MainFlow(test.txt, ddbMock, txtMock); err == nil {
 					t.Fatalf("expected error, got nil")
 				}
-				testNumOfDdbCalls(ddbMock, t, test)
+				testNumMethodCalls(ddbMock, txtMock, t, test)
 			} else {
 				// handles success test cases
-				if err := MainFlow(test.txt, ddbMock, txtsvc); err != nil {
+				if err := MainFlow(test.txt, ddbMock, txtMock); err != nil {
 					t.Fatalf("unexpected error starting MainFlow: %v", err)
 				}
 
-				testNumOfDdbCalls(ddbMock, t, test)
+				testNumMethodCalls(ddbMock, txtMock, t, test)
+				testTxtMessages(txtMock, t, test)
 
 				if len(ddbMock.PutItemInputs) > 0 {
 					// this tests the first two items (Members) from PutItemInputs
 					for i := 0; i < 2; i++ {
 						input := ddbMock.PutItemInputs[i]
-
-						if *input.TableName != memberTable {
-							t.Errorf("expected Member table name %v, got %v",
-								memberTable, *input.TableName)
-						}
-
-						mem := Member{}
-						if err := attributevalue.UnmarshalMap(input.Item, &mem); err != nil {
-							t.Fatalf("failed to unmarshal to Member: %v", err)
-						}
-
-						// change date/time to dummy time to avoid mocking time.Now()
-						mem.WeeklyPrayerDate = "dummy date/time"
-
-						if mem != test.expectedMembers[i] {
-							t.Errorf("expected Member %v, got %v", test.expectedMembers[i], mem)
-						}
+						testMember(input, i, t, test)
 					}
 
 					// this tests the last two items (Prayers) from PutItemInputs
@@ -1262,6 +1391,7 @@ func TestFindIntercessors(t *testing.T) {
 	}
 
 	for _, test := range testCases {
+		txtMock := &MockTextService{}
 		ddbMock := &MockDDBConnecter{}
 
 		t.Run(test.description, func(t *testing.T) {
@@ -1272,7 +1402,7 @@ func TestFindIntercessors(t *testing.T) {
 				if _, err := findIntercessors(ddbMock); err == nil {
 					t.Fatalf("expected error, got nil")
 				}
-				testNumOfDdbCalls(ddbMock, t, test)
+				testNumMethodCalls(ddbMock, txtMock, t, test)
 			} else {
 				// handles success test cases
 				intercessors, err := findIntercessors(ddbMock)
@@ -1280,7 +1410,7 @@ func TestFindIntercessors(t *testing.T) {
 					t.Fatalf("unexpected error starting findIntercessors: %v", err)
 				}
 
-				testNumOfDdbCalls(ddbMock, t, test)
+				testNumMethodCalls(ddbMock, txtMock, t, test)
 
 				current_date := time.Now().Truncate(time.Minute)
 				for indx, intrcsr := range intercessors {
@@ -1311,7 +1441,7 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 
 			txt: TextMessage{
 				Body:  "prayed",
-				Phone: "123-456-7890",
+				Phone: "111-111-1111",
 			},
 
 			mockGetItemResults: []struct {
@@ -1365,10 +1495,60 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 				},
 			},
 
-			expectedDeleteItemKey: "111-111-1111",
+			expectedTexts: []TextMessage{
+				{
+					Body:  msgPrayerThankYou,
+					Phone: "111-111-1111",
+				},
+				{
+					Body:  msgPrayerConfirmation,
+					Phone: "123-456-7890",
+				},
+			},
 
+			expectedDeleteItemKey:   "111-111-1111",
 			expectedGetItemCalls:    2,
 			expectedDeleteItemCalls: 1,
+			expectedSendTextCalls:   2,
+		},
+		{
+			description: "No active prayers to mark as prayed",
+
+			txt: TextMessage{
+				Body:  "prayed",
+				Phone: "111-111-1111",
+			},
+
+			mockGetItemResults: []struct {
+				Output *dynamodb.GetItemOutput
+				Error  error
+			}{
+				{
+					Output: &dynamodb.GetItemOutput{
+						Item: map[string]types.AttributeValue{
+							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
+							"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
+							"Phone":             &types.AttributeValueMemberS{Value: "111-111-1111"},
+							"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
+							"SetupStage":        &types.AttributeValueMemberN{Value: "99"},
+							"SetupStatus":       &types.AttributeValueMemberS{Value: "completed"},
+							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "dummy date"},
+							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
+						},
+					},
+					Error: nil,
+				},
+			},
+
+			expectedTexts: []TextMessage{
+				{
+					Body:  msgNoActivePrayer,
+					Phone: "111-111-1111",
+				},
+			},
+
+			expectedGetItemCalls:  2,
+			expectedSendTextCalls: 1,
 		},
 		{
 			description: "Error with first Member get in MainFlow",
@@ -1458,14 +1638,15 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 				},
 			},
 
-			expectedError: true,
+			expectedError:           true,
 			expectedGetItemCalls:    2,
 			expectedDeleteItemCalls: 1,
+			expectedSendTextCalls:   2,
 		},
 	}
 
 	for _, test := range testCases {
-		txtsvc := FakeTextService{}
+		txtMock := &MockTextService{}
 		ddbMock := &MockDDBConnecter{}
 
 		t.Run(test.description, func(t *testing.T) {
@@ -1474,34 +1655,36 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 
 			if test.expectedError {
 				// handles failures for error mocks
-				if err := MainFlow(test.txt, ddbMock, txtsvc); err == nil {
+				if err := MainFlow(test.txt, ddbMock, txtMock); err == nil {
 					t.Fatalf("expected error, got nil")
 				}
-				testNumOfDdbCalls(ddbMock, t, test)
+				testNumMethodCalls(ddbMock, txtMock, t, test)
 			} else {
 				// handles success test cases
-				if err := MainFlow(test.txt, ddbMock, txtsvc); err != nil {
+				if err := MainFlow(test.txt, ddbMock, txtMock); err != nil {
 					t.Fatalf("unexpected error starting MainFlow: %v", err)
 				}
 
-				testNumOfDdbCalls(ddbMock, t, test)
+				testNumMethodCalls(ddbMock, txtMock, t, test)
+				testTxtMessages(txtMock, t, test)
 
-				delInput := ddbMock.DeleteItemInputs[0]
-				if *delInput.TableName != prayerTable {
-					t.Errorf("expected Prayer table name %v, got %v",
-						prayerTable, *delInput.TableName)
+				if len(ddbMock.DeleteItemInputs) != 0 {
+					delInput := ddbMock.DeleteItemInputs[0]
+					if *delInput.TableName != prayerTable {
+						t.Errorf("expected Prayer table name %v, got %v",
+							prayerTable, *delInput.TableName)
+					}
+
+					pryr := Prayer{}
+					if err := attributevalue.UnmarshalMap(delInput.Key, &pryr); err != nil {
+						t.Fatalf("failed to unmarshal to Prayer: %v", err)
+					}
+
+					if pryr.IntercessorPhone != test.expectedDeleteItemKey {
+						t.Errorf("expected Prayer phone %v for delete key, got %v",
+							test.expectedDeleteItemKey, pryr.IntercessorPhone)
+					}
 				}
-
-				pryr := Prayer{}
-				if err := attributevalue.UnmarshalMap(delInput.Key, &pryr); err != nil {
-					t.Fatalf("failed to unmarshal to Prayer: %v", err)
-				}
-
-				if pryr.IntercessorPhone != test.expectedDeleteItemKey {
-					t.Errorf("expected Prayer phone %v for delete key, got %v",
-						test.expectedDeleteItemKey, pryr.IntercessorPhone)
-				}
-
 			}
 		})
 	}

@@ -36,7 +36,7 @@ func (mock *MockDDBConnecter) GetItem(ctx context.Context,
 	mock.GetItemInputs = append(mock.GetItemInputs, *input)
 
 	if len(mock.GetItemResults) <= mock.GetItemCalls-1 {
-		slog.Warn("no GetItem mock loaded; returning empty output and nil error")
+		slog.Info("no GetItem mock loaded; returning empty output and nil error")
 		return &dynamodb.GetItemOutput{}, nil
 	}
 
@@ -52,7 +52,7 @@ func (mock *MockDDBConnecter) PutItem(ctx context.Context,
 	mock.PutItemInputs = append(mock.PutItemInputs, *input)
 
 	if len(mock.PutItemResults) <= mock.PutItemCalls-1 {
-		slog.Warn("no PutItem mock loaded; returning empty output and nil error")
+		slog.Info("no PutItem mock loaded; returning empty output and nil error")
 		return &dynamodb.PutItemOutput{}, nil
 	}
 
@@ -68,7 +68,7 @@ func (mock *MockDDBConnecter) DeleteItem(ctx context.Context,
 	mock.DeleteItemInputs = append(mock.DeleteItemInputs, *input)
 
 	if len(mock.DeleteItemResults) <= mock.DeleteItemCalls-1 {
-		slog.Warn("no DeleteItem mock loaded; returning empty output and nil error")
+		slog.Info("no DeleteItem mock loaded; returning empty output and nil error")
 		return &dynamodb.DeleteItemOutput{}, nil
 	}
 
