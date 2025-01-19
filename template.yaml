@@ -58,6 +58,18 @@ Resources:
           KeyType: HASH
       StreamSpecification:
         StreamViewType: NEW_AND_OLD_IMAGES
+  PrayersQueue:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: RequestorPhone
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        - AttributeName: RequestorPhone
+          KeyType: HASH
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
   PrayerTexter:
     Type: AWS::Serverless::Function
     Metadata:
@@ -87,6 +99,8 @@ Resources:
           ACTIVE_PRAYERS_TABLE_ARN: !GetAtt General.Arn
           MEMBERS_TABLE_NAME: !Ref Members
           MEMBERS_TABLE_ARN: !GetAtt Members.Arn
+          ACTIVE_PRAYERS_TABLE_NAME: !Ref PrayersQueue
+          ACTIVE_PRAYERS_TABLE_ARN: !GetAtt PrayersQueue.Arn
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref ActivePrayers
@@ -94,6 +108,8 @@ Resources:
             TableName: !Ref General
         - DynamoDBCrudPolicy:
             TableName: !Ref Members
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PrayersQueue
   PrayerTexterLogGroup:
     Type: AWS::Logs::LogGroup
     DeletionPolicy: Retain

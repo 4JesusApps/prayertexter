@@ -2,6 +2,7 @@ package prayertexter
 
 import (
 	"log/slog"
+	"math/rand"
 	"strconv"
 	"strings"
 	"time"
@@ -227,6 +228,13 @@ func prayerRequest(txt TextMessage, mem Member, clnt DDBConnecter, sndr TextSend
 	if err != nil {
 		slog.Error("failed to find intercessors during prayer request")
 		return err
+	} else if intercessors == nil {
+		if err := queuePrayer(txt, mem, clnt, sndr); err != nil {
+			slog.Error("failed to complete queueing prayer request")
+			return err
+		}
+
+		return nil
 	}
 
 	for _, intr := range intercessors {
@@ -236,7 +244,7 @@ func prayerRequest(txt TextMessage, mem Member, clnt DDBConnecter, sndr TextSend
 			Request:          txt.Body,
 			Requestor:        mem,
 		}
-		if err := pryr.put(clnt); err != nil {
+		if err := pryr.put(clnt, false); err != nil {
 			slog.Error("failed to put prayer during prayer request")
 			return err
 		}
@@ -266,10 +274,18 @@ func findIntercessors(clnt DDBConnecter) ([]Member, error) {
 	}
 
 	for len(intercessors) < numIntercessorsPerPrayer {
-		randPhones, err := allPhones.genRandPhones()
-		if err != nil {
-			slog.Error("failed to find enough intercessors")
-			return nil, err
+		randPhones := allPhones.genRandPhones()
+		if randPhones == nil {
+			// this means that there are no more available intercessors for a prayer request
+			if len(intercessors) != 0 {
+				// this means that we found at least one intercessor, yet it is under the desired
+				// number set for each prayer request. we will return the intercessor/s because
+				// it/they are better than nothing
+				return intercessors, nil
+			} else {
+				// this means that we cannot find a single intercessor for a prayer request
+				return nil, nil
+			}
 		}
 
 		for _, phn := range randPhones {
@@ -317,15 +333,45 @@ func findIntercessors(clnt DDBConnecter) ([]Member, error) {
 	return intercessors, nil
 }
 
+func queuePrayer(txt TextMessage, mem Member, clnt DDBConnecter, sndr TextSender) error {
+	pryr := Prayer{}
+	isRandom := false
+
+	for !isRandom {
+		// a random number is generated and checked in the queued prayers table on the very
+		// unlikely chance that a prayer has the same key
+		randNum := rand.Intn(9999999999)
+		pryr.IntercessorPhone = strconv.Itoa(randNum)
+		if err := pryr.get(clnt, true); err != nil {
+			return err
+		}
+		if pryr.Request == "" {
+			isRandom = true
+		}
+	}
+
+	pryr.Request = txt.Body
+	pryr.Requestor = mem
+	if err := pryr.put(clnt, true); err != nil {
+		return err
+	}
+
+	if err := mem.sendMessage(sndr, msgPrayerQueued); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func completePrayer(mem Member, clnt DDBConnecter, sndr TextSender) error {
 	pryr := Prayer{IntercessorPhone: mem.Phone}
-	if err := pryr.get(clnt); err != nil {
+	if err := pryr.get(clnt, false); err != nil {
 		slog.Error("get prayer failed during complete prayer stage")
 		return err
 	}
 
-	// this means that the get prayer did not return an active prayer
 	if pryr.Request == "" {
+		// this means that the get prayer did not return an active prayer
 		mem.sendMessage(sndr, msgNoActivePrayer)
 		return nil
 	}
@@ -335,7 +381,7 @@ func completePrayer(mem Member, clnt DDBConnecter, sndr TextSender) error {
 	msg := strings.Replace(msgPrayerConfirmation, "PLACEHOLDER", mem.Name, 1)
 	pryr.Requestor.sendMessage(sndr, msg)
 
-	if err := pryr.delete(clnt); err != nil {
+	if err := pryr.delete(clnt, false); err != nil {
 		slog.Error("delete prayer failed during complete prayer stage")
 		return err
 	}

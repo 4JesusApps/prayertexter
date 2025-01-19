@@ -14,12 +14,15 @@ type Prayer struct {
 }
 
 const (
-	prayerAttribute = "IntercessorPhone"
-	prayerTable     = "ActivePrayers"
+	activePrayersAttribute = "IntercessorPhone"
+	activePrayersTable     = "ActivePrayers"
+	prayersQueueAttribute  = "RequestorPhone"
+	prayersQueueTable      = "PrayersQueue"
 )
 
-func (p *Prayer) get(clnt DDBConnecter) error {
-	resp, err := getItem(clnt, prayerAttribute, p.IntercessorPhone, prayerTable)
+func (p *Prayer) get(clnt DDBConnecter, queue bool) error {
+	table := getPrayerTable(queue)
+	resp, err := getItem(clnt, activePrayersAttribute, p.IntercessorPhone, table)
 	if err != nil {
 		return err
 	}
@@ -32,24 +35,40 @@ func (p *Prayer) get(clnt DDBConnecter) error {
 	return nil
 }
 
-func (p *Prayer) delete(clnt DDBConnecter) error {
-	if err := delItem(clnt, prayerAttribute, p.IntercessorPhone, prayerTable); err != nil {
+func (p *Prayer) delete(clnt DDBConnecter, queue bool) error {
+	table := getPrayerTable(queue)
+	if err := delItem(clnt, activePrayersAttribute, p.IntercessorPhone, table); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (p *Prayer) put(clnt DDBConnecter) error {
+func (p *Prayer) put(clnt DDBConnecter, queue bool) error {
+	// queue is only used if there are not enough intercessors available to take a prayer request
+	// prayers get queued in order to save them for a time when intercessors are available
+	// this will change the ddb table that the prayer is saved to
 	data, err := attributevalue.MarshalMap(p)
 	if err != nil {
 		slog.Error("marshal failed for put Prayer")
 		return err
 	}
 
-	if err := putItem(clnt, prayerTable, data); err != nil {
+	table := getPrayerTable(queue)
+	if err := putItem(clnt, table, data); err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func getPrayerTable(queue bool) string {
+	var table string
+	if queue {
+		table = prayersQueueTable
+	} else {
+		table = activePrayersTable
+	}
+
+	return table
 }

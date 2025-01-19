@@ -21,6 +21,7 @@ const (
 	// prayer request messages
 	msgProfanityFound = "There was profanity found in your prayer request:\n\nPLACEHOLDER\n\nPlease try the request again without this word or words."
 	msgPrayerIntro    = "Hello! Please pray for PLACEHOLDER:\n"
+	msgPrayerQueued   = "We could not find any available intercessors. Your prayer has been added to the queue and will get sent out as soon as someone is available."
 	msgPrayerSentOut  = "Your prayer request has been sent out!"
 
 	// prayer completion messages

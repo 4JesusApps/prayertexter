@@ -1,7 +1,6 @@
 package prayertexter
 
 import (
-	"errors"
 	"log/slog"
 	"math/rand"
 	"slices"
@@ -68,18 +67,19 @@ func (i *IntercessorPhones) delPhone(phone string) {
 	i.Phones = newPhones
 }
 
-func (i *IntercessorPhones) genRandPhones() ([]string, error) {
+func (i *IntercessorPhones) genRandPhones() ([]string) {
 	var selectedPhones []string
 
 	if len(i.Phones) == 0 {
-		err := "unable to generate phones; phone list is empty"
-		slog.Error(err)
-		return nil, errors.New(err)
+		slog.Warn("unable to generate phones; phone list is empty")
+		return nil
 	}
 
+	// this is needed so it can return some/one phones even if it is less than the set # of 
+	// intercessors for each prayer
 	if len(i.Phones) <= numIntercessorsPerPrayer {
 		selectedPhones = append(selectedPhones, i.Phones...)
-		return selectedPhones, nil
+		return selectedPhones
 	}
 
 	for len(selectedPhones) < numIntercessorsPerPrayer {
@@ -90,5 +90,5 @@ func (i *IntercessorPhones) genRandPhones() ([]string, error) {
 		selectedPhones = append(selectedPhones, phone)
 	}
 
-	return selectedPhones, nil
+	return selectedPhones
 }
