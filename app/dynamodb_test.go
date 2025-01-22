@@ -28,8 +28,7 @@ type MockDDBConnecter struct {
 	}
 }
 
-func (mock *MockDDBConnecter) GetItem(ctx context.Context,
-	input *dynamodb.GetItemInput,
+func (mock *MockDDBConnecter) GetItem(ctx context.Context, input *dynamodb.GetItemInput,
 	opts ...func(*dynamodb.Options)) (*dynamodb.GetItemOutput, error) {
 
 	mock.GetItemCalls++
@@ -44,8 +43,7 @@ func (mock *MockDDBConnecter) GetItem(ctx context.Context,
 	return result.Output, result.Error
 }
 
-func (mock *MockDDBConnecter) PutItem(ctx context.Context,
-	input *dynamodb.PutItemInput,
+func (mock *MockDDBConnecter) PutItem(ctx context.Context, input *dynamodb.PutItemInput,
 	opts ...func(*dynamodb.Options)) (*dynamodb.PutItemOutput, error) {
 
 	mock.PutItemCalls++
@@ -60,8 +58,7 @@ func (mock *MockDDBConnecter) PutItem(ctx context.Context,
 	return nil, result.Error
 }
 
-func (mock *MockDDBConnecter) DeleteItem(ctx context.Context,
-	input *dynamodb.DeleteItemInput,
+func (mock *MockDDBConnecter) DeleteItem(ctx context.Context, input *dynamodb.DeleteItemInput,
 	opts ...func(*dynamodb.Options)) (*dynamodb.DeleteItemOutput, error) {
 
 	mock.DeleteItemCalls++

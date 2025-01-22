@@ -18,9 +18,13 @@ import (
 var version string // do not remove or modify
 
 func handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	txt := prayertexter.TextMessage{}
+	// Request ID is used for state tracking and idempotency
+	state := prayertexter.State{
+		Message:   prayertexter.TextMessage{},
+		RequestID: req.RequestContext.RequestID,
+	}
 
-	if err := json.Unmarshal([]byte(req.Body), &txt); err != nil {
+	if err := json.Unmarshal([]byte(req.Body), &state.Message); err != nil {
 		slog.Error("failed to unmarshal api gateway request", "error", err.Error())
 		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError}, err
 	}
@@ -33,7 +37,9 @@ func handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.API
 
 	txtsvc := prayertexter.FakeTextService{}
 
-	prayertexter.MainFlow(txt, clnt, txtsvc)
+	if err := prayertexter.MainFlow(state, clnt, txtsvc); err != nil {
+		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError}, err
+	}
 
 	return events.APIGatewayProxyResponse{StatusCode: 200, Body: "Completed Successfully"}, nil
 }

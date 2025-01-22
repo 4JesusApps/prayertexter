@@ -2,37 +2,93 @@ package prayertexter
 
 import (
 	"log/slog"
-	"math/rand"
+	"math/rand/v2"
 	"strconv"
 	"strings"
 	"time"
 )
 
-func MainFlow(txt TextMessage, clnt DDBConnecter, sndr TextSender) error {
+func MainFlow(state State, clnt DDBConnecter, sndr TextSender) error {
+	state.Status = "IN PROGRESS"
+	state.TimeStart = time.Now().Format(time.RFC3339)
+	if err := state.save(clnt); err != nil {
+		return err
+	}
+
+	txt := state.Message
 	mem := Member{Phone: txt.Phone}
 	if err := mem.get(clnt); err != nil {
 		return err
 	}
 
 	if strings.ToLower(txt.Body) == "pray" || mem.SetupStatus == "in-progress" {
-		if err := signUp(txt, mem, clnt, sndr); err != nil {
+		state.Stage = "SIGN UP"
+		if err := state.save(clnt); err != nil {
 			return err
 		}
+		if err1 := signUp(txt, mem, clnt, sndr); err1 != nil {
+			state.Error = err1
+			state.Status = "FAILED"
+			if err2 := state.save(clnt); err2 != nil {
+				return err2
+			}
+			return err1
+		}
+
 	} else if mem.SetupStatus == "" {
+		state.Stage = "DROP MESSAGE"
+		if err := state.save(clnt); err != nil {
+			return err
+		}
 		slog.Warn("non registered user, dropping message", "member", mem.Phone)
 
 	} else if strings.ToLower(txt.Body) == "cancel" || strings.ToLower(txt.Body) == "stop" {
-		if err := memberDelete(mem, clnt, sndr); err != nil {
+		state.Stage = "MEMBER DELETE"
+		if err := state.save(clnt); err != nil {
 			return err
 		}
+		if err1 := memberDelete(mem, clnt, sndr); err1 != nil {
+			state.Error = err1
+			state.Status = "FAILED"
+			if err2 := state.save(clnt); err2 != nil {
+				return err2
+			}
+			return err1
+		}
+
 	} else if strings.ToLower(txt.Body) == "prayed" {
-		if err := completePrayer(mem, clnt, sndr); err != nil {
+		state.Stage = "COMPLETE PRAYER"
+		if err := state.save(clnt); err != nil {
 			return err
 		}
+		if err1 := completePrayer(mem, clnt, sndr); err1 != nil {
+			state.Error = err1
+			state.Status = "FAILED"
+			if err2 := state.save(clnt); err2 != nil {
+				return err2
+			}
+			return err1
+		}
+
 	} else if mem.SetupStatus == "completed" {
-		if err := prayerRequest(txt, mem, clnt, sndr); err != nil {
+		state.Stage = "PRAYER REQUEST"
+		if err := state.save(clnt); err != nil {
 			return err
 		}
+		if err1 := prayerRequest(txt, mem, clnt, sndr); err1 != nil {
+			state.Error = err1
+			state.Status = "FAILED"
+			if err2 := state.save(clnt); err2 != nil {
+				return err2
+			}
+			return err1
+		}
+	}
+
+	state.Stage = "COMPLETED"
+	state.TimeFinish = time.Now().Format(time.RFC3339)
+	if err := state.save(clnt); err != nil {
+		return err
 	}
 
 	return nil
@@ -282,7 +338,7 @@ func findIntercessors(clnt DDBConnecter) ([]Member, error) {
 				// number set for each prayer request. we will return the intercessor/s because
 				// it/they are better than nothing
 				return intercessors, nil
-			} else {
+			} else if len(intercessors) == 0 {
 				// this means that we cannot find a single intercessor for a prayer request
 				return nil, nil
 			}
@@ -340,7 +396,7 @@ func queuePrayer(txt TextMessage, mem Member, clnt DDBConnecter, sndr TextSender
 	for !isRandom {
 		// a random number is generated and checked in the queued prayers table on the very
 		// unlikely chance that a prayer has the same key
-		randNum := rand.Intn(9999999999)
+		randNum := rand.IntN(9999999999)
 		pryr.IntercessorPhone = strconv.Itoa(randNum)
 		if err := pryr.get(clnt, true); err != nil {
 			return err

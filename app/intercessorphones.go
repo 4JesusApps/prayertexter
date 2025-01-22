@@ -2,19 +2,19 @@ package prayertexter
 
 import (
 	"log/slog"
-	"math/rand"
+	"math/rand/v2"
 	"slices"
 
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 )
 
 type IntercessorPhones struct {
-	Name   string
+	Key    string
 	Phones []string
 }
 
 const (
-	intercessorPhonesAttribute = "Name"
+	intercessorPhonesAttribute = "Key"
 	intercessorPhonesKey       = "IntercessorPhones"
 	intercessorPhonesTable     = "General"
 	numIntercessorsPerPrayer   = 2
@@ -36,7 +36,7 @@ func (i *IntercessorPhones) get(clnt DDBConnecter) error {
 }
 
 func (i *IntercessorPhones) put(clnt DDBConnecter) error {
-	i.Name = intercessorPhonesKey
+	i.Key = intercessorPhonesKey
 
 	data, err := attributevalue.MarshalMap(i)
 	if err != nil {
@@ -67,7 +67,7 @@ func (i *IntercessorPhones) delPhone(phone string) {
 	i.Phones = newPhones
 }
 
-func (i *IntercessorPhones) genRandPhones() ([]string) {
+func (i *IntercessorPhones) genRandPhones() []string {
 	var selectedPhones []string
 
 	if len(i.Phones) == 0 {
@@ -75,7 +75,7 @@ func (i *IntercessorPhones) genRandPhones() ([]string) {
 		return nil
 	}
 
-	// this is needed so it can return some/one phones even if it is less than the set # of 
+	// this is needed so it can return some/one phones even if it is less than the set # of
 	// intercessors for each prayer
 	if len(i.Phones) <= numIntercessorsPerPrayer {
 		selectedPhones = append(selectedPhones, i.Phones...)
@@ -83,7 +83,7 @@ func (i *IntercessorPhones) genRandPhones() ([]string) {
 	}
 
 	for len(selectedPhones) < numIntercessorsPerPrayer {
-		phone := i.Phones[rand.Intn(len(i.Phones))]
+		phone := i.Phones[rand.IntN(len(i.Phones))]
 		if slices.Contains(selectedPhones, phone) {
 			continue
 		}
