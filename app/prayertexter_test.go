@@ -194,6 +194,14 @@ func testTxtMessage(txtMock *MockTextService, t *testing.T, test TestCase) {
 			txt.Body = msgPrayerConfirmation
 		}
 
+		// This part makes mocking messages less painful. We do not need to worry about new lines,
+		// pre, or post messages. They are removed when messages are tested.
+		for _, t := range []*TextMessage{&txt, &test.expectedTexts[i]} {
+			for _, str := range []string{"\n", msgPre, msgPost} {
+				t.Body = strings.ReplaceAll(t.Body, str, "")
+			}
+		}
+
 		if txt != test.expectedTexts[i] {
 			t.Errorf("expected txt %v, got %v",
 				test.expectedTexts[i], txt)
@@ -432,7 +440,7 @@ func TestMainFlowSignUp(t *testing.T) {
 
 			expectedTexts: []TextMessage{
 				{
-					Body:  msgPrayerInstructions,
+					Body:  msgPrayerInstructions + "\n\n" + msgSignUpConfirmation,
 					Phone: "123-456-7890",
 				},
 			},
@@ -566,7 +574,7 @@ func TestMainFlowSignUp(t *testing.T) {
 
 			expectedTexts: []TextMessage{
 				{
-					Body:  msgIntercessorInstructions,
+					Body:  msgPrayerInstructions + "\n\n" + msgIntercessorInstructions + "\n\n" + msgSignUpConfirmation,
 					Phone: "123-456-7890",
 				},
 			},
@@ -1002,6 +1010,113 @@ func TestMainFlowMemberDelete(t *testing.T) {
 				// 	testPhones(putInput, t, test)
 				// }
 			}
+		})
+	}
+}
+
+func TestMainFlowHelp(t *testing.T) {
+	testCases := []TestCase{
+		{
+			description: "Setup stage 99 user texts help and receives the help message",
+
+			state: State{
+				Message: TextMessage{
+					Body:  "help",
+					Phone: "123-456-7890",
+				},
+			},
+
+			mockGetItemResults: []struct {
+				Output *dynamodb.GetItemOutput
+				Error  error
+			}{
+				{
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
+				{
+					Output: &dynamodb.GetItemOutput{
+						Item: map[string]types.AttributeValue{
+							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
+							"Phone":       &types.AttributeValueMemberS{Value: "123-456-7890"},
+							"SetupStage":  &types.AttributeValueMemberN{Value: "99"},
+							"SetupStatus": &types.AttributeValueMemberS{Value: "completed"},
+						},
+					},
+					Error: nil,
+				},
+			},
+
+			expectedTexts: []TextMessage{
+				{
+					Body:  msgHelp,
+					Phone: "123-456-7890",
+				},
+			},
+
+			expectedGetItemCalls:  4,
+			expectedPutItemCalls:  3,
+			expectedSendTextCalls: 1,
+		},
+		{
+			description: "Setup stage 1 user texts help and receives the help message",
+
+			state: State{
+				Message: TextMessage{
+					Body:  "help",
+					Phone: "123-456-7890",
+				},
+			},
+
+			mockGetItemResults: []struct {
+				Output *dynamodb.GetItemOutput
+				Error  error
+			}{
+				{
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
+				{
+					Output: &dynamodb.GetItemOutput{
+						Item: map[string]types.AttributeValue{
+							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
+							"Phone":       &types.AttributeValueMemberS{Value: "123-456-7890"},
+							"SetupStage":  &types.AttributeValueMemberN{Value: "1"},
+							"SetupStatus": &types.AttributeValueMemberS{Value: "in-progress"},
+						},
+					},
+					Error: nil,
+				},
+			},
+
+			expectedTexts: []TextMessage{
+				{
+					Body:  msgHelp,
+					Phone: "123-456-7890",
+				},
+			},
+
+			expectedGetItemCalls:  4,
+			expectedPutItemCalls:  3,
+			expectedSendTextCalls: 1,
+		},
+	}
+
+	for _, test := range testCases {
+		txtMock := &MockTextService{}
+		ddbMock := &MockDDBConnecter{}
+
+		t.Run(test.description, func(t *testing.T) {
+			setMocks(ddbMock, txtMock, test)
+
+			if err := MainFlow(test.state, ddbMock, txtMock); err != nil {
+				t.Fatalf("unexpected error starting MainFlow: %v", err)
+			}
+
+			testNumMethodCalls(ddbMock, txtMock, t, test)
+			testTxtMessage(txtMock, t, test)
+			testMembers(ddbMock.PutItemInputs, t, test)
+			testPrayers(ddbMock.PutItemInputs, t, test, test.expectedPrayerQueue)
 		})
 	}
 }

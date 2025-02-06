@@ -59,6 +59,7 @@ func (mem *Member) delete(clnt DDBConnecter) error {
 }
 
 func (mem *Member) sendMessage(sndr TextSender, body string) error {
+	body = msgPre + body + "\n\n" + msgPost
 	message := TextMessage{
 		Body:  body,
 		Phone: mem.Phone,

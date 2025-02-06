@@ -21,7 +21,35 @@ func MainFlow(state State, clnt DDBConnecter, sndr TextSender) error {
 		return err
 	}
 
-	if strings.ToLower(txt.Body) == "pray" || mem.SetupStatus == "in-progress" {
+	if strings.ToLower(txt.Body) == "help" {
+		state.Stage = "HELP"
+		if err := state.save(clnt); err != nil {
+			return err
+		}
+		if err1 := mem.sendMessage(sndr, msgHelp); err1 != nil {
+			state.Error = err1
+			state.Status = "FAILED"
+			if err2 := state.save(clnt); err2 != nil {
+				return err2
+			}
+			return err1
+		}
+
+	} else if strings.ToLower(txt.Body) == "cancel" || strings.ToLower(txt.Body) == "stop" {
+		state.Stage = "MEMBER DELETE"
+		if err := state.save(clnt); err != nil {
+			return err
+		}
+		if err1 := memberDelete(mem, clnt, sndr); err1 != nil {
+			state.Error = err1
+			state.Status = "FAILED"
+			if err2 := state.save(clnt); err2 != nil {
+				return err2
+			}
+			return err1
+		}
+
+	} else if strings.ToLower(txt.Body) == "pray" || mem.SetupStatus == "in-progress" {
 		state.Stage = "SIGN UP"
 		if err := state.save(clnt); err != nil {
 			return err
@@ -41,20 +69,6 @@ func MainFlow(state State, clnt DDBConnecter, sndr TextSender) error {
 			return err
 		}
 		slog.Warn("non registered user, dropping message", "member", mem.Phone)
-
-	} else if strings.ToLower(txt.Body) == "cancel" || strings.ToLower(txt.Body) == "stop" {
-		state.Stage = "MEMBER DELETE"
-		if err := state.save(clnt); err != nil {
-			return err
-		}
-		if err1 := memberDelete(mem, clnt, sndr); err1 != nil {
-			state.Error = err1
-			state.Status = "FAILED"
-			if err2 := state.save(clnt); err2 != nil {
-				return err2
-			}
-			return err1
-		}
 
 	} else if strings.ToLower(txt.Body) == "prayed" {
 		state.Stage = "COMPLETE PRAYER"
@@ -85,7 +99,7 @@ func MainFlow(state State, clnt DDBConnecter, sndr TextSender) error {
 		}
 	}
 
-	state.Stage = "COMPLETED"
+	state.Status = "COMPLETED"
 	state.TimeFinish = time.Now().Format(time.RFC3339)
 	if err := state.save(clnt); err != nil {
 		return err
@@ -181,7 +195,9 @@ func signUpFinalPrayerMessage(mem Member, clnt DDBConnecter, sndr TextSender) er
 		slog.Error("put Member failed during sign up final member message")
 		return err
 	}
-	if err := mem.sendMessage(sndr, msgPrayerInstructions); err != nil {
+
+	body := msgPrayerInstructions + "\n\n" + msgSignUpConfirmation
+	if err := mem.sendMessage(sndr, body); err != nil {
 		slog.Error("message send failed during sign up final member message")
 		return err
 	}
@@ -229,7 +245,9 @@ func signUpFinalIntercessorMessage(mem Member, clnt DDBConnecter, sndr TextSende
 		slog.Error("put Member failed during sign up final intercessor message")
 		return err
 	}
-	if err := mem.sendMessage(sndr, msgIntercessorInstructions); err != nil {
+
+	body := msgPrayerInstructions + "\n\n" + msgIntercessorInstructions + "\n\n" + msgSignUpConfirmation
+	if err := mem.sendMessage(sndr, body); err != nil {
 		slog.Error("message send failed during sign up final intercessor message - instructions")
 		return err
 	}
