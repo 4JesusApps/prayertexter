@@ -25,3 +25,6 @@ TODO:
 - idempotency with potential for multiple calls with same data
 - add check into find intercessors that checks their number in active prayers
 - separate marshal and unmarshal map out into separate functions (for member and prayer) so they can be used in unit testing and not duplicated
+- add simple state check to see if lambda was ran more than once
+- add unit test for mem.checkIfActive(clnt)
+- if user cancels and they are Intercessor with active prayer, move prayer to someone else

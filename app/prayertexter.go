@@ -26,7 +26,7 @@ func MainFlow(state State, clnt DDBConnecter, sndr TextSender) error {
 		if err := state.save(clnt); err != nil {
 			return err
 		}
-		if err1 := mem.sendMessage(sndr, msgHelp); err1 != nil {
+		if err1 := mem.sendMessage(clnt, sndr, msgHelp); err1 != nil {
 			state.Error = err1
 			state.Status = "FAILED"
 			if err2 := state.save(clnt); err2 != nil {
@@ -134,7 +134,7 @@ func signUp(txt TextMessage, mem Member, clnt DDBConnecter, sndr TextSender) err
 			return err
 		}
 	} else {
-		if err := signUpWrongInput(mem, sndr); err != nil {
+		if err := signUpWrongInput(mem, clnt, sndr); err != nil {
 			return err
 		}
 	}
@@ -149,7 +149,7 @@ func signUpStageOne(mem Member, clnt DDBConnecter, sndr TextSender) error {
 		slog.Error("put Member failed during sign up stage 1")
 		return err
 	}
-	if err := mem.sendMessage(sndr, msgNameRequest); err != nil {
+	if err := mem.sendMessage(clnt, sndr, msgNameRequest); err != nil {
 		slog.Error("message send failed during sign up stage 1")
 		return err
 	}
@@ -164,7 +164,7 @@ func signUpStageTwoA(mem Member, clnt DDBConnecter, sndr TextSender, txt TextMes
 		slog.Error("put Member failed during sign up stage 2, real name")
 		return err
 	}
-	if err := mem.sendMessage(sndr, msgMemberTypeRequest); err != nil {
+	if err := mem.sendMessage(clnt, sndr, msgMemberTypeRequest); err != nil {
 		slog.Error("message send failed during sign up stage 2, real name")
 		return err
 	}
@@ -179,7 +179,7 @@ func signUpStageTwoB(mem Member, clnt DDBConnecter, sndr TextSender) error {
 		slog.Error("put Member failed during sign up stage 2, anonymous")
 		return err
 	}
-	if err := mem.sendMessage(sndr, msgMemberTypeRequest); err != nil {
+	if err := mem.sendMessage(clnt, sndr, msgMemberTypeRequest); err != nil {
 		slog.Error("message send failed during sign up stage 2, anonymous")
 		return err
 	}
@@ -197,7 +197,7 @@ func signUpFinalPrayerMessage(mem Member, clnt DDBConnecter, sndr TextSender) er
 	}
 
 	body := msgPrayerInstructions + "\n\n" + msgSignUpConfirmation
-	if err := mem.sendMessage(sndr, body); err != nil {
+	if err := mem.sendMessage(clnt, sndr, body); err != nil {
 		slog.Error("message send failed during sign up final member message")
 		return err
 	}
@@ -212,7 +212,7 @@ func signUpStageThree(mem Member, clnt DDBConnecter, sndr TextSender) error {
 		slog.Error("put Member failed during sign up stage 3")
 		return err
 	}
-	if err := mem.sendMessage(sndr, msgPrayerNumRequest); err != nil {
+	if err := mem.sendMessage(clnt, sndr, msgPrayerNumRequest); err != nil {
 		slog.Error("message send failed during sign up stage 3")
 		return err
 	}
@@ -223,7 +223,7 @@ func signUpStageThree(mem Member, clnt DDBConnecter, sndr TextSender) error {
 func signUpFinalIntercessorMessage(mem Member, clnt DDBConnecter, sndr TextSender, txt TextMessage) error {
 	num, err := strconv.Atoi(txt.Body)
 	if err != nil {
-		return signUpWrongInput(mem, sndr)
+		return signUpWrongInput(mem, clnt, sndr)
 	}
 
 	phones := IntercessorPhones{}
@@ -247,7 +247,7 @@ func signUpFinalIntercessorMessage(mem Member, clnt DDBConnecter, sndr TextSende
 	}
 
 	body := msgPrayerInstructions + "\n\n" + msgIntercessorInstructions + "\n\n" + msgSignUpConfirmation
-	if err := mem.sendMessage(sndr, body); err != nil {
+	if err := mem.sendMessage(clnt, sndr, body); err != nil {
 		slog.Error("message send failed during sign up final intercessor message - instructions")
 		return err
 	}
@@ -255,9 +255,9 @@ func signUpFinalIntercessorMessage(mem Member, clnt DDBConnecter, sndr TextSende
 	return nil
 }
 
-func signUpWrongInput(mem Member, sndr TextSender) error {
+func signUpWrongInput(mem Member, clnt DDBConnecter, sndr TextSender) error {
 	slog.Warn("wrong input received during sign up", "member", mem.Phone)
-	if err := mem.sendMessage(sndr, msgWrongInput); err != nil {
+	if err := mem.sendMessage(clnt, sndr, msgWrongInput); err != nil {
 		slog.Error("message send failed during sign up - wrong input")
 		return err
 	}
@@ -282,7 +282,7 @@ func memberDelete(mem Member, clnt DDBConnecter, sndr TextSender) error {
 			return err
 		}
 	}
-	if err := mem.sendMessage(sndr, msgRemoveUser); err != nil {
+	if err := mem.sendMessage(clnt, sndr, msgRemoveUser); err != nil {
 		slog.Error("message send failed during cancellation")
 		return err
 	}
@@ -294,7 +294,7 @@ func prayerRequest(txt TextMessage, mem Member, clnt DDBConnecter, sndr TextSend
 	profanity := txt.checkProfanity()
 	if profanity != "" {
 		msg := strings.Replace(msgProfanityFound, "PLACEHOLDER", profanity, 1)
-		mem.sendMessage(sndr, msg)
+		mem.sendMessage(clnt, sndr, msg)
 		return nil
 	}
 
@@ -324,13 +324,13 @@ func prayerRequest(txt TextMessage, mem Member, clnt DDBConnecter, sndr TextSend
 		}
 
 		msg := strings.Replace(msgPrayerIntro, "PLACEHOLDER", mem.Name, 1)
-		if err := intr.sendMessage(sndr, msg+pryr.Request); err != nil {
+		if err := intr.sendMessage(clnt, sndr, msg+pryr.Request); err != nil {
 			slog.Error("message send to intercessor failed during prayer request")
 			return err
 		}
 	}
 
-	if err := mem.sendMessage(sndr, msgPrayerSentOut); err != nil {
+	if err := mem.sendMessage(clnt, sndr, msgPrayerSentOut); err != nil {
 		slog.Error("message send to member failed during prayer request")
 		return err
 	}
@@ -430,7 +430,7 @@ func queuePrayer(txt TextMessage, mem Member, clnt DDBConnecter, sndr TextSender
 		return err
 	}
 
-	if err := mem.sendMessage(sndr, msgPrayerQueued); err != nil {
+	if err := mem.sendMessage(clnt, sndr, msgPrayerQueued); err != nil {
 		return err
 	}
 
@@ -446,14 +446,14 @@ func completePrayer(mem Member, clnt DDBConnecter, sndr TextSender) error {
 
 	if pryr.Request == "" {
 		// this means that the get prayer did not return an active prayer
-		mem.sendMessage(sndr, msgNoActivePrayer)
+		mem.sendMessage(clnt, sndr, msgNoActivePrayer)
 		return nil
 	}
 
-	mem.sendMessage(sndr, msgPrayerThankYou)
+	mem.sendMessage(clnt, sndr, msgPrayerThankYou)
 
 	msg := strings.Replace(msgPrayerConfirmation, "PLACEHOLDER", mem.Name, 1)
-	pryr.Requestor.sendMessage(sndr, msg)
+	pryr.Requestor.sendMessage(clnt, sndr, msg)
 
 	if err := pryr.delete(clnt, false); err != nil {
 		slog.Error("delete prayer failed during complete prayer stage")

@@ -58,11 +58,23 @@ func (mem *Member) delete(clnt DDBConnecter) error {
 	return nil
 }
 
-func (mem *Member) sendMessage(sndr TextSender, body string) error {
+func (mem *Member) sendMessage(clnt DDBConnecter, sndr TextSender, body string) error {
 	body = msgPre + body + "\n\n" + msgPost
 	message := TextMessage{
 		Body:  body,
 		Phone: mem.Phone,
 	}
-	return sndr.sendText(message)
+	return sndr.sendText(clnt, message)
+}
+
+func (mem *Member) checkIfActive(clnt DDBConnecter) (bool, error) {
+	if err := mem.get(clnt); err != nil {
+		return false, err
+	}
+
+	if mem.SetupStatus == "" {
+		return false, nil
+	} else {
+		return true, nil
+	}
 }

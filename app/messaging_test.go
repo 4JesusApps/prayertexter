@@ -12,7 +12,7 @@ type MockTextService struct {
 	}
 }
 
-func (mock *MockTextService) sendText(msg TextMessage) error {
+func (mock *MockTextService) sendText(clnt DDBConnecter, msg TextMessage) error {
 	slog.Info("MOCK SMS:", "recipient", msg.Phone, "body", msg.Body)
 
 	mock.SendTextCalls++

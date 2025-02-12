@@ -40,13 +40,23 @@ type TextMessage struct {
 }
 
 type TextSender interface {
-	sendText(msg TextMessage) error
+	sendText(clnt DDBConnecter, msg TextMessage) error
 }
 
 type FakeTextService struct{}
 
-func (s FakeTextService) sendText(msg TextMessage) error {
-	slog.Info("Sent text message", "recipient", msg.Phone, "body", msg.Body)
+func (s FakeTextService) sendText(clnt DDBConnecter, msg TextMessage) error {
+	mem := Member{Phone: msg.Phone}
+	isActive, err := mem.checkIfActive(clnt)
+	if err != nil {
+		return err
+	}
+
+	if isActive {
+		slog.Info("Sent text message", "recipient", msg.Phone, "body", msg.Body)
+	} else {
+		slog.Warn("Skip sending message, member is not active", "recipient", msg.Phone, "body", msg.Body)
+	}
 	return nil
 }
 
@@ -56,13 +66,13 @@ func (t TextMessage) checkProfanity() string {
 	profanities := goaway.DefaultProfanities
 
 	for _, word := range removedWords {
-		remove(profanities, word)
+		removeWord(profanities, word)
 	}
 
 	return goaway.ExtractProfanity(t.Body)
 }
 
-func remove(words []string, word string) []string {
+func removeWord(words []string, word string) []string {
 	for i, v := range words {
 		if v == word {
 			return append(words[:i], words[i+1:]...)
