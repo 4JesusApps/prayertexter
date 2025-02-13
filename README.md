@@ -38,3 +38,4 @@ Good dynamodb commands:
 - add check into find intercessors that checks their number in active prayers; if in active prayers then intercessor cannot receive another prayer
 - add unit test for mem.checkIfActive(clnt)
 - if user cancels and they are Intercessor with active prayer, move prayer to someone else
+- implement 10DLC phone number
