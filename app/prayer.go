@@ -20,14 +20,15 @@ const (
 	prayersQueueTable      = "PrayersQueue"
 )
 
-func (p *Prayer) get(clnt DDBConnecter, queue bool) error {
+func (pryr *Prayer) get(clnt DDBConnecter, queue bool) error {
+	// queue determines whether ActivePrayers or PrayersQueue table is used for get
 	table := getPrayerTable(queue)
-	resp, err := getItem(clnt, activePrayersAttribute, p.IntercessorPhone, table)
+	resp, err := getItem(clnt, activePrayersAttribute, pryr.IntercessorPhone, table)
 	if err != nil {
 		return err
 	}
 
-	if err := attributevalue.UnmarshalMap(resp.Item, &p); err != nil {
+	if err := attributevalue.UnmarshalMap(resp.Item, &pryr); err != nil {
 		slog.Error("unmarshal failed for get Prayer")
 		return err
 	}
@@ -35,20 +36,20 @@ func (p *Prayer) get(clnt DDBConnecter, queue bool) error {
 	return nil
 }
 
-func (p *Prayer) delete(clnt DDBConnecter, queue bool) error {
+func (pryr *Prayer) delete(clnt DDBConnecter, queue bool) error {
 	table := getPrayerTable(queue)
-	if err := delItem(clnt, activePrayersAttribute, p.IntercessorPhone, table); err != nil {
+	if err := delItem(clnt, activePrayersAttribute, pryr.IntercessorPhone, table); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (p *Prayer) put(clnt DDBConnecter, queue bool) error {
+func (pryr *Prayer) put(clnt DDBConnecter, queue bool) error {
 	// queue is only used if there are not enough intercessors available to take a prayer request
 	// prayers get queued in order to save them for a time when intercessors are available
 	// this will change the ddb table that the prayer is saved to
-	data, err := attributevalue.MarshalMap(p)
+	data, err := attributevalue.MarshalMap(pryr)
 	if err != nil {
 		slog.Error("marshal failed for put Prayer")
 		return err
@@ -71,4 +72,17 @@ func getPrayerTable(queue bool) string {
 	}
 
 	return table
+}
+
+func (pryr *Prayer) checkIfActive(clnt DDBConnecter) (bool, error) {
+	if err := pryr.get(clnt, false); err != nil {
+		return false, err
+	}
+
+	// empty string means get did not return a prayer
+	if pryr.Request == "" {
+		return false, nil
+	} else {
+		return true, nil
+	}
 }

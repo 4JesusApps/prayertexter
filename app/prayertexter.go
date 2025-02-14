@@ -11,7 +11,7 @@ import (
 func MainFlow(state State, clnt DDBConnecter, sndr TextSender) error {
 	state.Status = "IN PROGRESS"
 	state.TimeStart = time.Now().Format(time.RFC3339)
-	if err := state.save(clnt); err != nil {
+	if err := state.update(clnt); err != nil {
 		return err
 	}
 
@@ -21,78 +21,84 @@ func MainFlow(state State, clnt DDBConnecter, sndr TextSender) error {
 		return err
 	}
 
+	// help flow
 	if strings.ToLower(txt.Body) == "help" {
 		state.Stage = "HELP"
-		if err := state.save(clnt); err != nil {
+		if err := state.update(clnt); err != nil {
 			return err
 		}
 		if err1 := mem.sendMessage(clnt, sndr, msgHelp); err1 != nil {
 			state.Error = err1
 			state.Status = "FAILED"
-			if err2 := state.save(clnt); err2 != nil {
+			if err2 := state.update(clnt); err2 != nil {
 				return err2
 			}
 			return err1
 		}
 
+		// cancel flow
 	} else if strings.ToLower(txt.Body) == "cancel" || strings.ToLower(txt.Body) == "stop" {
 		state.Stage = "MEMBER DELETE"
-		if err := state.save(clnt); err != nil {
+		if err := state.update(clnt); err != nil {
 			return err
 		}
 		if err1 := memberDelete(mem, clnt, sndr); err1 != nil {
 			state.Error = err1
 			state.Status = "FAILED"
-			if err2 := state.save(clnt); err2 != nil {
+			if err2 := state.update(clnt); err2 != nil {
 				return err2
 			}
 			return err1
 		}
 
+		//sign up flow
 	} else if strings.ToLower(txt.Body) == "pray" || mem.SetupStatus == "in-progress" {
 		state.Stage = "SIGN UP"
-		if err := state.save(clnt); err != nil {
+		if err := state.update(clnt); err != nil {
 			return err
 		}
 		if err1 := signUp(txt, mem, clnt, sndr); err1 != nil {
 			state.Error = err1
 			state.Status = "FAILED"
-			if err2 := state.save(clnt); err2 != nil {
+			if err2 := state.update(clnt); err2 != nil {
 				return err2
 			}
 			return err1
 		}
 
+		// drop message flow
 	} else if mem.SetupStatus == "" {
 		state.Stage = "DROP MESSAGE"
-		if err := state.save(clnt); err != nil {
+		if err := state.update(clnt); err != nil {
 			return err
 		}
 		slog.Warn("non registered user, dropping message", "member", mem.Phone)
 
+		// prayer confirmation flow
 	} else if strings.ToLower(txt.Body) == "prayed" {
 		state.Stage = "COMPLETE PRAYER"
-		if err := state.save(clnt); err != nil {
+		if err := state.update(clnt); err != nil {
 			return err
 		}
 		if err1 := completePrayer(mem, clnt, sndr); err1 != nil {
 			state.Error = err1
 			state.Status = "FAILED"
-			if err2 := state.save(clnt); err2 != nil {
+			if err2 := state.update(clnt); err2 != nil {
 				return err2
 			}
 			return err1
 		}
 
+		// prayer request flow
 	} else if mem.SetupStatus == "completed" {
 		state.Stage = "PRAYER REQUEST"
-		if err := state.save(clnt); err != nil {
+		if err := state.update(clnt); err != nil {
 			return err
 		}
 		if err1 := prayerRequest(txt, mem, clnt, sndr); err1 != nil {
 			state.Error = err1
 			state.Status = "FAILED"
-			if err2 := state.save(clnt); err2 != nil {
+			if err2 := state.update(clnt); err2 != nil {
 				return err2
 			}
 			return err1
@@ -101,7 +107,7 @@ func MainFlow(state State, clnt DDBConnecter, sndr TextSender) error {
 
 	state.Status = "COMPLETED"
 	state.TimeFinish = time.Now().Format(time.RFC3339)
-	if err := state.save(clnt); err != nil {
+	if err := state.update(clnt); err != nil {
 		return err
 	}
 
@@ -354,7 +360,7 @@ func findIntercessors(clnt DDBConnecter) ([]Member, error) {
 			if len(intercessors) != 0 {
 				// this means that we found at least one intercessor, yet it is under the desired
 				// number set for each prayer request. we will return the intercessor/s because
-				// it/they are better than nothing
+				// it's better than none
 				return intercessors, nil
 			} else if len(intercessors) == 0 {
 				// this means that we cannot find a single intercessor for a prayer request
@@ -367,6 +373,19 @@ func findIntercessors(clnt DDBConnecter) ([]Member, error) {
 			if err := intr.get(clnt); err != nil {
 				slog.Error("get intercessor failed during find intercessors")
 				return nil, err
+			}
+
+			pryr := Prayer{IntercessorPhone: intr.Phone}
+			isActive, err := pryr.checkIfActive(clnt)
+			if err != nil {
+				slog.Error("check if active prayer failed during find intercessors")
+				return nil, err
+			}
+			if isActive {
+				// this means that intercessor already has 1 active prayer and cannot be used for
+				// another 1. there is a limitation of 1 active prayer at a time per intercessor
+				allPhones.delPhone(intr.Phone)
+				continue
 			}
 
 			if intr.PrayerCount < intr.WeeklyPrayerLimit {

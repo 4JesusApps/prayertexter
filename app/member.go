@@ -72,6 +72,7 @@ func (mem *Member) checkIfActive(clnt DDBConnecter) (bool, error) {
 		return false, err
 	}
 
+	// empty string means get did not return a member
 	if mem.SetupStatus == "" {
 		return false, nil
 	} else {

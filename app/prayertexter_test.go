@@ -284,6 +284,7 @@ func TestMainFlowSignUp(t *testing.T) {
 				Error  error
 			}{
 				{
+					// StateTracker empty get response. It would over complicate to test this here
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -312,6 +313,7 @@ func TestMainFlowSignUp(t *testing.T) {
 				Error  error
 			}{
 				{
+					// StateTracker empty get response. It would over complicate to test this here
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -362,6 +364,7 @@ func TestMainFlowSignUp(t *testing.T) {
 				Error  error
 			}{
 				{
+					// StateTracker empty get response. It would over complicate to test this here
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -412,6 +415,7 @@ func TestMainFlowSignUp(t *testing.T) {
 				Error  error
 			}{
 				{
+					// StateTracker empty get response. It would over complicate to test this here
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -464,6 +468,7 @@ func TestMainFlowSignUp(t *testing.T) {
 				Error  error
 			}{
 				{
+					// StateTracker empty get response. It would over complicate to test this here
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -516,6 +521,7 @@ func TestMainFlowSignUp(t *testing.T) {
 				Error  error
 			}{
 				{
+					// StateTracker empty get response. It would over complicate to test this here
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -532,6 +538,7 @@ func TestMainFlowSignUp(t *testing.T) {
 					Error: nil,
 				},
 				{
+					// StateTracker empty get response. It would over complicate to test this here
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -598,6 +605,7 @@ func TestMainFlowSignUp(t *testing.T) {
 				Error  error
 			}{
 				{
+					// StateTracker empty get response. It would over complicate to test this here
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -614,6 +622,7 @@ func TestMainFlowSignUp(t *testing.T) {
 					Error: nil,
 				},
 				{
+					// StateTracker empty get response. It would over complicate to test this here
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -712,6 +721,7 @@ func TestMainFlowSignUpWrongInputs(t *testing.T) {
 				Error  error
 			}{
 				{
+					// StateTracker empty get response. It would over complicate to test this here
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -754,6 +764,7 @@ func TestMainFlowSignUpWrongInputs(t *testing.T) {
 				Error  error
 			}{
 				{
+					// StateTracker empty get response. It would over complicate to test this here
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -818,6 +829,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 				Error  error
 			}{
 				{
+					// StateTracker empty get response. It would over complicate to test this here
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -862,6 +874,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 				Error  error
 			}{
 				{
+					// StateTracker empty get response. It would over complicate to test this here
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -878,6 +891,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 					Error: nil,
 				},
 				{
+					// StateTracker empty get response. It would over complicate to test this here
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -934,6 +948,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 				Error  error
 			}{
 				{
+					// StateTracker empty get response. It would over complicate to test this here
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -1031,6 +1046,7 @@ func TestMainFlowHelp(t *testing.T) {
 				Error  error
 			}{
 				{
+					// StateTracker empty get response. It would over complicate to test this here
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -1073,6 +1089,7 @@ func TestMainFlowHelp(t *testing.T) {
 				Error  error
 			}{
 				{
+					// StateTracker empty get response. It would over complicate to test this here
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -1122,13 +1139,6 @@ func TestMainFlowHelp(t *testing.T) {
 }
 
 func TestMainFlowPrayerRequest(t *testing.T) {
-
-	// getMember (initial in MainFlow)
-	// getIntPhones (inside findIntercessors)
-	// getMember (inside findIntercessors) (2 times)
-	// putMember (inside findIntercessors) (2 times)
-	// putPrayer (end of prayerRequest) (2 times)
-
 	testCases := []TestCase{
 		{
 			description: "Successful simple prayer request flow",
@@ -1145,6 +1155,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				Error  error
 			}{
 				{
+					// StateTracker empty get response. It would over complicate to test this here
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -1160,6 +1171,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 					Error: nil,
 				},
 				{
+					// StateTracker empty get response. It would over complicate to test this here
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -1191,6 +1203,11 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 					Error: nil,
 				},
 				{
+					// Prayer empty get response because there are no active prayers for this intercessor
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
+				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
 							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
@@ -1204,6 +1221,11 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 						},
 					},
 					Error: nil,
+				},
+				{
+					// Prayer empty get response because there are no active prayers for this intercessor
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
 				},
 			},
 
@@ -1288,7 +1310,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				},
 			},
 
-			expectedGetItemCalls:  7,
+			expectedGetItemCalls:  9,
 			expectedPutItemCalls:  7,
 			expectedSendTextCalls: 3,
 		},
@@ -1307,6 +1329,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				Error  error
 			}{
 				{
+					// StateTracker empty get response. It would over complicate to test this here
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -1335,7 +1358,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 			expectedSendTextCalls: 1,
 		},
 		{
-			description: "Error with first put Member in findIntercessors",
+			description: "Error with first put Prayer in findIntercessors",
 
 			state: State{
 				Message: TextMessage{
@@ -1349,6 +1372,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				Error  error
 			}{
 				{
+					// StateTracker empty get response. It would over complicate to test this here
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -1364,6 +1388,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 					Error: nil,
 				},
 				{
+					// StateTracker empty get response. It would over complicate to test this here
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -1395,6 +1420,11 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 					Error: nil,
 				},
 				{
+					// Prayer empty get response because there are no active prayers for this intercessor
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
+				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
 							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
@@ -1408,6 +1438,11 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 						},
 					},
 					Error: nil,
+				},
+				{
+					// Prayer empty get response because there are no active prayers for this intercessor
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
 				},
 			},
 
@@ -1425,7 +1460,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				},
 			},
 
-			expectedGetItemCalls: 6,
+			expectedGetItemCalls: 7,
 			expectedPutItemCalls: 4,
 			expectedError:        true,
 		},
@@ -1444,6 +1479,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				Error  error
 			}{
 				{
+					// StateTracker empty get response. It would over complicate to test this here
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -1459,6 +1495,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 					Error: nil,
 				},
 				{
+					// StateTracker empty get response. It would over complicate to test this here
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -1490,6 +1527,11 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 					Error: nil,
 				},
 				{
+					// Prayer empty get response because there are no active prayers for this intercessor
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
+				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
 							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
@@ -1503,6 +1545,11 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 						},
 					},
 					Error: nil,
+				},
+				{
+					// Prayer empty get response because there are no active prayers for this intercessor
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
 				},
 			},
 
@@ -1527,7 +1574,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 			},
 
 			expectedPrayerQueue:   true,
-			expectedGetItemCalls:  8,
+			expectedGetItemCalls:  10,
 			expectedPutItemCalls:  4,
 			expectedSendTextCalls: 1,
 		},
@@ -1604,6 +1651,11 @@ func TestFindIntercessors(t *testing.T) {
 					Error: nil,
 				},
 				{
+					// Prayer empty get response because there are no active prayers for this intercessor
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
+				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
 							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
@@ -1617,6 +1669,11 @@ func TestFindIntercessors(t *testing.T) {
 						},
 					},
 					Error: nil,
+				},
+				{
+					// Prayer empty get response because there are no active prayers for this intercessor
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
 				},
 				{
 					Output: &dynamodb.GetItemOutput{
@@ -1634,6 +1691,11 @@ func TestFindIntercessors(t *testing.T) {
 					Error: nil,
 				},
 				{
+					// Prayer empty get response because there are no active prayers for this intercessor
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
+				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
 							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
@@ -1649,6 +1711,11 @@ func TestFindIntercessors(t *testing.T) {
 					Error: nil,
 				},
 				{
+					// Prayer empty get response because there are no active prayers for this intercessor
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
+				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
 							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
@@ -1662,6 +1729,11 @@ func TestFindIntercessors(t *testing.T) {
 						},
 					},
 					Error: nil,
+				},
+				{
+					// Prayer empty get response because there are no active prayers for this intercessor
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
 				},
 			},
 
@@ -1688,7 +1760,7 @@ func TestFindIntercessors(t *testing.T) {
 				},
 			},
 
-			expectedGetItemCalls: 6,
+			expectedGetItemCalls: 11,
 			expectedPutItemCalls: 2,
 		},
 		{
@@ -1727,6 +1799,11 @@ func TestFindIntercessors(t *testing.T) {
 					Error: nil,
 				},
 				{
+					// Prayer empty get response because there are no active prayers for this intercessor
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
+				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
 							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
@@ -1740,6 +1817,11 @@ func TestFindIntercessors(t *testing.T) {
 						},
 					},
 					Error: nil,
+				},
+				{
+					// Prayer empty get response because there are no active prayers for this intercessor
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
 				},
 				{
 					Output: &dynamodb.GetItemOutput{
@@ -1756,6 +1838,11 @@ func TestFindIntercessors(t *testing.T) {
 					},
 					Error: nil,
 				},
+				{
+					// Prayer empty get response because there are no active prayers for this intercessor
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
 			},
 
 			expectedMembers: []Member{
@@ -1771,7 +1858,7 @@ func TestFindIntercessors(t *testing.T) {
 				},
 			},
 
-			expectedGetItemCalls: 4,
+			expectedGetItemCalls: 7,
 			expectedPutItemCalls: 1,
 		},
 		{
@@ -1809,6 +1896,11 @@ func TestFindIntercessors(t *testing.T) {
 					Error: nil,
 				},
 				{
+					// Prayer empty get response because there are no active prayers for this intercessor
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
+				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
 							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
@@ -1823,9 +1915,164 @@ func TestFindIntercessors(t *testing.T) {
 					},
 					Error: nil,
 				},
+				{
+					// Prayer empty get response because there are no active prayers for this intercessor
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
 			},
 
-			expectedGetItemCalls: 3,
+			expectedMembers: nil,
+
+			expectedGetItemCalls: 5,
+		},
+		{
+			description: "This should return a single intercessor because, while they all are not maxed out on prayers, 2 of them already have active prayers",
+
+			mockGetItemResults: []struct {
+				Output *dynamodb.GetItemOutput
+				Error  error
+			}{
+				{
+					Output: &dynamodb.GetItemOutput{
+						Item: map[string]types.AttributeValue{
+							"Name": &types.AttributeValueMemberS{Value: intercessorPhonesKey},
+							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
+								&types.AttributeValueMemberS{Value: "111-111-1111"},
+								&types.AttributeValueMemberS{Value: "222-222-2222"},
+								&types.AttributeValueMemberS{Value: "333-333-3333"},
+							}},
+						},
+					},
+					Error: nil,
+				},
+				{
+					Output: &dynamodb.GetItemOutput{
+						Item: map[string]types.AttributeValue{
+							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
+							"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
+							"Phone":             &types.AttributeValueMemberS{Value: "111-111-1111"},
+							"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
+							"SetupStage":        &types.AttributeValueMemberN{Value: "99"},
+							"SetupStatus":       &types.AttributeValueMemberS{Value: "completed"},
+							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
+							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
+						},
+					},
+					Error: nil,
+				},
+				{
+					Output: &dynamodb.GetItemOutput{
+						Item: map[string]types.AttributeValue{
+							"Intercessor": &types.AttributeValueMemberM{
+								Value: map[string]types.AttributeValue{
+									"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
+									"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
+									"Phone":             &types.AttributeValueMemberS{Value: "111-111-1111"},
+									"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
+									"SetupStage":        &types.AttributeValueMemberN{Value: "99"},
+									"SetupStatus":       &types.AttributeValueMemberS{Value: "completed"},
+									"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "dummy date"},
+									"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
+								},
+							},
+							"IntercessorPhone": &types.AttributeValueMemberS{Value: "111-111-1111"},
+							"Request":          &types.AttributeValueMemberS{Value: "Please pray me.."},
+							"Requestor": &types.AttributeValueMemberM{
+								Value: map[string]types.AttributeValue{
+									"Intercessor": &types.AttributeValueMemberBOOL{Value: false},
+									"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
+									"Phone":       &types.AttributeValueMemberS{Value: "123-456-7890"},
+									"SetupStage":  &types.AttributeValueMemberN{Value: "99"},
+									"SetupStatus": &types.AttributeValueMemberS{Value: "completed"},
+								},
+							},
+						},
+					},
+					Error: nil,
+				},
+				{
+					Output: &dynamodb.GetItemOutput{
+						Item: map[string]types.AttributeValue{
+							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
+							"Name":              &types.AttributeValueMemberS{Value: "Intercessor2"},
+							"Phone":             &types.AttributeValueMemberS{Value: "222-222-2222"},
+							"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
+							"SetupStage":        &types.AttributeValueMemberN{Value: "99"},
+							"SetupStatus":       &types.AttributeValueMemberS{Value: "completed"},
+							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
+							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
+						},
+					},
+					Error: nil,
+				},
+				{
+					// Prayer empty get response because there are no active prayers for this intercessor
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
+				{
+					Output: &dynamodb.GetItemOutput{
+						Item: map[string]types.AttributeValue{
+							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
+							"Name":              &types.AttributeValueMemberS{Value: "Intercessor3"},
+							"Phone":             &types.AttributeValueMemberS{Value: "333-333-3333"},
+							"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
+							"SetupStage":        &types.AttributeValueMemberN{Value: "99"},
+							"SetupStatus":       &types.AttributeValueMemberS{Value: "completed"},
+							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
+							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
+						},
+					},
+					Error: nil,
+				},
+				{
+					Output: &dynamodb.GetItemOutput{
+						Item: map[string]types.AttributeValue{
+							"Intercessor": &types.AttributeValueMemberM{
+								Value: map[string]types.AttributeValue{
+									"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
+									"Name":              &types.AttributeValueMemberS{Value: "Intercessor3"},
+									"Phone":             &types.AttributeValueMemberS{Value: "333-333-3333"},
+									"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
+									"SetupStage":        &types.AttributeValueMemberN{Value: "99"},
+									"SetupStatus":       &types.AttributeValueMemberS{Value: "completed"},
+									"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "dummy date"},
+									"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
+								},
+							},
+							"IntercessorPhone": &types.AttributeValueMemberS{Value: "333-333-3333"},
+							"Request":          &types.AttributeValueMemberS{Value: "Please pray me.."},
+							"Requestor": &types.AttributeValueMemberM{
+								Value: map[string]types.AttributeValue{
+									"Intercessor": &types.AttributeValueMemberBOOL{Value: false},
+									"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
+									"Phone":       &types.AttributeValueMemberS{Value: "123-456-7890"},
+									"SetupStage":  &types.AttributeValueMemberN{Value: "99"},
+									"SetupStatus": &types.AttributeValueMemberS{Value: "completed"},
+								},
+							},
+						},
+					},
+					Error: nil,
+				},
+			},
+
+			expectedMembers: []Member{
+				{
+					Intercessor:       true,
+					Name:              "Intercessor2",
+					Phone:             "222-222-2222",
+					PrayerCount:       2,
+					SetupStage:        99,
+					SetupStatus:       "completed",
+					WeeklyPrayerDate:  "dummy date/time",
+					WeeklyPrayerLimit: 5,
+				},
+			},
+
+			expectedGetItemCalls: 7,
+			expectedPutItemCalls: 1,
 		},
 	}
 
@@ -1873,6 +2120,7 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 				Error  error
 			}{
 				{
+					// StateTracker empty get response. It would over complicate to test this here
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -1892,6 +2140,7 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 					Error: nil,
 				},
 				{
+					// StateTracker empty get response. It would over complicate to test this here
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -1959,6 +2208,7 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 				Error  error
 			}{
 				{
+					// StateTracker empty get response. It would over complicate to test this here
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -2005,6 +2255,7 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 				Error  error
 			}{
 				{
+					// StateTracker empty get response. It would over complicate to test this here
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -2024,6 +2275,7 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 					Error: nil,
 				},
 				{
+					// StateTracker empty get response. It would over complicate to test this here
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
