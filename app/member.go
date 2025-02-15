@@ -23,16 +23,17 @@ const (
 )
 
 func (m *Member) get(clnt DDBConnecter) error {
-	resp, err := getItem(clnt, memberAttribute, m.Phone, memberTable)
+	mem, err := getDdbObject[Member](clnt, memberAttribute, m.Phone, memberTable)
 	if err != nil {
 		return err
 	}
 
-	if err := attributevalue.UnmarshalMap(resp.Item, &m); err != nil {
-		slog.Error("unmarshal failed for get member")
-		return err
+	// this is important so that the original member object doesn't get reset to all empty struct 
+	// values if the member does not exist in ddb
+	if mem.Phone != "" {
+		*m = *mem
 	}
-
+	
 	return nil
 }
 
@@ -43,7 +44,7 @@ func (m *Member) put(clnt DDBConnecter) error {
 		return err
 	}
 
-	if err := putItem(clnt, memberTable, data); err != nil {
+	if err := putDdbItem(clnt, memberTable, data); err != nil {
 		return err
 	}
 
@@ -51,7 +52,7 @@ func (m *Member) put(clnt DDBConnecter) error {
 }
 
 func (m *Member) delete(clnt DDBConnecter) error {
-	if err := delItem(clnt, memberAttribute, m.Phone, memberTable); err != nil {
+	if err := delDdbItem(clnt, memberAttribute, m.Phone, memberTable); err != nil {
 		return err
 	}
 
@@ -64,6 +65,7 @@ func (m *Member) sendMessage(clnt DDBConnecter, sndr TextSender, body string) er
 		Body:  body,
 		Phone: m.Phone,
 	}
+
 	return sndr.sendText(clnt, message)
 }
 

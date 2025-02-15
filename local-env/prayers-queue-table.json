@@ -1,10 +1,10 @@
 {
     "TableName": "PrayersQueue",
     "KeySchema": [
-      { "AttributeName": "RequestorPhone", "KeyType": "HASH" }
+      { "AttributeName": "IntercessorPhone", "KeyType": "HASH" }
     ],
     "AttributeDefinitions": [
-      { "AttributeName": "RequestorPhone", "AttributeType": "S" }
+      { "AttributeName": "IntercessorPhone", "AttributeType": "S" }
     ],
     "ProvisionedThroughput": {
       "ReadCapacityUnits": 1,

@@ -28,15 +28,12 @@ const (
 )
 
 func (st *StateTracker) get(clnt DDBConnecter) error {
-	resp, err := getItem(clnt, stateTrackerAttribute, stateTrackerKey, stateTrackerTable)
+	sttrckr, err := getDdbObject[StateTracker](clnt, stateTrackerAttribute, stateTrackerKey, stateTrackerTable)
 	if err != nil {
 		return err
 	}
 
-	if err := attributevalue.UnmarshalMap(resp.Item, &st); err != nil {
-		slog.Error("unmarshal failed for get StateTracker")
-		return err
-	}
+	*st = *sttrckr
 
 	return nil
 }
@@ -50,7 +47,7 @@ func (st *StateTracker) put(clnt DDBConnecter) error {
 		return err
 	}
 
-	if err := putItem(clnt, stateTrackerTable, data); err != nil {
+	if err := putDdbItem(clnt, stateTrackerTable, data); err != nil {
 		return err
 	}
 

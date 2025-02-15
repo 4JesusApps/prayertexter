@@ -14,31 +14,31 @@ type Prayer struct {
 }
 
 const (
-	activePrayersAttribute = "IntercessorPhone"
-	activePrayersTable     = "ActivePrayers"
-	prayersQueueAttribute  = "RequestorPhone"
-	prayersQueueTable      = "PrayersQueue"
+	prayersAttribute   = "IntercessorPhone"
+	activePrayersTable = "ActivePrayers"
+	prayersQueueTable  = "PrayersQueue"
 )
 
 func (p *Prayer) get(clnt DDBConnecter, queue bool) error {
 	// queue determines whether ActivePrayers or PrayersQueue table is used for get
 	table := getPrayerTable(queue)
-	resp, err := getItem(clnt, activePrayersAttribute, p.IntercessorPhone, table)
+	pryr, err := getDdbObject[Prayer](clnt, prayersAttribute, p.IntercessorPhone, table)
 	if err != nil {
 		return err
 	}
 
-	if err := attributevalue.UnmarshalMap(resp.Item, &p); err != nil {
-		slog.Error("unmarshal failed for get Prayer")
-		return err
+	// this is important so that the original prayer object doesn't get reset to all empty struct
+	// values if the prayer does not exist in ddb
+	if pryr.Request != "" {
+		*p = *pryr
 	}
-
+	
 	return nil
 }
 
 func (p *Prayer) delete(clnt DDBConnecter, queue bool) error {
 	table := getPrayerTable(queue)
-	if err := delItem(clnt, activePrayersAttribute, p.IntercessorPhone, table); err != nil {
+	if err := delDdbItem(clnt, prayersAttribute, p.IntercessorPhone, table); err != nil {
 		return err
 	}
 
@@ -56,7 +56,7 @@ func (p *Prayer) put(clnt DDBConnecter, queue bool) error {
 	}
 
 	table := getPrayerTable(queue)
-	if err := putItem(clnt, table, data); err != nil {
+	if err := putDdbItem(clnt, table, data); err != nil {
 		return err
 	}
 

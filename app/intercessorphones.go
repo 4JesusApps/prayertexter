@@ -21,17 +21,13 @@ const (
 )
 
 func (i *IntercessorPhones) get(clnt DDBConnecter) error {
-	resp, err := getItem(clnt, intercessorPhonesAttribute, intercessorPhonesKey,
-		intercessorPhonesTable)
+	intr, err := getDdbObject[IntercessorPhones](clnt, intercessorPhonesAttribute, intercessorPhonesKey, intercessorPhonesTable)
 	if err != nil {
 		return err
 	}
 
-	if err := attributevalue.UnmarshalMap(resp.Item, &i); err != nil {
-		slog.Error("unmarshal failed for get IntercessorPhones")
-		return err
-	}
-
+	*i = *intr
+	
 	return nil
 }
 
@@ -44,7 +40,7 @@ func (i *IntercessorPhones) put(clnt DDBConnecter) error {
 		return err
 	}
 
-	if err := putItem(clnt, intercessorPhonesTable, data); err != nil {
+	if err := putDdbItem(clnt, intercessorPhonesTable, data); err != nil {
 		return err
 	}
 
