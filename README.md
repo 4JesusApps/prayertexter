@@ -39,3 +39,6 @@ Good dynamodb commands:
 - add unit test for mem.checkIfActive(clnt)
 - if user cancels and they are Intercessor with active prayer, move prayer to someone else
 - implement 10DLC phone number
+- implement unit tests for non-main files
+- implement generics for get, delete, put methods
+- save txt message to failed state so stage can re-run later
