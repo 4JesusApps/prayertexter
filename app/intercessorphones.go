@@ -14,7 +14,7 @@ type IntercessorPhones struct {
 }
 
 const (
-	intercessorPhonesAttribute = "Key"
+	intercessorPhonesAttribute = "Name"
 	intercessorPhonesKey       = "IntercessorPhones"
 	intercessorPhonesTable     = "General"
 	numIntercessorsPerPrayer   = 2

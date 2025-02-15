@@ -35,10 +35,11 @@ Good dynamodb commands:
     - check prayer queue table and assign prayers if possible
     - some level of continue off of previous failures
     - check that all phones on intercessor phones list are for active members (maybe, low priority, potential high ddb cost to run get on all intercessors)
-- implement check to make sure lambda only gets ran once per api call
+    - clear out old states from state tracker
+- implement check to make sure lambda only gets ran once per api call (state tracker)
 - add unit test for mem.checkIfActive(clnt)
 - if user cancels and they are Intercessor with active prayer, move prayer to someone else
 - implement 10DLC phone number
 - implement unit tests for non-main files
 - implement generics for get, delete, put methods
-- save txt message to failed state so stage can re-run later
+- prevent intercessors from praying from their own request
