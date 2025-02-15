@@ -57,13 +57,13 @@ func (st *StateTracker) put(clnt DDBConnecter) error {
 	return nil
 }
 
-func (state *State) update(clnt DDBConnecter) error {
+func (s *State) update(clnt DDBConnecter) error {
 	st := StateTracker{}
 	if err := st.get(clnt); err != nil {
 		return err
 	}
 
-	st.States = append(st.States, *state)
+	st.States = append(st.States, *s)
 	if err := st.put(clnt); err != nil {
 		return err
 	}

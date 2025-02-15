@@ -22,13 +22,13 @@ const (
 	memberTable     = "Members"
 )
 
-func (mem *Member) get(clnt DDBConnecter) error {
-	resp, err := getItem(clnt, memberAttribute, mem.Phone, memberTable)
+func (m *Member) get(clnt DDBConnecter) error {
+	resp, err := getItem(clnt, memberAttribute, m.Phone, memberTable)
 	if err != nil {
 		return err
 	}
 
-	if err := attributevalue.UnmarshalMap(resp.Item, &mem); err != nil {
+	if err := attributevalue.UnmarshalMap(resp.Item, &m); err != nil {
 		slog.Error("unmarshal failed for get member")
 		return err
 	}
@@ -36,8 +36,8 @@ func (mem *Member) get(clnt DDBConnecter) error {
 	return nil
 }
 
-func (mem *Member) put(clnt DDBConnecter) error {
-	data, err := attributevalue.MarshalMap(mem)
+func (m *Member) put(clnt DDBConnecter) error {
+	data, err := attributevalue.MarshalMap(m)
 	if err != nil {
 		slog.Error("marshal failed for put Member")
 		return err
@@ -50,30 +50,30 @@ func (mem *Member) put(clnt DDBConnecter) error {
 	return nil
 }
 
-func (mem *Member) delete(clnt DDBConnecter) error {
-	if err := delItem(clnt, memberAttribute, mem.Phone, memberTable); err != nil {
+func (m *Member) delete(clnt DDBConnecter) error {
+	if err := delItem(clnt, memberAttribute, m.Phone, memberTable); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (mem *Member) sendMessage(clnt DDBConnecter, sndr TextSender, body string) error {
+func (m *Member) sendMessage(clnt DDBConnecter, sndr TextSender, body string) error {
 	body = msgPre + body + "\n\n" + msgPost
 	message := TextMessage{
 		Body:  body,
-		Phone: mem.Phone,
+		Phone: m.Phone,
 	}
 	return sndr.sendText(clnt, message)
 }
 
-func (mem *Member) checkIfActive(clnt DDBConnecter) (bool, error) {
-	if err := mem.get(clnt); err != nil {
+func (m *Member) checkIfActive(clnt DDBConnecter) (bool, error) {
+	if err := m.get(clnt); err != nil {
 		return false, err
 	}
 
 	// empty string means get did not return a member
-	if mem.SetupStatus == "" {
+	if m.SetupStatus == "" {
 		return false, nil
 	} else {
 		return true, nil
