@@ -42,4 +42,6 @@ Good dynamodb commands:
 - implement 10DLC phone number
 - implement unit tests for non-main files
 - implement generics for get, delete, put methods
-- prevent intercessors from praying from their own request
+- prevent intercessors from praying for their own request
+- fix statetracker from creating multiple states of the same flow
+- fix statetracker to use unique requestIDs

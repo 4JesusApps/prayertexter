@@ -22,7 +22,7 @@ type State struct {
 }
 
 const (
-	stateTrackerAttribute = "Name"
+	stateTrackerAttribute = "Key"
 	stateTrackerKey       = "StateTracker"
 	stateTrackerTable     = "General"
 )
