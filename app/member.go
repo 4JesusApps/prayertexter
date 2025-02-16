@@ -1,11 +1,5 @@
 package prayertexter
 
-import (
-	"log/slog"
-
-	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
-)
-
 type Member struct {
 	Intercessor       bool
 	Name              string
@@ -38,25 +32,11 @@ func (m *Member) get(clnt DDBConnecter) error {
 }
 
 func (m *Member) put(clnt DDBConnecter) error {
-	data, err := attributevalue.MarshalMap(m)
-	if err != nil {
-		slog.Error("marshal failed for put Member")
-		return err
-	}
-
-	if err := putDdbItem(clnt, memberTable, data); err != nil {
-		return err
-	}
-
-	return nil
+	return putDdbObject(clnt, memberTable, m)
 }
 
 func (m *Member) delete(clnt DDBConnecter) error {
-	if err := delDdbItem(clnt, memberAttribute, m.Phone, memberTable); err != nil {
-		return err
-	}
-
-	return nil
+	return delDdbItem(clnt, memberAttribute, m.Phone, memberTable)
 }
 
 func (m *Member) sendMessage(clnt DDBConnecter, sndr TextSender, body string) error {

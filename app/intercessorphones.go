@@ -4,8 +4,6 @@ import (
 	"log/slog"
 	"math/rand/v2"
 	"slices"
-
-	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 )
 
 type IntercessorPhones struct {
@@ -27,31 +25,20 @@ func (i *IntercessorPhones) get(clnt DDBConnecter) error {
 	}
 
 	*i = *intr
-	
+
 	return nil
 }
 
 func (i *IntercessorPhones) put(clnt DDBConnecter) error {
 	i.Key = intercessorPhonesKey
-
-	data, err := attributevalue.MarshalMap(i)
-	if err != nil {
-		slog.Error("marshal failed for put IntercessorPhones")
-		return err
-	}
-
-	if err := putDdbItem(clnt, intercessorPhonesTable, data); err != nil {
-		return err
-	}
-
-	return nil
+	return putDdbObject(clnt, intercessorPhonesTable, i)
 }
 
 func (i *IntercessorPhones) addPhone(phone string) {
 	i.Phones = append(i.Phones, phone)
 }
 
-func (i *IntercessorPhones) delPhone(phone string) {
+func (i *IntercessorPhones) removePhone(phone string) {
 	var newPhones []string
 
 	for _, p := range i.Phones {

@@ -282,7 +282,7 @@ func memberDelete(mem Member, clnt DDBConnecter, sndr TextSender) error {
 			slog.Error("failed to get phone list during cancellation")
 			return err
 		}
-		phones.delPhone(mem.Phone)
+		phones.removePhone(mem.Phone)
 		if err := phones.put(clnt); err != nil {
 			slog.Error("failed to put phone list during cancellation")
 			return err
@@ -384,14 +384,14 @@ func findIntercessors(clnt DDBConnecter) ([]Member, error) {
 			if isActive {
 				// this means that intercessor already has 1 active prayer and cannot be used for
 				// another 1. there is a limitation of 1 active prayer at a time per intercessor
-				allPhones.delPhone(intr.Phone)
+				allPhones.removePhone(intr.Phone)
 				continue
 			}
 
 			if intr.PrayerCount < intr.WeeklyPrayerLimit {
 				intr.PrayerCount += 1
 				intercessors = append(intercessors, intr)
-				allPhones.delPhone(intr.Phone)
+				allPhones.removePhone(intr.Phone)
 				if err := intr.put(clnt); err != nil {
 					slog.Error("put intercessor failed during find intercessors - +1 count")
 					return nil, err
@@ -411,13 +411,13 @@ func findIntercessors(clnt DDBConnecter) ([]Member, error) {
 					intr.PrayerCount = 1
 					intr.WeeklyPrayerDate = time.Now().Format(time.RFC3339)
 					intercessors = append(intercessors, intr)
-					allPhones.delPhone(intr.Phone)
+					allPhones.removePhone(intr.Phone)
 					if err := intr.put(clnt); err != nil {
 						slog.Error("put intercessor failed during find intercessors - count reset")
 						return nil, err
 					}
 				} else if (diff / 24) < 7 {
-					allPhones.delPhone(intr.Phone)
+					allPhones.removePhone(intr.Phone)
 				}
 			}
 		}

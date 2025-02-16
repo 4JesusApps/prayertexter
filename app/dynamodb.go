@@ -71,7 +71,7 @@ func getDdbObject[T any](clnt DDBConnecter, attr, key, table string) (*T, error)
 
 	var object T
 	if err := attributevalue.UnmarshalMap(resp.Item, &object); err != nil {
-		slog.Error("unmarshal failed", "type", fmt.Sprintf("%T", object))
+		slog.Error("unmarshal failed during getDdbObject", "type", fmt.Sprintf("%T", object))
 		return nil, err
 	}
 
@@ -85,6 +85,16 @@ func putDdbItem(clnt DDBConnecter, table string, data map[string]types.Attribute
 	})
 
 	return err
+}
+
+func putDdbObject[T any](clnt DDBConnecter, table string, object *T) error {
+	item, err := attributevalue.MarshalMap(object)
+	if err != nil {
+		slog.Error("marshal failed for putDdbObject", "type", fmt.Sprintf("%T", object))
+		return err
+	}
+
+	return putDdbItem(clnt, table, item)
 }
 
 func delDdbItem(clnt DDBConnecter, attr, key, table string) error {

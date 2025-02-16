@@ -1,11 +1,5 @@
 package prayertexter
 
-import (
-	"log/slog"
-
-	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
-)
-
 type StateTracker struct {
 	Key    string
 	States []State
@@ -40,18 +34,7 @@ func (st *StateTracker) get(clnt DDBConnecter) error {
 
 func (st *StateTracker) put(clnt DDBConnecter) error {
 	st.Key = stateTrackerKey
-
-	data, err := attributevalue.MarshalMap(st)
-	if err != nil {
-		slog.Error("marshal failed for put StateTracker")
-		return err
-	}
-
-	if err := putDdbItem(clnt, stateTrackerTable, data); err != nil {
-		return err
-	}
-
-	return nil
+	return putDdbObject(clnt, string(stateTrackerTable), st)
 }
 
 func (s *State) update(clnt DDBConnecter) error {

@@ -1,11 +1,5 @@
 package prayertexter
 
-import (
-	"log/slog"
-
-	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
-)
-
 type Prayer struct {
 	Intercessor      Member
 	IntercessorPhone string
@@ -36,31 +30,18 @@ func (p *Prayer) get(clnt DDBConnecter, queue bool) error {
 	return nil
 }
 
-func (p *Prayer) delete(clnt DDBConnecter, queue bool) error {
-	table := getPrayerTable(queue)
-	if err := delDdbItem(clnt, prayersAttribute, p.IntercessorPhone, table); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func (p *Prayer) put(clnt DDBConnecter, queue bool) error {
 	// queue is only used if there are not enough intercessors available to take a prayer request
 	// prayers get queued in order to save them for a time when intercessors are available
 	// this will change the ddb table that the prayer is saved to
-	data, err := attributevalue.MarshalMap(p)
-	if err != nil {
-		slog.Error("marshal failed for put Prayer")
-		return err
-	}
-
 	table := getPrayerTable(queue)
-	if err := putDdbItem(clnt, table, data); err != nil {
-		return err
-	}
+	
+	return putDdbObject(clnt, table, p)
+}
 
-	return nil
+func (p *Prayer) delete(clnt DDBConnecter, queue bool) error {
+	table := getPrayerTable(queue)
+	return delDdbItem(clnt, prayersAttribute, p.IntercessorPhone, table)
 }
 
 func getPrayerTable(queue bool) string {
