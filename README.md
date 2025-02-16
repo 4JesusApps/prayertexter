@@ -45,3 +45,4 @@ Good dynamodb commands:
 - prevent intercessors from praying for their own request
 - fix statetracker from creating multiple states of the same flow
 - fix statetracker to use unique requestIDs
+- long tests utilizing local ddb and sam local apigateway/lambda
