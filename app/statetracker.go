@@ -6,7 +6,7 @@ type StateTracker struct {
 }
 
 type State struct {
-	Error      error
+	Error      string
 	Message    TextMessage
 	RequestID  string
 	Stage      string

@@ -28,7 +28,7 @@ func MainFlow(state State, clnt DDBConnecter, sndr TextSender) error {
 			return err
 		}
 		if err1 := mem.sendMessage(clnt, sndr, msgHelp); err1 != nil {
-			state.Error = err1
+			state.Error = err1.Error()
 			state.Status = "FAILED"
 			if err2 := state.update(clnt); err2 != nil {
 				return err2
@@ -43,7 +43,7 @@ func MainFlow(state State, clnt DDBConnecter, sndr TextSender) error {
 			return err
 		}
 		if err1 := memberDelete(mem, clnt, sndr); err1 != nil {
-			state.Error = err1
+			state.Error = err1.Error()
 			state.Status = "FAILED"
 			if err2 := state.update(clnt); err2 != nil {
 				return err2
@@ -58,7 +58,7 @@ func MainFlow(state State, clnt DDBConnecter, sndr TextSender) error {
 			return err
 		}
 		if err1 := signUp(txt, mem, clnt, sndr); err1 != nil {
-			state.Error = err1
+			state.Error = err1.Error()
 			state.Status = "FAILED"
 			if err2 := state.update(clnt); err2 != nil {
 				return err2
@@ -81,7 +81,7 @@ func MainFlow(state State, clnt DDBConnecter, sndr TextSender) error {
 			return err
 		}
 		if err1 := completePrayer(mem, clnt, sndr); err1 != nil {
-			state.Error = err1
+			state.Error = err1.Error()
 			state.Status = "FAILED"
 			if err2 := state.update(clnt); err2 != nil {
 				return err2
@@ -96,7 +96,7 @@ func MainFlow(state State, clnt DDBConnecter, sndr TextSender) error {
 			return err
 		}
 		if err1 := prayerRequest(txt, mem, clnt, sndr); err1 != nil {
-			state.Error = err1
+			state.Error = err1.Error()
 			state.Status = "FAILED"
 			if err2 := state.update(clnt); err2 != nil {
 				return err2
