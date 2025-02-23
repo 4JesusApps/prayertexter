@@ -22,12 +22,12 @@ func (m *Member) get(clnt DDBConnecter) error {
 		return err
 	}
 
-	// this is important so that the original member object doesn't get reset to all empty struct 
+	// this is important so that the original member object doesn't get reset to all empty struct
 	// values if the member does not exist in ddb
 	if mem.Phone != "" {
 		*m = *mem
 	}
-	
+
 	return nil
 }
 
@@ -51,6 +51,7 @@ func (m *Member) sendMessage(clnt DDBConnecter, sndr TextSender, body string) er
 
 func (m *Member) checkIfActive(clnt DDBConnecter) (bool, error) {
 	if err := m.get(clnt); err != nil {
+		// returning false but it really should be nil due to error
 		return false, err
 	}
 
