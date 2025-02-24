@@ -267,20 +267,21 @@ func TestGetDdbObject(t *testing.T) {
 	for _, expectedObject := range expectedObjects {
 		switch obj := expectedObject.(type) {
 		case *Member:
-			testObject(t, ddbMock, obj)
+			testGetObject(t, ddbMock, obj)
 		case *IntercessorPhones:
-			testObject(t, ddbMock, obj)
+			testGetObject(t, ddbMock, obj)
 		case *Prayer:
-			testObject(t, ddbMock, obj)
+			testGetObject(t, ddbMock, obj)
 		case *StateTracker:
-			testObject(t, ddbMock, obj)
+			testGetObject(t, ddbMock, obj)
 		default:
 			t.Errorf("unexpected type %T", expectedObject)
 		}
 	}
 }
 
-func testObject[T any](t *testing.T, ddbMock DDBConnecter, expectedObject *T) {
+func testGetObject[T any](t *testing.T, ddbMock DDBConnecter, expectedObject *T) {
+	// using test test test here because get ddb function is mocked so parameters are irrelevant
 	testedObject, err := getDdbObject[T](ddbMock, "test", "test", "test")
 	if err != nil {
 		t.Errorf("getDdbObject failed for type %T: %v", expectedObject, err)
@@ -311,6 +312,7 @@ func TestPutDdbObject(t *testing.T) {
 }
 
 func testPutObject[T any](t *testing.T, ddbMock *MockDDBConnecter, expectedObject *T, index int) {
+	// using test here because put ddb function is mocked so this parameter is irrelevant
 	err := putDdbObject(ddbMock, "test", expectedObject)
 	if err != nil {
 		t.Errorf("putDdbObject failed for type %T: %v", expectedObject, err)
