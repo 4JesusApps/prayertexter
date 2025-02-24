@@ -27,7 +27,11 @@ func (st *StateTracker) get(clnt DDBConnecter) error {
 		return err
 	}
 
-	*st = *sttrckr
+	// this is important so that the original Member object doesn't get reset to all empty struct
+	// values if the Member does not exist in ddb
+	if sttrckr.Key != "" {
+		*st = *sttrckr
+	}
 
 	return nil
 }

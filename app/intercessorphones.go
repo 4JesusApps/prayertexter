@@ -24,7 +24,11 @@ func (i *IntercessorPhones) get(clnt DDBConnecter) error {
 		return err
 	}
 
-	*i = *intr
+	// this is important so that the original IntercessorPhones object doesn't get reset to all 
+	// empty struct values if the IntercessorPhones does not exist in ddb
+	if intr.Key != "" {
+		*i = *intr
+	}
 
 	return nil
 }

@@ -21,9 +21,9 @@ func (p *Prayer) get(clnt DDBConnecter, queue bool) error {
 		return err
 	}
 
-	// this is important so that the original prayer object doesn't get reset to all empty struct
-	// values if the prayer does not exist in ddb
-	if pryr.Request != "" {
+	// this is important so that the original Prayer object doesn't get reset to all empty struct
+	// values if the Prayer does not exist in ddb
+	if pryr.IntercessorPhone != "" {
 		*p = *pryr
 	}
 	

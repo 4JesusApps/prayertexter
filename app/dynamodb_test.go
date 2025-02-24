@@ -77,7 +77,7 @@ var expectedDdbItems = []struct {
 	Output *dynamodb.GetItemOutput
 	Error  error
 }{
-	// member test
+	// Member
 	{
 		Output: &dynamodb.GetItemOutput{
 			Item: map[string]types.AttributeValue{
@@ -93,7 +93,7 @@ var expectedDdbItems = []struct {
 		},
 		Error: nil,
 	},
-	// intercessorphones test
+	// IntercessorPhones
 	{
 		Output: &dynamodb.GetItemOutput{
 			Item: map[string]types.AttributeValue{
@@ -106,7 +106,7 @@ var expectedDdbItems = []struct {
 		},
 		Error: nil,
 	},
-	// prayer test
+	// Prayer
 	{
 		Output: &dynamodb.GetItemOutput{
 			Item: map[string]types.AttributeValue{
@@ -140,7 +140,7 @@ var expectedDdbItems = []struct {
 		},
 		Error: nil,
 	},
-	// statetracker test
+	// StateTracker
 	{
 		Output: &dynamodb.GetItemOutput{
 			Item: map[string]types.AttributeValue{
