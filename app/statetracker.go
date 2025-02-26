@@ -47,7 +47,17 @@ func (s *State) update(clnt DDBConnecter) error {
 		return err
 	}
 
-	st.States = append(st.States, *s)
+	stateExists := false
+	for _, state := range st.States {
+		if state.RequestID == s.RequestID {
+			state = *s
+			stateExists = true
+		}
+	}
+	if !stateExists {
+		st.States = append(st.States, *s)
+	}
+
 	if err := st.put(clnt); err != nil {
 		return err
 	}
