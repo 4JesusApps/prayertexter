@@ -2,6 +2,7 @@ package prayertexter
 
 import (
 	"log/slog"
+	"testing"
 )
 
 type MockTextService struct {
@@ -26,4 +27,18 @@ func (mock *MockTextService) sendText(clnt DDBConnecter, msg TextMessage) error 
 	result := mock.SendTextResults[mock.SendTextCalls-1]
 
 	return result.Error
+}
+
+func TestCheckProfanity(t *testing.T) {
+	msg := TextMessage{Body: "test text message, no profanity"}
+	profanity := msg.checkProfanity()
+	if profanity != "" {
+		t.Errorf("expected no profanity, got %v", profanity)
+	}
+
+	msg.Body = "this message contains profanity, sh!t!"
+	profanity = msg.checkProfanity()
+	if profanity == "" {
+ 		t.Errorf("expected profanity, got none (empty string): %v", profanity)
+	}
 }

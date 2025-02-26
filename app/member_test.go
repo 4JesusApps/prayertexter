@@ -37,13 +37,14 @@ func TestSendMessage(t *testing.T) {
 	}
 }
 
-func TestCheckIfActive(t *testing.T) {
+func TestCheckIfActiveMember(t *testing.T) {
 	mockGetItemResults := []struct {
 		Output *dynamodb.GetItemOutput
 		Error  error
 	}{
 		{
 			// This is an empty ddb response, meaning that the key does not exist in ddb
+			// we are simulating the member not active with this empty response
 			Output: &dynamodb.GetItemOutput{},
 			Error:  nil,
 		},
