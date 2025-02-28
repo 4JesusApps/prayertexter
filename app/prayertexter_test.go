@@ -14,7 +14,7 @@ import (
 
 type TestCase struct {
 	description string
-	state       State
+	message     TextMessage
 
 	expectedGetItemCalls    int
 	expectedPutItemCalls    int
@@ -214,11 +214,9 @@ func TestMainFlowSignUp(t *testing.T) {
 		{
 			description: "Sign up stage ONE: user texts the word pray to start sign up process",
 
-			state: State{
-				Message: TextMessage{
-					Body:  "pray",
-					Phone: "123-456-7890",
-				},
+			message: TextMessage{
+				Body:  "pray",
+				Phone: "123-456-7890",
 			},
 
 			expectedMembers: []Member{
@@ -243,11 +241,9 @@ func TestMainFlowSignUp(t *testing.T) {
 		{
 			description: "Sign up stage ONE: user texts the word Pray (capitol P) to start sign up process",
 
-			state: State{
-				Message: TextMessage{
-					Body:  "Pray",
-					Phone: "123-456-7890",
-				},
+			message: TextMessage{
+				Body:  "Pray",
+				Phone: "123-456-7890",
 			},
 
 			expectedMembers: []Member{
@@ -272,11 +268,9 @@ func TestMainFlowSignUp(t *testing.T) {
 		{
 			description: "Sign up stage ONE: get Member error",
 
-			state: State{
-				Message: TextMessage{
-					Body:  "pray",
-					Phone: "123-456-7890",
-				},
+			message: TextMessage{
+				Body:  "pray",
+				Phone: "123-456-7890",
 			},
 
 			mockGetItemResults: []struct {
@@ -301,11 +295,9 @@ func TestMainFlowSignUp(t *testing.T) {
 		{
 			description: "Sign up stage TWO-A: user texts name",
 
-			state: State{
-				Message: TextMessage{
-					Body:  "John Doe",
-					Phone: "123-456-7890",
-				},
+			message: TextMessage{
+				Body:  "John Doe",
+				Phone: "123-456-7890",
 			},
 
 			mockGetItemResults: []struct {
@@ -352,11 +344,9 @@ func TestMainFlowSignUp(t *testing.T) {
 		{
 			description: "Sign up stage TWO-B: user texts 2 to remain anonymous",
 
-			state: State{
-				Message: TextMessage{
-					Body:  "2",
-					Phone: "123-456-7890",
-				},
+			message: TextMessage{
+				Body:  "2",
+				Phone: "123-456-7890",
 			},
 
 			mockGetItemResults: []struct {
@@ -403,11 +393,9 @@ func TestMainFlowSignUp(t *testing.T) {
 		{
 			description: "Sign up final prayer message: user texts 1 which means they do not want to be an intercessor",
 
-			state: State{
-				Message: TextMessage{
-					Body:  "1",
-					Phone: "123-456-7890",
-				},
+			message: TextMessage{
+				Body:  "1",
+				Phone: "123-456-7890",
 			},
 
 			mockGetItemResults: []struct {
@@ -456,11 +444,9 @@ func TestMainFlowSignUp(t *testing.T) {
 		{
 			description: "Sign up stage THREE: user texts 2 which means they want to be an intercessor",
 
-			state: State{
-				Message: TextMessage{
-					Body:  "2",
-					Phone: "123-456-7890",
-				},
+			message: TextMessage{
+				Body:  "2",
+				Phone: "123-456-7890",
 			},
 
 			mockGetItemResults: []struct {
@@ -509,11 +495,9 @@ func TestMainFlowSignUp(t *testing.T) {
 		{
 			description: "Sign up final intercessor message: user texts the number of prayers they are willing to receive per week",
 
-			state: State{
-				Message: TextMessage{
-					Body:  "10",
-					Phone: "123-456-7890",
-				},
+			message: TextMessage{
+				Body:  "10",
+				Phone: "123-456-7890",
 			},
 
 			mockGetItemResults: []struct {
@@ -593,11 +577,9 @@ func TestMainFlowSignUp(t *testing.T) {
 		{
 			description: "Sign up final intercessor message: put IntercessorPhones error",
 
-			state: State{
-				Message: TextMessage{
-					Body:  "10",
-					Phone: "123-456-7890",
-				},
+			message: TextMessage{
+				Body:  "10",
+				Phone: "123-456-7890",
 			},
 
 			mockGetItemResults: []struct {
@@ -670,13 +652,13 @@ func TestMainFlowSignUp(t *testing.T) {
 
 			if test.expectedError {
 				// handles failures for error mocks
-				if err := MainFlow(test.state, ddbMock, txtMock); err == nil {
+				if err := MainFlow(test.message, ddbMock, txtMock); err == nil {
 					t.Fatalf("expected error, got nil")
 				}
 				testNumMethodCalls(ddbMock, txtMock, t, test)
 			} else {
 				// handles success test cases
-				if err := MainFlow(test.state, ddbMock, txtMock); err != nil {
+				if err := MainFlow(test.message, ddbMock, txtMock); err != nil {
 					t.Fatalf("unexpected error starting MainFlow: %v", err)
 				}
 
@@ -696,11 +678,9 @@ func TestMainFlowSignUpWrongInputs(t *testing.T) {
 		{
 			description: "pray misspelled - returns non registered user and exits",
 
-			state: State{
-				Message: TextMessage{
-					Body:  "prayyy",
-					Phone: "123-456-7890",
-				},
+			message: TextMessage{
+				Body:  "prayyy",
+				Phone: "123-456-7890",
 			},
 
 			expectedGetItemCalls: 4,
@@ -709,11 +689,9 @@ func TestMainFlowSignUpWrongInputs(t *testing.T) {
 		{
 			description: "Sign up stage THREE: did not send 1 or 2 as expected to answer msgMemberTypeRequest",
 
-			state: State{
-				Message: TextMessage{
-					Body:  "wrong response to question",
-					Phone: "123-456-7890",
-				},
+			message: TextMessage{
+				Body:  "wrong response to question",
+				Phone: "123-456-7890",
 			},
 
 			mockGetItemResults: []struct {
@@ -752,11 +730,9 @@ func TestMainFlowSignUpWrongInputs(t *testing.T) {
 		{
 			description: "Sign up final intercessor message: did not send number as expected",
 
-			state: State{
-				Message: TextMessage{
-					Body:  "wrong response to question",
-					Phone: "123-456-7890",
-				},
+			message: TextMessage{
+				Body:  "wrong response to question",
+				Phone: "123-456-7890",
 			},
 
 			mockGetItemResults: []struct {
@@ -802,7 +778,7 @@ func TestMainFlowSignUpWrongInputs(t *testing.T) {
 		t.Run(test.description, func(t *testing.T) {
 			setMocks(ddbMock, txtMock, test)
 
-			if err := MainFlow(test.state, ddbMock, txtMock); err != nil {
+			if err := MainFlow(test.message, ddbMock, txtMock); err != nil {
 				t.Fatalf("unexpected error starting MainFlow: %v", err)
 			}
 
@@ -817,11 +793,9 @@ func TestMainFlowMemberDelete(t *testing.T) {
 		{
 			description: "Delete non intercessor member with cancel txt - phone list stays the same",
 
-			state: State{
-				Message: TextMessage{
-					Body:  "cancel",
-					Phone: "123-456-7890",
-				},
+			message: TextMessage{
+				Body:  "cancel",
+				Phone: "123-456-7890",
 			},
 
 			mockGetItemResults: []struct {
@@ -862,11 +836,9 @@ func TestMainFlowMemberDelete(t *testing.T) {
 		{
 			description: "Delete intercessor member with STOP txt - phone list changes",
 
-			state: State{
-				Message: TextMessage{
-					Body:  "STOP",
-					Phone: "123-456-7890",
-				},
+			message: TextMessage{
+				Body:  "STOP",
+				Phone: "123-456-7890",
 			},
 
 			mockGetItemResults: []struct {
@@ -936,11 +908,9 @@ func TestMainFlowMemberDelete(t *testing.T) {
 		{
 			description: "Delete member - expected error on DelItem",
 
-			state: State{
-				Message: TextMessage{
-					Body:  "cancel",
-					Phone: "123-456-7890",
-				},
+			message: TextMessage{
+				Body:  "cancel",
+				Phone: "123-456-7890",
 			},
 
 			mockGetItemResults: []struct {
@@ -990,13 +960,13 @@ func TestMainFlowMemberDelete(t *testing.T) {
 
 			if test.expectedError {
 				// handles failures for error mocks
-				if err := MainFlow(test.state, ddbMock, txtMock); err == nil {
+				if err := MainFlow(test.message, ddbMock, txtMock); err == nil {
 					t.Fatalf("expected error, got nil")
 				}
 				testNumMethodCalls(ddbMock, txtMock, t, test)
 			} else {
 				// handles success test cases
-				if err := MainFlow(test.state, ddbMock, txtMock); err != nil {
+				if err := MainFlow(test.message, ddbMock, txtMock); err != nil {
 					t.Fatalf("unexpected error starting MainFlow: %v", err)
 				}
 
@@ -1019,11 +989,6 @@ func TestMainFlowMemberDelete(t *testing.T) {
 					t.Errorf("expected Member phone %v for delete key, got %v",
 						test.expectedDeleteItemKey, mem.Phone)
 				}
-
-				// if len(ddbMock.PutItemInputs) > 0 {
-				// 	putInput := ddbMock.PutItemInputs[0]
-				// 	testPhones(putInput, t, test)
-				// }
 			}
 		})
 	}
@@ -1034,11 +999,9 @@ func TestMainFlowHelp(t *testing.T) {
 		{
 			description: "Setup stage 99 user texts help and receives the help message",
 
-			state: State{
-				Message: TextMessage{
-					Body:  "help",
-					Phone: "123-456-7890",
-				},
+			message: TextMessage{
+				Body:  "help",
+				Phone: "123-456-7890",
 			},
 
 			mockGetItemResults: []struct {
@@ -1077,11 +1040,9 @@ func TestMainFlowHelp(t *testing.T) {
 		{
 			description: "Setup stage 1 user texts help and receives the help message",
 
-			state: State{
-				Message: TextMessage{
-					Body:  "help",
-					Phone: "123-456-7890",
-				},
+			message: TextMessage{
+				Body:  "help",
+				Phone: "123-456-7890",
 			},
 
 			mockGetItemResults: []struct {
@@ -1126,7 +1087,7 @@ func TestMainFlowHelp(t *testing.T) {
 		t.Run(test.description, func(t *testing.T) {
 			setMocks(ddbMock, txtMock, test)
 
-			if err := MainFlow(test.state, ddbMock, txtMock); err != nil {
+			if err := MainFlow(test.message, ddbMock, txtMock); err != nil {
 				t.Fatalf("unexpected error starting MainFlow: %v", err)
 			}
 
@@ -1143,11 +1104,9 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 		{
 			description: "Successful simple prayer request flow",
 
-			state: State{
-				Message: TextMessage{
-					Body:  "I need prayer for...",
-					Phone: "123-456-7890",
-				},
+			message: TextMessage{
+				Body:  "I need prayer for...",
+				Phone: "123-456-7890",
 			},
 
 			mockGetItemResults: []struct {
@@ -1317,11 +1276,9 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 		{
 			description: "Profanity detected",
 
-			state: State{
-				Message: TextMessage{
-					Body:  "fuckkk you",
-					Phone: "123-456-7890",
-				},
+			message: TextMessage{
+				Body:  "fuckkk you",
+				Phone: "123-456-7890",
 			},
 
 			mockGetItemResults: []struct {
@@ -1360,11 +1317,9 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 		{
 			description: "Error with first put Prayer in findIntercessors",
 
-			state: State{
-				Message: TextMessage{
-					Body:  "I need prayer for...",
-					Phone: "123-456-7890",
-				},
+			message: TextMessage{
+				Body:  "I need prayer for...",
+				Phone: "123-456-7890",
 			},
 
 			mockGetItemResults: []struct {
@@ -1467,11 +1422,9 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 		{
 			description: "No available intercessors because of maxed out prayer counters",
 
-			state: State{
-				Message: TextMessage{
-					Body:  "I need prayer for...",
-					Phone: "123-456-7890",
-				},
+			message: TextMessage{
+				Body:  "I need prayer for...",
+				Phone: "123-456-7890",
 			},
 
 			mockGetItemResults: []struct {
@@ -1574,7 +1527,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 			},
 
 			expectedPrayerQueue:   true,
-			expectedGetItemCalls:  10,
+			expectedGetItemCalls:  9,
 			expectedPutItemCalls:  4,
 			expectedSendTextCalls: 1,
 		},
@@ -1589,13 +1542,13 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 
 			if test.expectedError {
 				// handles failures for error mocks
-				if err := MainFlow(test.state, ddbMock, txtMock); err == nil {
+				if err := MainFlow(test.message, ddbMock, txtMock); err == nil {
 					t.Fatalf("expected error, got nil")
 				}
 				testNumMethodCalls(ddbMock, txtMock, t, test)
 			} else {
 				// handles success test cases
-				if err := MainFlow(test.state, ddbMock, txtMock); err != nil {
+				if err := MainFlow(test.message, ddbMock, txtMock); err != nil {
 					t.Fatalf("unexpected error starting MainFlow: %v", err)
 				}
 
@@ -2108,11 +2061,9 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 		{
 			description: "Successful prayer request completion",
 
-			state: State{
-				Message: TextMessage{
-					Body:  "prayed",
-					Phone: "111-111-1111",
-				},
+			message: TextMessage{
+				Body:  "prayed",
+				Phone: "111-111-1111",
 			},
 
 			mockGetItemResults: []struct {
@@ -2196,11 +2147,9 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 		{
 			description: "No active prayers to mark as prayed",
 
-			state: State{
-				Message: TextMessage{
-					Body:  "prayed",
-					Phone: "111-111-1111",
-				},
+			message: TextMessage{
+				Body:  "prayed",
+				Phone: "111-111-1111",
 			},
 
 			mockGetItemResults: []struct {
@@ -2243,11 +2192,9 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 		{
 			description: "Error with delete Prayer",
 
-			state: State{
-				Message: TextMessage{
-					Body:  "prayed",
-					Phone: "123-456-7890",
-				},
+			message: TextMessage{
+				Body:  "prayed",
+				Phone: "123-456-7890",
 			},
 
 			mockGetItemResults: []struct {
@@ -2336,13 +2283,13 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 
 			if test.expectedError {
 				// handles failures for error mocks
-				if err := MainFlow(test.state, ddbMock, txtMock); err == nil {
+				if err := MainFlow(test.message, ddbMock, txtMock); err == nil {
 					t.Fatalf("expected error, got nil")
 				}
 				testNumMethodCalls(ddbMock, txtMock, t, test)
 			} else {
 				// handles success test cases
-				if err := MainFlow(test.state, ddbMock, txtMock); err != nil {
+				if err := MainFlow(test.message, ddbMock, txtMock); err != nil {
 					t.Fatalf("unexpected error starting MainFlow: %v", err)
 				}
 

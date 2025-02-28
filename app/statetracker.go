@@ -8,7 +8,7 @@ type StateTracker struct {
 type State struct {
 	Error      string
 	Message    TextMessage
-	RequestID  string
+	ID         string
 	Stage      string
 	Status     string
 	TimeStart  string
@@ -22,15 +22,15 @@ const (
 )
 
 func (st *StateTracker) get(clnt DDBConnecter) error {
-	sttrckr, err := getDdbObject[StateTracker](clnt, stateTrackerAttribute, stateTrackerKey, stateTrackerTable)
+	sttrackr, err := getDdbObject[StateTracker](clnt, stateTrackerAttribute, stateTrackerKey, stateTrackerTable)
 	if err != nil {
 		return err
 	}
 
 	// this is important so that the original Member object doesn't get reset to all empty struct
 	// values if the Member does not exist in ddb
-	if sttrckr.Key != "" {
-		*st = *sttrckr
+	if sttrackr.Key != "" {
+		*st = *sttrackr
 	}
 
 	return nil
@@ -47,16 +47,14 @@ func (s *State) update(clnt DDBConnecter) error {
 		return err
 	}
 
-	stateExists := false
+	states := &st.States
 	for _, state := range st.States {
-		if state.RequestID == s.RequestID {
-			state = *s
-			stateExists = true
+		if state.ID == s.ID {
+			removeItem(states, state)
 		}
 	}
-	if !stateExists {
-		st.States = append(st.States, *s)
-	}
+
+	st.States = append(st.States, *s)
 
 	if err := st.put(clnt); err != nil {
 		return err

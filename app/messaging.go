@@ -63,20 +63,11 @@ func (s FakeTextService) sendText(clnt DDBConnecter, msg TextMessage) error {
 func (t TextMessage) checkProfanity() string {
 	// We need to remove some words from the profanity filter because it is too sensitive
 	removedWords := []string{"jerk"}
-	profanities := goaway.DefaultProfanities
+	profanities := &goaway.DefaultProfanities
 
 	for _, word := range removedWords {
-		removeWord(profanities, word)
+		removeItem(profanities, word)
 	}
 
 	return goaway.ExtractProfanity(t.Body)
-}
-
-func removeWord(words []string, word string) []string {
-	for i, v := range words {
-		if v == word {
-			return append(words[:i], words[i+1:]...)
-		}
-	}
-	return words
 }

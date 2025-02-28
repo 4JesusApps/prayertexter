@@ -2,27 +2,31 @@ package prayertexter
 
 import (
 	"log/slog"
-	"math/rand/v2"
 	"strconv"
 	"strings"
 	"time"
 )
 
-func MainFlow(state State, clnt DDBConnecter, sndr TextSender) error {
-	state.Status = "IN PROGRESS"
-	state.TimeStart = time.Now().Format(time.RFC3339)
+func MainFlow(msg TextMessage, clnt DDBConnecter, sndr TextSender) error {
+	currTime := time.Now().Format(time.RFC3339)
+	id, err := generateID()
+	if err != nil {
+		return err
+	}
+
+	state := State{}
+	state.Status, state.TimeStart, state.ID, state.Message = "IN PROGRESS", currTime, id, msg
 	if err := state.update(clnt); err != nil {
 		return err
 	}
 
-	txt := state.Message
-	mem := Member{Phone: txt.Phone}
+	mem := Member{Phone: msg.Phone}
 	if err := mem.get(clnt); err != nil {
 		return err
 	}
 
 	// help flow
-	if strings.ToLower(txt.Body) == "help" {
+	if strings.ToLower(msg.Body) == "help" {
 		state.Stage = "HELP"
 		if err := state.update(clnt); err != nil {
 			return err
@@ -37,7 +41,7 @@ func MainFlow(state State, clnt DDBConnecter, sndr TextSender) error {
 		}
 
 		// cancel flow
-	} else if strings.ToLower(txt.Body) == "cancel" || strings.ToLower(txt.Body) == "stop" {
+	} else if strings.ToLower(msg.Body) == "cancel" || strings.ToLower(msg.Body) == "stop" {
 		state.Stage = "MEMBER DELETE"
 		if err := state.update(clnt); err != nil {
 			return err
@@ -52,12 +56,12 @@ func MainFlow(state State, clnt DDBConnecter, sndr TextSender) error {
 		}
 
 		//sign up flow
-	} else if strings.ToLower(txt.Body) == "pray" || mem.SetupStatus == "in-progress" {
+	} else if strings.ToLower(msg.Body) == "pray" || mem.SetupStatus == "in-progress" {
 		state.Stage = "SIGN UP"
 		if err := state.update(clnt); err != nil {
 			return err
 		}
-		if err1 := signUp(txt, mem, clnt, sndr); err1 != nil {
+		if err1 := signUp(msg, mem, clnt, sndr); err1 != nil {
 			state.Error = err1.Error()
 			state.Status = "FAILED"
 			if err2 := state.update(clnt); err2 != nil {
@@ -75,7 +79,7 @@ func MainFlow(state State, clnt DDBConnecter, sndr TextSender) error {
 		slog.Warn("non registered user, dropping message", "member", mem.Phone)
 
 		// prayer confirmation flow
-	} else if strings.ToLower(txt.Body) == "prayed" {
+	} else if strings.ToLower(msg.Body) == "prayed" {
 		state.Stage = "COMPLETE PRAYER"
 		if err := state.update(clnt); err != nil {
 			return err
@@ -95,7 +99,7 @@ func MainFlow(state State, clnt DDBConnecter, sndr TextSender) error {
 		if err := state.update(clnt); err != nil {
 			return err
 		}
-		if err1 := prayerRequest(txt, mem, clnt, sndr); err1 != nil {
+		if err1 := prayerRequest(msg, mem, clnt, sndr); err1 != nil {
 			state.Error = err1.Error()
 			state.Status = "FAILED"
 			if err2 := state.update(clnt); err2 != nil {
@@ -105,8 +109,8 @@ func MainFlow(state State, clnt DDBConnecter, sndr TextSender) error {
 		}
 	}
 
-	state.Status = "COMPLETED"
-	state.TimeFinish = time.Now().Format(time.RFC3339)
+	currTime = time.Now().Format(time.RFC3339)
+	state.Status, state.TimeFinish = "COMPLETED", currTime
 	if err := state.update(clnt); err != nil {
 		return err
 	}
@@ -114,29 +118,29 @@ func MainFlow(state State, clnt DDBConnecter, sndr TextSender) error {
 	return nil
 }
 
-func signUp(txt TextMessage, mem Member, clnt DDBConnecter, sndr TextSender) error {
-	if strings.ToLower(txt.Body) == "pray" {
+func signUp(msg TextMessage, mem Member, clnt DDBConnecter, sndr TextSender) error {
+	if strings.ToLower(msg.Body) == "pray" {
 		if err := signUpStageOne(mem, clnt, sndr); err != nil {
 			return err
 		}
-	} else if txt.Body != "2" && mem.SetupStage == 1 {
-		if err := signUpStageTwoA(mem, clnt, sndr, txt); err != nil {
+	} else if msg.Body != "2" && mem.SetupStage == 1 {
+		if err := signUpStageTwoA(mem, clnt, sndr, msg); err != nil {
 			return err
 		}
-	} else if txt.Body == "2" && mem.SetupStage == 1 {
+	} else if msg.Body == "2" && mem.SetupStage == 1 {
 		if err := signUpStageTwoB(mem, clnt, sndr); err != nil {
 			return err
 		}
-	} else if txt.Body == "1" && mem.SetupStage == 2 {
+	} else if msg.Body == "1" && mem.SetupStage == 2 {
 		if err := signUpFinalPrayerMessage(mem, clnt, sndr); err != nil {
 			return err
 		}
-	} else if txt.Body == "2" && mem.SetupStage == 2 {
+	} else if msg.Body == "2" && mem.SetupStage == 2 {
 		if err := signUpStageThree(mem, clnt, sndr); err != nil {
 			return err
 		}
 	} else if mem.SetupStage == 3 {
-		if err := signUpFinalIntercessorMessage(mem, clnt, sndr, txt); err != nil {
+		if err := signUpFinalIntercessorMessage(mem, clnt, sndr, msg); err != nil {
 			return err
 		}
 	} else {
@@ -163,9 +167,9 @@ func signUpStageOne(mem Member, clnt DDBConnecter, sndr TextSender) error {
 	return nil
 }
 
-func signUpStageTwoA(mem Member, clnt DDBConnecter, sndr TextSender, txt TextMessage) error {
+func signUpStageTwoA(mem Member, clnt DDBConnecter, sndr TextSender, msg TextMessage) error {
 	mem.SetupStage = 2
-	mem.Name = txt.Body
+	mem.Name = msg.Body
 	if err := mem.put(clnt); err != nil {
 		slog.Error("put Member failed during sign up stage 2, real name")
 		return err
@@ -226,8 +230,8 @@ func signUpStageThree(mem Member, clnt DDBConnecter, sndr TextSender) error {
 	return nil
 }
 
-func signUpFinalIntercessorMessage(mem Member, clnt DDBConnecter, sndr TextSender, txt TextMessage) error {
-	num, err := strconv.Atoi(txt.Body)
+func signUpFinalIntercessorMessage(mem Member, clnt DDBConnecter, sndr TextSender, msg TextMessage) error {
+	num, err := strconv.Atoi(msg.Body)
 	if err != nil {
 		return signUpWrongInput(mem, clnt, sndr)
 	}
@@ -296,8 +300,8 @@ func memberDelete(mem Member, clnt DDBConnecter, sndr TextSender) error {
 	return nil
 }
 
-func prayerRequest(txt TextMessage, mem Member, clnt DDBConnecter, sndr TextSender) error {
-	profanity := txt.checkProfanity()
+func prayerRequest(msg TextMessage, mem Member, clnt DDBConnecter, sndr TextSender) error {
+	profanity := msg.checkProfanity()
 	if profanity != "" {
 		msg := strings.Replace(msgProfanityFound, "PLACEHOLDER", profanity, 1)
 		mem.sendMessage(clnt, sndr, msg)
@@ -309,7 +313,7 @@ func prayerRequest(txt TextMessage, mem Member, clnt DDBConnecter, sndr TextSend
 		slog.Error("failed to find intercessors during prayer request")
 		return err
 	} else if intercessors == nil {
-		if err := queuePrayer(txt, mem, clnt, sndr); err != nil {
+		if err := queuePrayer(msg, mem, clnt, sndr); err != nil {
 			slog.Error("failed to complete queueing prayer request")
 			return err
 		}
@@ -321,7 +325,7 @@ func prayerRequest(txt TextMessage, mem Member, clnt DDBConnecter, sndr TextSend
 		pryr := Prayer{
 			Intercessor:      intr,
 			IntercessorPhone: intr.Phone,
-			Request:          txt.Body,
+			Request:          msg.Body,
 			Requestor:        mem,
 		}
 		if err := pryr.put(clnt, false); err != nil {
@@ -426,25 +430,15 @@ func findIntercessors(clnt DDBConnecter) ([]Member, error) {
 	return intercessors, nil
 }
 
-func queuePrayer(txt TextMessage, mem Member, clnt DDBConnecter, sndr TextSender) error {
+func queuePrayer(msg TextMessage, mem Member, clnt DDBConnecter, sndr TextSender) error {
 	pryr := Prayer{}
-	isRandom := false
-
-	for !isRandom {
-		// a random number is generated and checked in the queued prayers table on the very
-		// unlikely chance that a prayer has the same key
-		randNum := rand.IntN(9999999999)
-		pryr.IntercessorPhone = strconv.Itoa(randNum)
-		if err := pryr.get(clnt, true); err != nil {
-			return err
-		}
-		if pryr.Request == "" {
-			isRandom = true
-		}
+	id, err := generateID()
+	if err != nil {
+		return err
 	}
 
-	pryr.Request = txt.Body
-	pryr.Requestor = mem
+	pryr.IntercessorPhone, pryr.Request, pryr.Requestor = id, msg.Body, mem
+
 	if err := pryr.put(clnt, true); err != nil {
 		return err
 	}
