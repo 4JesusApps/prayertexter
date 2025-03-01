@@ -6,12 +6,12 @@ type StateTracker struct {
 }
 
 type State struct {
-	Error      string
-	Message    TextMessage
-	ID         string
-	Stage      string
-	Status     string
-	TimeStart  string
+	Error     string
+	Message   TextMessage
+	ID        string
+	Stage     string
+	Status    string
+	TimeStart string
 }
 
 const (
