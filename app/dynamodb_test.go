@@ -160,7 +160,6 @@ var expectedDdbItems = []struct {
 								"Stage":      &types.AttributeValueMemberS{Value: "HELP"},
 								"Status":     &types.AttributeValueMemberS{Value: "FAILED"},
 								"TimeStart":  &types.AttributeValueMemberS{Value: "2025-02-16T23:54:01Z"},
-								"TimeFinish": &types.AttributeValueMemberS{Value: "2025-02-16T23:54:02Z"},
 							},
 						},
 						&types.AttributeValueMemberM{
@@ -176,7 +175,6 @@ var expectedDdbItems = []struct {
 								"Stage":      &types.AttributeValueMemberS{Value: "MEMBER DELETE"},
 								"Status":     &types.AttributeValueMemberS{Value: "COMPLETED"},
 								"TimeStart":  &types.AttributeValueMemberS{Value: "2025-02-16T23:57:01Z"},
-								"TimeFinish": &types.AttributeValueMemberS{Value: "2025-02-16T23:57:02Z"},
 							},
 						},
 					},
@@ -242,7 +240,6 @@ var expectedObjects = []any{
 				Stage:      "HELP",
 				Status:     "FAILED",
 				TimeStart:  "2025-02-16T23:54:01Z",
-				TimeFinish: "2025-02-16T23:54:02Z",
 			},
 			{
 				Error: "",
@@ -254,7 +251,6 @@ var expectedObjects = []any{
 				Stage:      "MEMBER DELETE",
 				Status:     "COMPLETED",
 				TimeStart:  "2025-02-16T23:57:01Z",
-				TimeFinish: "2025-02-16T23:57:02Z",
 			},
 		},
 	},

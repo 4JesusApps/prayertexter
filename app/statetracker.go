@@ -12,7 +12,6 @@ type State struct {
 	Stage      string
 	Status     string
 	TimeStart  string
-	TimeFinish string
 }
 
 const (
@@ -41,7 +40,7 @@ func (st *StateTracker) put(clnt DDBConnecter) error {
 	return putDdbObject(clnt, string(stateTrackerTable), st)
 }
 
-func (s *State) update(clnt DDBConnecter) error {
+func (s *State) update(clnt DDBConnecter, remove bool) error {
 	st := StateTracker{}
 	if err := st.get(clnt); err != nil {
 		return err
@@ -54,7 +53,9 @@ func (s *State) update(clnt DDBConnecter) error {
 		}
 	}
 
-	st.States = append(st.States, *s)
+	if !remove {
+		st.States = append(st.States, *s)
+	}
 
 	if err := st.put(clnt); err != nil {
 		return err

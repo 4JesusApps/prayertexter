@@ -16,7 +16,7 @@ func MainFlow(msg TextMessage, clnt DDBConnecter, sndr TextSender) error {
 
 	state := State{}
 	state.Status, state.TimeStart, state.ID, state.Message = "IN PROGRESS", currTime, id, msg
-	if err := state.update(clnt); err != nil {
+	if err := state.update(clnt, false); err != nil {
 		return err
 	}
 
@@ -28,13 +28,13 @@ func MainFlow(msg TextMessage, clnt DDBConnecter, sndr TextSender) error {
 	// help flow
 	if strings.ToLower(msg.Body) == "help" {
 		state.Stage = "HELP"
-		if err := state.update(clnt); err != nil {
+		if err := state.update(clnt, false); err != nil {
 			return err
 		}
 		if err1 := mem.sendMessage(clnt, sndr, msgHelp); err1 != nil {
 			state.Error = err1.Error()
 			state.Status = "FAILED"
-			if err2 := state.update(clnt); err2 != nil {
+			if err2 := state.update(clnt, false); err2 != nil {
 				return err2
 			}
 			return err1
@@ -43,13 +43,13 @@ func MainFlow(msg TextMessage, clnt DDBConnecter, sndr TextSender) error {
 		// cancel flow
 	} else if strings.ToLower(msg.Body) == "cancel" || strings.ToLower(msg.Body) == "stop" {
 		state.Stage = "MEMBER DELETE"
-		if err := state.update(clnt); err != nil {
+		if err := state.update(clnt, false); err != nil {
 			return err
 		}
 		if err1 := memberDelete(mem, clnt, sndr); err1 != nil {
 			state.Error = err1.Error()
 			state.Status = "FAILED"
-			if err2 := state.update(clnt); err2 != nil {
+			if err2 := state.update(clnt, false); err2 != nil {
 				return err2
 			}
 			return err1
@@ -58,13 +58,13 @@ func MainFlow(msg TextMessage, clnt DDBConnecter, sndr TextSender) error {
 		//sign up flow
 	} else if strings.ToLower(msg.Body) == "pray" || mem.SetupStatus == "in-progress" {
 		state.Stage = "SIGN UP"
-		if err := state.update(clnt); err != nil {
+		if err := state.update(clnt, false); err != nil {
 			return err
 		}
 		if err1 := signUp(msg, mem, clnt, sndr); err1 != nil {
 			state.Error = err1.Error()
 			state.Status = "FAILED"
-			if err2 := state.update(clnt); err2 != nil {
+			if err2 := state.update(clnt, false); err2 != nil {
 				return err2
 			}
 			return err1
@@ -73,7 +73,7 @@ func MainFlow(msg TextMessage, clnt DDBConnecter, sndr TextSender) error {
 		// drop message flow
 	} else if mem.SetupStatus == "" {
 		state.Stage = "DROP MESSAGE"
-		if err := state.update(clnt); err != nil {
+		if err := state.update(clnt, false); err != nil {
 			return err
 		}
 		slog.Warn("non registered user, dropping message", "member", mem.Phone)
@@ -81,13 +81,13 @@ func MainFlow(msg TextMessage, clnt DDBConnecter, sndr TextSender) error {
 		// prayer confirmation flow
 	} else if strings.ToLower(msg.Body) == "prayed" {
 		state.Stage = "COMPLETE PRAYER"
-		if err := state.update(clnt); err != nil {
+		if err := state.update(clnt, false); err != nil {
 			return err
 		}
 		if err1 := completePrayer(mem, clnt, sndr); err1 != nil {
 			state.Error = err1.Error()
 			state.Status = "FAILED"
-			if err2 := state.update(clnt); err2 != nil {
+			if err2 := state.update(clnt, false); err2 != nil {
 				return err2
 			}
 			return err1
@@ -96,22 +96,20 @@ func MainFlow(msg TextMessage, clnt DDBConnecter, sndr TextSender) error {
 		// prayer request flow
 	} else if mem.SetupStatus == "completed" {
 		state.Stage = "PRAYER REQUEST"
-		if err := state.update(clnt); err != nil {
+		if err := state.update(clnt, false); err != nil {
 			return err
 		}
 		if err1 := prayerRequest(msg, mem, clnt, sndr); err1 != nil {
 			state.Error = err1.Error()
 			state.Status = "FAILED"
-			if err2 := state.update(clnt); err2 != nil {
+			if err2 := state.update(clnt, false); err2 != nil {
 				return err2
 			}
 			return err1
 		}
 	}
 
-	currTime = time.Now().Format(time.RFC3339)
-	state.Status, state.TimeFinish = "COMPLETED", currTime
-	if err := state.update(clnt); err != nil {
+	if err := state.update(clnt, true); err != nil {
 		return err
 	}
 
