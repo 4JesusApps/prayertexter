@@ -26,7 +26,7 @@ func (p *Prayer) get(clnt DDBConnecter, queue bool) error {
 	if pryr.IntercessorPhone != "" {
 		*p = *pryr
 	}
-	
+
 	return nil
 }
 
@@ -35,7 +35,7 @@ func (p *Prayer) put(clnt DDBConnecter, queue bool) error {
 	// prayers get queued in order to save them for a time when intercessors are available
 	// this will change the ddb table that the prayer is saved to
 	table := getPrayerTable(queue)
-	
+
 	return putDdbObject(clnt, table, p)
 }
 
@@ -55,13 +55,15 @@ func getPrayerTable(queue bool) string {
 	return table
 }
 
-func (p *Prayer) checkIfActive(clnt DDBConnecter) (bool, error) {
-	if err := p.get(clnt, false); err != nil {
+func isPrayerActive(clnt DDBConnecter, phone string) (bool, error) {
+	pryr := Prayer{IntercessorPhone: phone}
+	if err := pryr.get(clnt, false); err != nil {
 		return false, err
 	}
 
-	// empty string means get did not return a prayer
-	if p.Request == "" {
+	// empty string means get Prayer did not return an active Prayer. Dynamodb get requests 
+	// return empty data if the key does not exist inside the database
+	if pryr.Request == "" {
 		return false, nil
 	} else {
 		return true, nil

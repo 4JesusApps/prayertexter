@@ -68,23 +68,21 @@ func TestCheckIfActiveMember(t *testing.T) {
 	ddbMock := &MockDDBConnecter{}
 	ddbMock.GetItemResults = mockGetItemResults
 
-	member := Member{Phone: "123-456-7890"}
-
-	isActive, err := member.checkIfActive(ddbMock)
+	isActive, err := isMemberActive(ddbMock, "123-456-7890")
 	if err != nil {
 		t.Errorf("unexpected error %v", err)
 	} else if isActive {
 		t.Errorf("expected return of false (inactive member), got %v", isActive)
 	}
 
-	isActive, err = member.checkIfActive(ddbMock)
+	isActive, err = isMemberActive(ddbMock, "123-456-7890")
 	if err != nil {
 		t.Errorf("unexpected error %v", err)
 	} else if !isActive {
 		t.Errorf("expected return of true (active member), got %v", isActive)
 	}
-	
-	_, err = member.checkIfActive(ddbMock)
+
+	_, err = isMemberActive(ddbMock, "123-456-7890")
 	if err == nil {
 		t.Errorf("expected error, got %v", err)
 	}

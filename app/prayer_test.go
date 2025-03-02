@@ -73,23 +73,21 @@ func TestCheckIfActivePrayer(t *testing.T) {
 	ddbMock := &MockDDBConnecter{}
 	ddbMock.GetItemResults = mockGetItemResults
 
-	prayer := Prayer{IntercessorPhone: "111-111-1111"}
-
-	isActive, err := prayer.checkIfActive(ddbMock)
+	isActive, err := isPrayerActive(ddbMock, "111-111-1111")
 	if err != nil {
 		t.Errorf("unexpected error %v", err)
 	} else if isActive {
 		t.Errorf("expected return of false (inactive prayer), got %v", isActive)
 	}
 
-	isActive, err = prayer.checkIfActive(ddbMock)
+	isActive, err = isPrayerActive(ddbMock, "111-111-1111")
 	if err != nil {
 		t.Errorf("unexpected error %v", err)
 	} else if !isActive {
 		t.Errorf("expected return of true (active prayer), got %v", isActive)
 	}
 
-	_, err = prayer.checkIfActive(ddbMock)
+	_, err = isPrayerActive(ddbMock, "111-111-1111")
 	if err == nil {
 		t.Errorf("expected error, got %v", err)
 	}

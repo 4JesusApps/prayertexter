@@ -46,8 +46,7 @@ type TextSender interface {
 type FakeTextService struct{}
 
 func (s FakeTextService) sendText(clnt DDBConnecter, msg TextMessage) error {
-	mem := Member{Phone: msg.Phone}
-	isActive, err := mem.checkIfActive(clnt)
+	isActive, err := isMemberActive(clnt, msg.Phone)
 	if err != nil {
 		return err
 	}

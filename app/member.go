@@ -49,14 +49,16 @@ func (m *Member) sendMessage(clnt DDBConnecter, sndr TextSender, body string) er
 	return sndr.sendText(clnt, message)
 }
 
-func (m *Member) checkIfActive(clnt DDBConnecter) (bool, error) {
-	if err := m.get(clnt); err != nil {
+func isMemberActive(clnt DDBConnecter, phone string) (bool, error) {
+	mem := Member{Phone: phone}
+	if err := mem.get(clnt); err != nil {
 		// returning false but it really should be nil due to error
 		return false, err
 	}
 
-	// empty string means get did not return a member
-	if m.SetupStatus == "" {
+	// empty string means get Member did not return an Member. Dynamodb get requests 
+	// return empty data if the key does not exist inside the database
+	if mem.SetupStatus == "" {
 		return false, nil
 	} else {
 		return true, nil

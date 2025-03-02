@@ -377,8 +377,7 @@ func findIntercessors(clnt DDBConnecter) ([]Member, error) {
 				return nil, err
 			}
 
-			pryr := Prayer{IntercessorPhone: intr.Phone}
-			isActive, err := pryr.checkIfActive(clnt)
+			isActive, err := isPrayerActive(clnt, intr.Phone)
 			if err != nil {
 				slog.Error("check if active prayer failed during find intercessors")
 				return nil, err
