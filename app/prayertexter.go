@@ -289,7 +289,40 @@ func memberDelete(mem Member, clnt DDBConnecter, sndr TextSender) error {
 			slog.Error("failed to put phone list during cancellation")
 			return err
 		}
+
+		// if Member has an active Prayer, then we need to move it to the prayer queue
+		// so that the Prayer can get sent to someone else
+		isActive, err := isPrayerActive(clnt, mem.Phone)
+		if err != nil {
+			slog.Error("failed to check if Prayer is active during cancellation")
+			return err
+		} else if isActive {
+			pryr := Prayer{IntercessorPhone: mem.Phone}
+			if err := pryr.get(clnt, false); err != nil {
+				slog.Error("failed to get Prayer during cancellation")
+				return err
+			}
+
+			if err := pryr.delete(clnt, false); err != nil {
+				slog.Error("failed to delete Prayer during cancellation")
+				return err
+			}
+
+			// random ID is generated here since queued Prayers do not have an intercessor assigned
+			// to them
+			id, err := generateID()
+			if err != nil {
+				return err
+			}
+			pryr.IntercessorPhone, pryr.Intercessor = id, Member{}
+
+			if err := pryr.put(clnt, true); err != nil {
+				slog.Error("failed to put Prayer during cancellation")
+				return err
+			}
+		}
 	}
+
 	if err := mem.sendMessage(clnt, sndr, msgRemoveUser); err != nil {
 		slog.Error("message send failed during cancellation")
 		return err
@@ -429,6 +462,8 @@ func findIntercessors(clnt DDBConnecter) ([]Member, error) {
 
 func queuePrayer(msg TextMessage, mem Member, clnt DDBConnecter, sndr TextSender) error {
 	pryr := Prayer{}
+	// random ID is generated here since queued Prayers do not have an intercessor assigned
+	// to them
 	id, err := generateID()
 	if err != nil {
 		return err
