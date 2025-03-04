@@ -1787,9 +1787,6 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 func TestFindIntercessors(t *testing.T) {
 	testCases := []TestCase{
 		{
-			// this mocks the get member outputs so we do not need to worry about the math/rand part
-			// #3 gets selected because the date is past 7 days; date + counter gets reset
-			// #5 gets chosen because it has 1 prayer slot available
 			description: "This should pick #3 and #5 intercessors based on prayer counts/dates",
 
 			mockGetItemResults: []struct {
@@ -2038,6 +2035,64 @@ func TestFindIntercessors(t *testing.T) {
 			expectedPutItemCalls: 1,
 		},
 		{
+			description: "This should return a single intercessor because the other intercessor (888-888-8888) gets removed. In a real situation, this would be because they are the ones who sent in the prayer request.",
+			// findIntercessors has a parameter for skipping a phone number. We are using 888-888-8888 for this, which is set permanently in the main testing logic for this section
+
+			mockGetItemResults: []struct {
+				Output *dynamodb.GetItemOutput
+				Error  error
+			}{
+				{
+					Output: &dynamodb.GetItemOutput{
+						Item: map[string]types.AttributeValue{
+							"Key": &types.AttributeValueMemberS{Value: intercessorPhonesKey},
+							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
+								&types.AttributeValueMemberS{Value: "111-111-1111"},
+								&types.AttributeValueMemberS{Value: "888-888-8888"},
+							}},
+						},
+					},
+					Error: nil,
+				},
+				{
+					Output: &dynamodb.GetItemOutput{
+						Item: map[string]types.AttributeValue{
+							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
+							"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
+							"Phone":             &types.AttributeValueMemberS{Value: "111-111-1111"},
+							"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
+							"SetupStage":        &types.AttributeValueMemberN{Value: "99"},
+							"SetupStatus":       &types.AttributeValueMemberS{Value: "completed"},
+							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
+							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
+						},
+					},
+					Error: nil,
+				},
+				{
+					// Prayer empty get response because there are no active prayers for this intercessor
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
+			},
+
+			expectedMembers: []Member{
+				{
+					Intercessor:       true,
+					Name:              "Intercessor1",
+					Phone:             "111-111-1111",
+					PrayerCount:       2,
+					SetupStage:        99,
+					SetupStatus:       "completed",
+					WeeklyPrayerDate:  "dummy date/time",
+					WeeklyPrayerLimit: 5,
+				},
+			},
+
+			expectedGetItemCalls: 3,
+			expectedPutItemCalls: 1,
+		},
+		{
 			description: "This should return nil because all intercessors are maxed out on prayer requests",
 
 			mockGetItemResults: []struct {
@@ -2261,13 +2316,13 @@ func TestFindIntercessors(t *testing.T) {
 
 			if test.expectedError {
 				// handles failures for error mocks
-				if _, err := findIntercessors(ddbMock); err == nil {
+				if _, err := findIntercessors(ddbMock, "888-888-8888"); err == nil {
 					t.Fatalf("expected error, got nil")
 				}
 				testNumMethodCalls(ddbMock, txtMock, t, test)
 			} else {
 				// handles success test cases
-				_, err := findIntercessors(ddbMock)
+				_, err := findIntercessors(ddbMock, "888-888-8888")
 				if err != nil {
 					t.Fatalf("unexpected error starting findIntercessors: %v", err)
 				}

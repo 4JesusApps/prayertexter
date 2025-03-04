@@ -339,7 +339,7 @@ func prayerRequest(msg TextMessage, mem Member, clnt DDBConnecter, sndr TextSend
 		return nil
 	}
 
-	intercessors, err := findIntercessors(clnt)
+	intercessors, err := findIntercessors(clnt, mem.Phone)
 	if err != nil {
 		slog.Error("failed to find intercessors during prayer request")
 		return err
@@ -379,7 +379,7 @@ func prayerRequest(msg TextMessage, mem Member, clnt DDBConnecter, sndr TextSend
 	return nil
 }
 
-func findIntercessors(clnt DDBConnecter) ([]Member, error) {
+func findIntercessors(clnt DDBConnecter, skipPhone string) ([]Member, error) {
 	var intercessors []Member
 
 	allPhones := IntercessorPhones{}
@@ -387,6 +387,10 @@ func findIntercessors(clnt DDBConnecter) ([]Member, error) {
 		slog.Error("get phone list failed during find intercessors")
 		return nil, err
 	}
+
+	// this will remove the member's (prayer requestor) phone number from the intercessor phone
+	// list so they don't get assigned to pray for their own prayer request
+	removeItem(&allPhones.Phones, skipPhone)
 
 	for len(intercessors) < numIntercessorsPerPrayer {
 		randPhones := allPhones.genRandPhones()

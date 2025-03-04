@@ -37,5 +37,4 @@ Good dynamodb commands:
     - check that all phones on intercessor phones list are for active members (maybe, low priority, potential high ddb cost to run get on all intercessors)
     - check all active prayers have active intercessors (this would only be needed to recover from inconsistent states; possible low priority)
 - implement 10DLC phone number
-- prevent intercessors from praying for their own request
 - long tests utilizing local ddb and sam local apigateway/lambda
