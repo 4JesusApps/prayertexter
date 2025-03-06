@@ -38,3 +38,5 @@ Good dynamodb commands:
     - check all active prayers have active intercessors (this would only be needed to recover from inconsistent states; possible low priority)
 - implement 10DLC phone number
 - long tests utilizing local ddb and sam local apigateway/lambda
+- fix statetracker only saving 1 state (and tests)
+- improve error handling; try to log at lowest level to reduce log code

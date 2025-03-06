@@ -26,7 +26,7 @@ func TestSendMessage(t *testing.T) {
 		SetupStatus: "completed",
 	}
 
-	txtMock := &MockTextService{}
+	txtMock := &MockTextSender{}
 	ddbMock := &MockDDBConnecter{}
 	if err := member.sendMessage(ddbMock, txtMock, txtBody); err != nil {
 		t.Errorf("unexpected error %v", err)

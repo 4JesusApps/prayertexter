@@ -13,10 +13,10 @@ const (
 	prayersQueueTable  = "PrayersQueue"
 )
 
-func (p *Prayer) get(clnt DDBConnecter, queue bool) error {
+func (p *Prayer) get(ddbClnt DDBConnecter, queue bool) error {
 	// queue determines whether ActivePrayers or PrayersQueue table is used for get
 	table := getPrayerTable(queue)
-	pryr, err := getDdbObject[Prayer](clnt, prayersAttribute, p.IntercessorPhone, table)
+	pryr, err := getDdbObject[Prayer](ddbClnt, prayersAttribute, p.IntercessorPhone, table)
 	if err != nil {
 		return err
 	}
@@ -30,18 +30,18 @@ func (p *Prayer) get(clnt DDBConnecter, queue bool) error {
 	return nil
 }
 
-func (p *Prayer) put(clnt DDBConnecter, queue bool) error {
+func (p *Prayer) put(ddbClnt DDBConnecter, queue bool) error {
 	// queue is only used if there are not enough intercessors available to take a prayer request
 	// prayers get queued in order to save them for a time when intercessors are available
 	// this will change the ddb table that the prayer is saved to
 	table := getPrayerTable(queue)
 
-	return putDdbObject(clnt, table, p)
+	return putDdbObject(ddbClnt, table, p)
 }
 
-func (p *Prayer) delete(clnt DDBConnecter, queue bool) error {
+func (p *Prayer) delete(ddbClnt DDBConnecter, queue bool) error {
 	table := getPrayerTable(queue)
-	return delDdbItem(clnt, prayersAttribute, p.IntercessorPhone, table)
+	return delDdbItem(ddbClnt, prayersAttribute, p.IntercessorPhone, table)
 }
 
 func getPrayerTable(queue bool) string {
@@ -55,9 +55,9 @@ func getPrayerTable(queue bool) string {
 	return table
 }
 
-func isPrayerActive(clnt DDBConnecter, phone string) (bool, error) {
+func isPrayerActive(ddbClnt DDBConnecter, phone string) (bool, error) {
 	pryr := Prayer{IntercessorPhone: phone}
-	if err := pryr.get(clnt, false); err != nil {
+	if err := pryr.get(ddbClnt, false); err != nil {
 		return false, err
 	}
 

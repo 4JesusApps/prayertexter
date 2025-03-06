@@ -25,15 +25,19 @@ func handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.API
 		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError}, err
 	}
 
-	clnt, err := prayertexter.GetDdbClient()
+	ddbClnt, err := prayertexter.GetDdbClient()
 	if err != nil {
 		slog.Error("failed to get dynamodb client", "error", err.Error())
 		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError}, err
 	}
 
-	txtsvc := prayertexter.FakeTextService{}
+	smsClnt, err := prayertexter.GetSmsClient()
+	if err != nil {
+		slog.Error("failed to get sms client", "error", err.Error())
+		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError}, err
+	}
 
-	if err := prayertexter.MainFlow(msg, clnt, txtsvc); err != nil {
+	if err := prayertexter.MainFlow(msg, ddbClnt, smsClnt); err != nil {
 		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError}, err
 	}
 

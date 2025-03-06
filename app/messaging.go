@@ -1,9 +1,13 @@
 package prayertexter
 
 import (
+	"context"
 	"log/slog"
 
 	goaway "github.com/TwiN/go-away"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/pinpointsmsvoicev2"
+	"github.com/aws/aws-sdk-go-v2/service/pinpointsmsvoicev2/types"
 )
 
 const (
@@ -32,6 +36,8 @@ const (
 	msgPre  = "PrayerTexter: "
 	msgPost = "Reply HELP for help or STOP to cancel."
 	msgHelp = "To receive support, please email info@4jesusministries.com or call/text (657) 217-1678. Thank you!"
+
+	prayerTexterPhone = "+12762908579"
 )
 
 type TextMessage struct {
@@ -40,19 +46,43 @@ type TextMessage struct {
 }
 
 type TextSender interface {
-	sendText(clnt DDBConnecter, msg TextMessage) error
+	SendTextMessage(ctx context.Context,
+		params *pinpointsmsvoicev2.SendTextMessageInput,
+		optFns ...func(*pinpointsmsvoicev2.Options)) (*pinpointsmsvoicev2.SendTextMessageOutput, error)
 }
 
-type FakeTextService struct{}
+func GetSmsClient() (*pinpointsmsvoicev2.Client, error) {
+	cfg, err := getAwsConfig()
+	if err != nil {
+		slog.Error("unable to load aws-sdk-go-v2 for sms client")
+	}
 
-func (s FakeTextService) sendText(clnt DDBConnecter, msg TextMessage) error {
-	isActive, err := isMemberActive(clnt, msg.Phone)
+	smsClnt := pinpointsmsvoicev2.NewFromConfig(cfg)
+
+	return smsClnt, nil
+}
+
+func sendText(ddbClnt DDBConnecter, smsClnt TextSender, msg TextMessage) error {
+	isActive, err := isMemberActive(ddbClnt, msg.Phone)
 	if err != nil {
 		return err
 	}
 
 	if isActive {
-		slog.Info("Sent text message", "recipient", msg.Phone, "body", msg.Body)
+		body := msgPre + msg.Body + "\n\n" + msgPost
+
+		input := &pinpointsmsvoicev2.SendTextMessageInput{
+			DestinationPhoneNumber: aws.String("+1" + msg.Phone),
+			MessageBody:            aws.String(body),
+			MessageType:            types.MessageTypeTransactional,
+			OriginationIdentity:    aws.String(prayerTexterPhone),
+		}
+
+		_, err := smsClnt.SendTextMessage(context.TODO(), input)
+		if err != nil {
+			return err
+		}
+
 	} else {
 		slog.Warn("Skip sending message, member is not active", "recipient", msg.Phone, "body", msg.Body)
 	}

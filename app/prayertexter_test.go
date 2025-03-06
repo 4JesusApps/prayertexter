@@ -2,19 +2,21 @@ package prayertexter
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
 type TestCase struct {
-	description string
-	message     TextMessage
+	description    string
+	initialMessage TextMessage
 
 	expectedGetItemCalls    int
 	expectedPutItemCalls    int
@@ -48,14 +50,14 @@ type TestCase struct {
 	}
 }
 
-func setMocks(ddbMock *MockDDBConnecter, txtMock *MockTextService, test TestCase) {
+func setMocks(ddbMock *MockDDBConnecter, txtMock *MockTextSender, test TestCase) {
 	ddbMock.GetItemResults = test.mockGetItemResults
 	ddbMock.PutItemResults = test.mockPutItemResults
 	ddbMock.DeleteItemResults = test.mockDeleteItemResults
 	txtMock.SendTextResults = test.mockSendTextResults
 }
 
-func testNumMethodCalls(ddbMock *MockDDBConnecter, txtMock *MockTextService, t *testing.T, test TestCase) {
+func testNumMethodCalls(ddbMock *MockDDBConnecter, txtMock *MockTextSender, t *testing.T, test TestCase) {
 	if ddbMock.GetItemCalls != test.expectedGetItemCalls {
 		t.Errorf("expected GetItem to be called %v, got %v",
 			test.expectedGetItemCalls, ddbMock.GetItemCalls)
@@ -236,29 +238,35 @@ func testDeleteItem(inputs []dynamodb.DeleteItemInput, t *testing.T, test TestCa
 	}
 }
 
-func testTxtMessage(txtMock *MockTextService, t *testing.T, test TestCase) {
-	for i, txt := range txtMock.SendTextInputs {
+func testTxtMessage(txtMock *MockTextSender, t *testing.T, test TestCase) {
+	for i, input := range txtMock.SendTextInputs {
+		fmt.Printf("TESTTTT input.MessageBody: %v", input.MessageBody)
 		// Some text messages use PLACEHOLDER and replace that with the txt recipients name
 		// Therefor to make testing easier, the message body is replaced by the msg constant
-		if strings.Contains(txt.Body, "Hello! Please pray for") {
-			txt.Body = msgPrayerIntro
-		} else if strings.Contains(txt.Body, "There was profanity found in your prayer request:") {
-			txt.Body = msgProfanityFound
-		} else if strings.Contains(txt.Body, "You're prayer request has been prayed for by") {
-			txt.Body = msgPrayerConfirmation
+		if strings.Contains(*input.MessageBody, "Hello! Please pray for") {
+			input.MessageBody = aws.String(msgPrayerIntro)
+		} else if strings.Contains(*input.MessageBody, "There was profanity found in your prayer request:") {
+			input.MessageBody = aws.String(msgProfanityFound)
+		} else if strings.Contains(*input.MessageBody, "You're prayer request has been prayed for by") {
+			input.MessageBody = aws.String(msgPrayerConfirmation)
+		}
+
+		recievedText := TextMessage{
+			Body:  *input.MessageBody,
+			Phone: *input.OriginationIdentity,
 		}
 
 		// This part makes mocking messages less painful. We do not need to worry about new lines,
 		// pre, or post messages. They are removed when messages are tested.
-		for _, t := range []*TextMessage{&txt, &test.expectedTexts[i]} {
+		for _, t := range []*TextMessage{&recievedText, &test.expectedTexts[i]} {
 			for _, str := range []string{"\n", msgPre, msgPost} {
 				t.Body = strings.ReplaceAll(t.Body, str, "")
 			}
 		}
 
-		if txt != test.expectedTexts[i] {
+		if recievedText != test.expectedTexts[i] {
 			t.Errorf("expected txt %v, got %v",
-				test.expectedTexts[i], txt)
+				test.expectedTexts[i], recievedText)
 		}
 	}
 }
@@ -268,7 +276,7 @@ func TestMainFlowSignUp(t *testing.T) {
 		{
 			description: "Sign up stage ONE: user texts the word pray to start sign up process",
 
-			message: TextMessage{
+			initialMessage: TextMessage{
 				Body:  "pray",
 				Phone: "123-456-7890",
 			},
@@ -295,7 +303,7 @@ func TestMainFlowSignUp(t *testing.T) {
 		{
 			description: "Sign up stage ONE: user texts the word Pray (capitol P) to start sign up process",
 
-			message: TextMessage{
+			initialMessage: TextMessage{
 				Body:  "Pray",
 				Phone: "123-456-7890",
 			},
@@ -322,7 +330,7 @@ func TestMainFlowSignUp(t *testing.T) {
 		{
 			description: "Sign up stage ONE: get Member error",
 
-			message: TextMessage{
+			initialMessage: TextMessage{
 				Body:  "pray",
 				Phone: "123-456-7890",
 			},
@@ -349,7 +357,7 @@ func TestMainFlowSignUp(t *testing.T) {
 		{
 			description: "Sign up stage TWO-A: user texts name",
 
-			message: TextMessage{
+			initialMessage: TextMessage{
 				Body:  "John Doe",
 				Phone: "123-456-7890",
 			},
@@ -398,7 +406,7 @@ func TestMainFlowSignUp(t *testing.T) {
 		{
 			description: "Sign up stage TWO-B: user texts 2 to remain anonymous",
 
-			message: TextMessage{
+			initialMessage: TextMessage{
 				Body:  "2",
 				Phone: "123-456-7890",
 			},
@@ -447,7 +455,7 @@ func TestMainFlowSignUp(t *testing.T) {
 		{
 			description: "Sign up final prayer message: user texts 1 which means they do not want to be an intercessor",
 
-			message: TextMessage{
+			initialMessage: TextMessage{
 				Body:  "1",
 				Phone: "123-456-7890",
 			},
@@ -498,7 +506,7 @@ func TestMainFlowSignUp(t *testing.T) {
 		{
 			description: "Sign up stage THREE: user texts 2 which means they want to be an intercessor",
 
-			message: TextMessage{
+			initialMessage: TextMessage{
 				Body:  "2",
 				Phone: "123-456-7890",
 			},
@@ -549,7 +557,7 @@ func TestMainFlowSignUp(t *testing.T) {
 		{
 			description: "Sign up final intercessor message: user texts the number of prayers they are willing to receive per week",
 
-			message: TextMessage{
+			initialMessage: TextMessage{
 				Body:  "10",
 				Phone: "123-456-7890",
 			},
@@ -631,7 +639,7 @@ func TestMainFlowSignUp(t *testing.T) {
 		{
 			description: "Sign up final intercessor message: put IntercessorPhones error",
 
-			message: TextMessage{
+			initialMessage: TextMessage{
 				Body:  "10",
 				Phone: "123-456-7890",
 			},
@@ -698,7 +706,7 @@ func TestMainFlowSignUp(t *testing.T) {
 	}
 
 	for _, test := range testCases {
-		txtMock := &MockTextService{}
+		txtMock := &MockTextSender{}
 		ddbMock := &MockDDBConnecter{}
 
 		t.Run(test.description, func(t *testing.T) {
@@ -706,13 +714,13 @@ func TestMainFlowSignUp(t *testing.T) {
 
 			if test.expectedError {
 				// handles failures for error mocks
-				if err := MainFlow(test.message, ddbMock, txtMock); err == nil {
+				if err := MainFlow(test.initialMessage, ddbMock, txtMock); err == nil {
 					t.Fatalf("expected error, got nil")
 				}
 				testNumMethodCalls(ddbMock, txtMock, t, test)
 			} else {
 				// handles success test cases
-				if err := MainFlow(test.message, ddbMock, txtMock); err != nil {
+				if err := MainFlow(test.initialMessage, ddbMock, txtMock); err != nil {
 					t.Fatalf("unexpected error starting MainFlow: %v", err)
 				}
 
@@ -732,7 +740,7 @@ func TestMainFlowSignUpWrongInputs(t *testing.T) {
 		{
 			description: "pray misspelled - returns non registered user and exits",
 
-			message: TextMessage{
+			initialMessage: TextMessage{
 				Body:  "prayyy",
 				Phone: "123-456-7890",
 			},
@@ -743,7 +751,7 @@ func TestMainFlowSignUpWrongInputs(t *testing.T) {
 		{
 			description: "Sign up stage THREE: did not send 1 or 2 as expected to answer msgMemberTypeRequest",
 
-			message: TextMessage{
+			initialMessage: TextMessage{
 				Body:  "wrong response to question",
 				Phone: "123-456-7890",
 			},
@@ -784,7 +792,7 @@ func TestMainFlowSignUpWrongInputs(t *testing.T) {
 		{
 			description: "Sign up final intercessor message: did not send number as expected",
 
-			message: TextMessage{
+			initialMessage: TextMessage{
 				Body:  "wrong response to question",
 				Phone: "123-456-7890",
 			},
@@ -826,13 +834,13 @@ func TestMainFlowSignUpWrongInputs(t *testing.T) {
 	}
 
 	for _, test := range testCases {
-		txtMock := &MockTextService{}
+		txtMock := &MockTextSender{}
 		ddbMock := &MockDDBConnecter{}
 
 		t.Run(test.description, func(t *testing.T) {
 			setMocks(ddbMock, txtMock, test)
 
-			if err := MainFlow(test.message, ddbMock, txtMock); err != nil {
+			if err := MainFlow(test.initialMessage, ddbMock, txtMock); err != nil {
 				t.Fatalf("unexpected error starting MainFlow: %v", err)
 			}
 
@@ -847,7 +855,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 		{
 			description: "Delete non intercessor member with cancel txt - phone list stays the same",
 
-			message: TextMessage{
+			initialMessage: TextMessage{
 				Body:  "cancel",
 				Phone: "123-456-7890",
 			},
@@ -899,7 +907,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 		{
 			description: "Delete intercessor member with STOP txt - phone list changes",
 
-			message: TextMessage{
+			initialMessage: TextMessage{
 				Body:  "STOP",
 				Phone: "444-444-4444",
 			},
@@ -982,7 +990,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 		{
 			description: "Delete intercessor member with STOP txt - phone list changes, active prayer gets moved to prayer queue",
 
-			message: TextMessage{
+			initialMessage: TextMessage{
 				Body:  "STOP",
 				Phone: "444-444-4444",
 			},
@@ -1145,7 +1153,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 		{
 			description: "Delete member - expected error on DelItem",
 
-			message: TextMessage{
+			initialMessage: TextMessage{
 				Body:  "cancel",
 				Phone: "123-456-7890",
 			},
@@ -1189,7 +1197,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 	}
 
 	for _, test := range testCases {
-		txtMock := &MockTextService{}
+		txtMock := &MockTextSender{}
 		ddbMock := &MockDDBConnecter{}
 
 		t.Run(test.description, func(t *testing.T) {
@@ -1197,13 +1205,13 @@ func TestMainFlowMemberDelete(t *testing.T) {
 
 			if test.expectedError {
 				// handles failures for error mocks
-				if err := MainFlow(test.message, ddbMock, txtMock); err == nil {
+				if err := MainFlow(test.initialMessage, ddbMock, txtMock); err == nil {
 					t.Fatalf("expected error, got nil")
 				}
 				testNumMethodCalls(ddbMock, txtMock, t, test)
 			} else {
 				// handles success test cases
-				if err := MainFlow(test.message, ddbMock, txtMock); err != nil {
+				if err := MainFlow(test.initialMessage, ddbMock, txtMock); err != nil {
 					t.Fatalf("unexpected error starting MainFlow: %v", err)
 				}
 
@@ -1222,7 +1230,7 @@ func TestMainFlowHelp(t *testing.T) {
 		{
 			description: "Setup stage 99 user texts help and receives the help message",
 
-			message: TextMessage{
+			initialMessage: TextMessage{
 				Body:  "help",
 				Phone: "123-456-7890",
 			},
@@ -1263,7 +1271,7 @@ func TestMainFlowHelp(t *testing.T) {
 		{
 			description: "Setup stage 1 user texts help and receives the help message",
 
-			message: TextMessage{
+			initialMessage: TextMessage{
 				Body:  "help",
 				Phone: "123-456-7890",
 			},
@@ -1304,13 +1312,13 @@ func TestMainFlowHelp(t *testing.T) {
 	}
 
 	for _, test := range testCases {
-		txtMock := &MockTextService{}
+		txtMock := &MockTextSender{}
 		ddbMock := &MockDDBConnecter{}
 
 		t.Run(test.description, func(t *testing.T) {
 			setMocks(ddbMock, txtMock, test)
 
-			if err := MainFlow(test.message, ddbMock, txtMock); err != nil {
+			if err := MainFlow(test.initialMessage, ddbMock, txtMock); err != nil {
 				t.Fatalf("unexpected error starting MainFlow: %v", err)
 			}
 
@@ -1327,7 +1335,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 		{
 			description: "Successful simple prayer request flow",
 
-			message: TextMessage{
+			initialMessage: TextMessage{
 				Body:  "I need prayer for...",
 				Phone: "123-456-7890",
 			},
@@ -1499,7 +1507,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 		{
 			description: "Profanity detected",
 
-			message: TextMessage{
+			initialMessage: TextMessage{
 				Body:  "fuckkk you",
 				Phone: "123-456-7890",
 			},
@@ -1540,7 +1548,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 		{
 			description: "Error with first put Prayer in findIntercessors",
 
-			message: TextMessage{
+			initialMessage: TextMessage{
 				Body:  "I need prayer for...",
 				Phone: "123-456-7890",
 			},
@@ -1645,7 +1653,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 		{
 			description: "No available intercessors because of maxed out prayer counters",
 
-			message: TextMessage{
+			initialMessage: TextMessage{
 				Body:  "I need prayer for...",
 				Phone: "123-456-7890",
 			},
@@ -1757,7 +1765,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 	}
 
 	for _, test := range testCases {
-		txtMock := &MockTextService{}
+		txtMock := &MockTextSender{}
 		ddbMock := &MockDDBConnecter{}
 
 		t.Run(test.description, func(t *testing.T) {
@@ -1765,13 +1773,13 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 
 			if test.expectedError {
 				// handles failures for error mocks
-				if err := MainFlow(test.message, ddbMock, txtMock); err == nil {
+				if err := MainFlow(test.initialMessage, ddbMock, txtMock); err == nil {
 					t.Fatalf("expected error, got nil")
 				}
 				testNumMethodCalls(ddbMock, txtMock, t, test)
 			} else {
 				// handles success test cases
-				if err := MainFlow(test.message, ddbMock, txtMock); err != nil {
+				if err := MainFlow(test.initialMessage, ddbMock, txtMock); err != nil {
 					t.Fatalf("unexpected error starting MainFlow: %v", err)
 				}
 
@@ -2308,7 +2316,7 @@ func TestFindIntercessors(t *testing.T) {
 	}
 
 	for _, test := range testCases {
-		txtMock := &MockTextService{}
+		txtMock := &MockTextSender{}
 		ddbMock := &MockDDBConnecter{}
 
 		t.Run(test.description, func(t *testing.T) {
@@ -2339,7 +2347,7 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 		{
 			description: "Successful prayer request completion",
 
-			message: TextMessage{
+			initialMessage: TextMessage{
 				Body:  "prayed",
 				Phone: "111-111-1111",
 			},
@@ -2434,7 +2442,7 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 		{
 			description: "No active prayers to mark as prayed",
 
-			message: TextMessage{
+			initialMessage: TextMessage{
 				Body:  "prayed",
 				Phone: "111-111-1111",
 			},
@@ -2479,7 +2487,7 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 		{
 			description: "Error with delete Prayer",
 
-			message: TextMessage{
+			initialMessage: TextMessage{
 				Body:  "prayed",
 				Phone: "123-456-7890",
 			},
@@ -2562,7 +2570,7 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 	}
 
 	for _, test := range testCases {
-		txtMock := &MockTextService{}
+		txtMock := &MockTextSender{}
 		ddbMock := &MockDDBConnecter{}
 
 		t.Run(test.description, func(t *testing.T) {
@@ -2570,13 +2578,13 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 
 			if test.expectedError {
 				// handles failures for error mocks
-				if err := MainFlow(test.message, ddbMock, txtMock); err == nil {
+				if err := MainFlow(test.initialMessage, ddbMock, txtMock); err == nil {
 					t.Fatalf("expected error, got nil")
 				}
 				testNumMethodCalls(ddbMock, txtMock, t, test)
 			} else {
 				// handles success test cases
-				if err := MainFlow(test.message, ddbMock, txtMock); err != nil {
+				if err := MainFlow(test.initialMessage, ddbMock, txtMock); err != nil {
 					t.Fatalf("unexpected error starting MainFlow: %v", err)
 				}
 

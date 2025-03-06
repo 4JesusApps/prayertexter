@@ -16,8 +16,8 @@ const (
 	memberTable     = "Members"
 )
 
-func (m *Member) get(clnt DDBConnecter) error {
-	mem, err := getDdbObject[Member](clnt, memberAttribute, m.Phone, memberTable)
+func (m *Member) get(ddbClnt DDBConnecter) error {
+	mem, err := getDdbObject[Member](ddbClnt, memberAttribute, m.Phone, memberTable)
 	if err != nil {
 		return err
 	}
@@ -31,32 +31,31 @@ func (m *Member) get(clnt DDBConnecter) error {
 	return nil
 }
 
-func (m *Member) put(clnt DDBConnecter) error {
-	return putDdbObject(clnt, memberTable, m)
+func (m *Member) put(ddbClnt DDBConnecter) error {
+	return putDdbObject(ddbClnt, memberTable, m)
 }
 
-func (m *Member) delete(clnt DDBConnecter) error {
-	return delDdbItem(clnt, memberAttribute, m.Phone, memberTable)
+func (m *Member) delete(ddbClnt DDBConnecter) error {
+	return delDdbItem(ddbClnt, memberAttribute, m.Phone, memberTable)
 }
 
-func (m *Member) sendMessage(clnt DDBConnecter, sndr TextSender, body string) error {
-	body = msgPre + body + "\n\n" + msgPost
+func (m *Member) sendMessage(ddbClnt DDBConnecter, smsClnt TextSender, body string) error {
 	message := TextMessage{
 		Body:  body,
 		Phone: m.Phone,
 	}
 
-	return sndr.sendText(clnt, message)
+	return sendText(ddbClnt, smsClnt, message)
 }
 
-func isMemberActive(clnt DDBConnecter, phone string) (bool, error) {
+func isMemberActive(ddbClnt DDBConnecter, phone string) (bool, error) {
 	mem := Member{Phone: phone}
-	if err := mem.get(clnt); err != nil {
+	if err := mem.get(ddbClnt); err != nil {
 		// returning false but it really should be nil due to error
 		return false, err
 	}
 
-	// empty string means get Member did not return an Member. Dynamodb get requests 
+	// empty string means get Member did not return an Member. Dynamodb get requests
 	// return empty data if the key does not exist inside the database
 	if mem.SetupStatus == "" {
 		return false, nil

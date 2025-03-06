@@ -18,8 +18,8 @@ const (
 	numIntercessorsPerPrayer   = 2
 )
 
-func (i *IntercessorPhones) get(clnt DDBConnecter) error {
-	intr, err := getDdbObject[IntercessorPhones](clnt, intercessorPhonesAttribute, intercessorPhonesKey, intercessorPhonesTable)
+func (i *IntercessorPhones) get(ddbClnt DDBConnecter) error {
+	intr, err := getDdbObject[IntercessorPhones](ddbClnt, intercessorPhonesAttribute, intercessorPhonesKey, intercessorPhonesTable)
 	if err != nil {
 		return err
 	}
@@ -33,9 +33,9 @@ func (i *IntercessorPhones) get(clnt DDBConnecter) error {
 	return nil
 }
 
-func (i *IntercessorPhones) put(clnt DDBConnecter) error {
+func (i *IntercessorPhones) put(ddbClnt DDBConnecter) error {
 	i.Key = intercessorPhonesKey
-	return putDdbObject(clnt, intercessorPhonesTable, i)
+	return putDdbObject(ddbClnt, intercessorPhonesTable, i)
 }
 
 func (i *IntercessorPhones) addPhone(phone string) {

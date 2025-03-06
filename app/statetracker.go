@@ -20,8 +20,8 @@ const (
 	stateTrackerTable     = "General"
 )
 
-func (st *StateTracker) get(clnt DDBConnecter) error {
-	sttrackr, err := getDdbObject[StateTracker](clnt, stateTrackerAttribute, stateTrackerKey, stateTrackerTable)
+func (st *StateTracker) get(ddbClnt DDBConnecter) error {
+	sttrackr, err := getDdbObject[StateTracker](ddbClnt, stateTrackerAttribute, stateTrackerKey, stateTrackerTable)
 	if err != nil {
 		return err
 	}
@@ -35,14 +35,14 @@ func (st *StateTracker) get(clnt DDBConnecter) error {
 	return nil
 }
 
-func (st *StateTracker) put(clnt DDBConnecter) error {
+func (st *StateTracker) put(ddbClnt DDBConnecter) error {
 	st.Key = stateTrackerKey
-	return putDdbObject(clnt, string(stateTrackerTable), st)
+	return putDdbObject(ddbClnt, string(stateTrackerTable), st)
 }
 
-func (s *State) update(clnt DDBConnecter, remove bool) error {
+func (s *State) update(ddbClnt DDBConnecter, remove bool) error {
 	st := StateTracker{}
-	if err := st.get(clnt); err != nil {
+	if err := st.get(ddbClnt); err != nil {
 		return err
 	}
 
@@ -57,7 +57,7 @@ func (s *State) update(clnt DDBConnecter, remove bool) error {
 		st.States = append(st.States, *s)
 	}
 
-	if err := st.put(clnt); err != nil {
+	if err := st.put(ddbClnt); err != nil {
 		return err
 	}
 

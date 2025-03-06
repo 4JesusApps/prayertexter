@@ -1,32 +1,35 @@
 package prayertexter
 
 import (
-	"log/slog"
+	"context"
 	"testing"
+
+	"github.com/aws/aws-sdk-go-v2/service/pinpointsmsvoicev2"
 )
 
-type MockTextService struct {
+type MockTextSender struct {
 	SendTextCalls   int
-	SendTextInputs  []TextMessage
+	SendTextInputs  []*pinpointsmsvoicev2.SendTextMessageInput
 	SendTextResults []struct {
 		Error error
 	}
 }
 
-func (mock *MockTextService) sendText(clnt DDBConnecter, msg TextMessage) error {
-	slog.Info("MOCK SMS:", "recipient", msg.Phone, "body", msg.Body)
+func (m *MockTextSender) SendTextMessage(ctx context.Context,
+	params *pinpointsmsvoicev2.SendTextMessageInput,
+	optFns ...func(*pinpointsmsvoicev2.Options)) (*pinpointsmsvoicev2.SendTextMessageOutput, error) {
 
-	mock.SendTextCalls++
-	mock.SendTextInputs = append(mock.SendTextInputs, msg)
+	m.SendTextCalls++
+	m.SendTextInputs = append(m.SendTextInputs, params)
 
 	// Default result if no results are configured to avoid index out of bounds
-	if len(mock.SendTextResults) <= mock.SendTextCalls-1 {
-		return nil
+	if len(m.SendTextResults) <= m.SendTextCalls-1 {
+		return &pinpointsmsvoicev2.SendTextMessageOutput{}, nil
 	}
 
-	result := mock.SendTextResults[mock.SendTextCalls-1]
+	result := m.SendTextResults[m.SendTextCalls-1]
 
-	return result.Error
+	return &pinpointsmsvoicev2.SendTextMessageOutput{}, result.Error
 }
 
 func TestCheckProfanity(t *testing.T) {
@@ -39,6 +42,6 @@ func TestCheckProfanity(t *testing.T) {
 	msg.Body = "this message contains profanity, sh!t!"
 	profanity = msg.checkProfanity()
 	if profanity == "" {
- 		t.Errorf("expected profanity, got none (empty string): %v", profanity)
+		t.Errorf("expected profanity, got none (empty string): %v", profanity)
 	}
 }

@@ -8,7 +8,6 @@ import (
 	"strconv"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
@@ -27,10 +26,9 @@ type DDBConnecter interface {
 }
 
 func GetDdbClient() (*dynamodb.Client, error) {
-	cfg, err := config.LoadDefaultConfig(context.TODO())
+	cfg, err := getAwsConfig()
 	if err != nil {
-		slog.Error("unable to load aws-sdk-go-v2 config")
-		return nil, err
+		slog.Error("unable to load aws-sdk-go-v2 for ddb client")
 	}
 
 	local, err := strconv.ParseBool(os.Getenv("AWS_SAM_LOCAL"))
@@ -39,21 +37,21 @@ func GetDdbClient() (*dynamodb.Client, error) {
 		return nil, err
 	}
 
-	var clnt *dynamodb.Client
+	var ddbClnt *dynamodb.Client
 
 	if local {
-		clnt = dynamodb.NewFromConfig(cfg, func(o *dynamodb.Options) {
+		ddbClnt = dynamodb.NewFromConfig(cfg, func(o *dynamodb.Options) {
 			o.BaseEndpoint = aws.String("http://dynamodb:8000")
 		})
 	} else {
-		clnt = dynamodb.NewFromConfig(cfg)
+		ddbClnt = dynamodb.NewFromConfig(cfg)
 	}
 
-	return clnt, nil
+	return ddbClnt, nil
 }
 
-func getDdbItem(clnt DDBConnecter, attr, key, table string) (*dynamodb.GetItemOutput, error) {
-	item, err := clnt.GetItem(context.TODO(), &dynamodb.GetItemInput{
+func getDdbItem(ddbClnt DDBConnecter, attr, key, table string) (*dynamodb.GetItemOutput, error) {
+	item, err := ddbClnt.GetItem(context.TODO(), &dynamodb.GetItemInput{
 		TableName: &table,
 		Key: map[string]types.AttributeValue{
 			attr: &types.AttributeValueMemberS{Value: key},
@@ -63,8 +61,8 @@ func getDdbItem(clnt DDBConnecter, attr, key, table string) (*dynamodb.GetItemOu
 	return item, err
 }
 
-func getDdbObject[T any](clnt DDBConnecter, attr, key, table string) (*T, error) {
-	resp, err := getDdbItem(clnt, attr, key, table)
+func getDdbObject[T any](ddbClnt DDBConnecter, attr, key, table string) (*T, error) {
+	resp, err := getDdbItem(ddbClnt, attr, key, table)
 	if err != nil {
 		return nil, err
 	}
@@ -78,8 +76,8 @@ func getDdbObject[T any](clnt DDBConnecter, attr, key, table string) (*T, error)
 	return &object, nil
 }
 
-func putDdbItem(clnt DDBConnecter, table string, data map[string]types.AttributeValue) error {
-	_, err := clnt.PutItem(context.TODO(), &dynamodb.PutItemInput{
+func putDdbItem(ddbClnt DDBConnecter, table string, data map[string]types.AttributeValue) error {
+	_, err := ddbClnt.PutItem(context.TODO(), &dynamodb.PutItemInput{
 		TableName: &table,
 		Item:      data,
 	})
@@ -87,18 +85,18 @@ func putDdbItem(clnt DDBConnecter, table string, data map[string]types.Attribute
 	return err
 }
 
-func putDdbObject[T any](clnt DDBConnecter, table string, object *T) error {
+func putDdbObject[T any](ddbClnt DDBConnecter, table string, object *T) error {
 	item, err := attributevalue.MarshalMap(object)
 	if err != nil {
 		slog.Error("marshal failed for putDdbObject", "type", fmt.Sprintf("%T", object))
 		return err
 	}
 
-	return putDdbItem(clnt, table, item)
+	return putDdbItem(ddbClnt, table, item)
 }
 
-func delDdbItem(clnt DDBConnecter, attr, key, table string) error {
-	_, err := clnt.DeleteItem(context.TODO(), &dynamodb.DeleteItemInput{
+func delDdbItem(ddbClnt DDBConnecter, attr, key, table string) error {
+	_, err := ddbClnt.DeleteItem(context.TODO(), &dynamodb.DeleteItemInput{
 		TableName: &table,
 		Key: map[string]types.AttributeValue{
 			attr: &types.AttributeValueMemberS{Value: key},
