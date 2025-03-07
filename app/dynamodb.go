@@ -3,7 +3,6 @@ package prayertexter
 import (
 	"context"
 	"fmt"
-	"log/slog"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
@@ -26,8 +25,7 @@ type DDBConnecter interface {
 func GetDdbClient() (*dynamodb.Client, error) {
 	cfg, err := getAwsConfig()
 	if err != nil {
-		slog.Error("unable to load aws-sdk-go-v2 for ddb client")
-		return nil, err
+		return nil, fmt.Errorf("GetDdbClient: %w", err)
 	}
 
 	var ddbClnt *dynamodb.Client
@@ -57,15 +55,15 @@ func getDdbItem(ddbClnt DDBConnecter, attr, key, table string) (*dynamodb.GetIte
 func getDdbObject[T any](ddbClnt DDBConnecter, attr, key, table string) (*T, error) {
 	resp, err := getDdbItem(ddbClnt, attr, key, table)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("getDdbItem: %w", err)
 	}
 
 	var object T
 	if err := attributevalue.UnmarshalMap(resp.Item, &object); err != nil {
-		slog.Error("unmarshal failed during getDdbObject", "type", fmt.Sprintf("%T", object))
+		return nil, fmt.Errorf("getDdbObject failed unmarshal: %w", err)
 	}
 
-	return &object, err
+	return &object, nil
 }
 
 func putDdbItem(ddbClnt DDBConnecter, table string, data map[string]types.AttributeValue) error {
@@ -80,11 +78,14 @@ func putDdbItem(ddbClnt DDBConnecter, table string, data map[string]types.Attrib
 func putDdbObject[T any](ddbClnt DDBConnecter, table string, object *T) error {
 	item, err := attributevalue.MarshalMap(object)
 	if err != nil {
-		slog.Error("marshal failed for putDdbObject", "type", fmt.Sprintf("%T", object))
-		return err
+		return fmt.Errorf("putDdbObject failed marshal: %w", err)
 	}
 
-	return putDdbItem(ddbClnt, table, item)
+	if err := putDdbItem(ddbClnt, table, item); err != nil {
+		return fmt.Errorf("putDdbItem: %w", err)
+	}
+
+	return nil
 }
 
 func delDdbItem(ddbClnt DDBConnecter, attr, key, table string) error {

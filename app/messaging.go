@@ -2,6 +2,7 @@ package prayertexter
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	goaway "github.com/TwiN/go-away"
@@ -53,8 +54,7 @@ type TextSender interface {
 func GetSmsClient() (*pinpointsmsvoicev2.Client, error) {
 	cfg, err := getAwsConfig()
 	if err != nil {
-		slog.Error("unable to load aws-sdk-go-v2 for sms client")
-		return nil, err
+		return nil, fmt.Errorf("GetSmsClient: %w", err)
 	}
 
 	smsClnt := pinpointsmsvoicev2.NewFromConfig(cfg)

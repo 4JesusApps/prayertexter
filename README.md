@@ -10,6 +10,12 @@ You can add the following environmental variable to your linux session when runn
 unexpected error, as it will generally give you a hint on what is going wrong right before the failure.
 1. export AWS_SAM_LOCAL=true
 
+To run tests:
+1. go test ./...
+
+To run linting:
+1. bin/golangci-lint run ./...
+
 # sam local testing
 
 SAM local testing is done by creating local resources (dynamodb, api gateway, lambda). Dynamodb is set up with docker and a local dynamodb image.

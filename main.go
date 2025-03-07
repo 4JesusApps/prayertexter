@@ -21,19 +21,19 @@ func handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.API
 	msg := prayertexter.TextMessage{}
 
 	if err := json.Unmarshal([]byte(req.Body), &msg); err != nil {
-		slog.Error("failed to unmarshal api gateway request", "error", err.Error())
+		slog.Error("lambda handler: failed to unmarshal api gateway request", "error", err.Error())
 		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError}, err
 	}
 
 	ddbClnt, err := prayertexter.GetDdbClient()
 	if err != nil {
-		slog.Error("failed to get dynamodb client", "error", err.Error())
+		slog.Error("lambda handler: failed to get dynamodb client", "error", err.Error())
 		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError}, err
 	}
 
 	smsClnt, err := prayertexter.GetSmsClient()
 	if err != nil {
-		slog.Error("failed to get sms client", "error", err.Error())
+		slog.Error("lambda handler: failed to get sms client", "error", err.Error())
 		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError}, err
 	}
 
@@ -41,7 +41,7 @@ func handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.API
 		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError}, err
 	}
 
-	return events.APIGatewayProxyResponse{StatusCode: 200, Body: "Completed Successfully"}, nil
+	return events.APIGatewayProxyResponse{StatusCode: 200, Body: "Success"}, nil
 }
 
 func main() {

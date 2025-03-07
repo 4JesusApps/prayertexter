@@ -1,5 +1,7 @@
 package prayertexter
 
+import "fmt"
+
 type StateTracker struct {
 	Key    string
 	States []State
@@ -23,7 +25,7 @@ const (
 func (st *StateTracker) get(ddbClnt DDBConnecter) error {
 	sttrackr, err := getDdbObject[StateTracker](ddbClnt, stateTrackerAttribute, stateTrackerKey, stateTrackerTable)
 	if err != nil {
-		return err
+		return fmt.Errorf("StateTracker get: %w", err)
 	}
 
 	// this is important so that the original Member object doesn't get reset to all empty struct
@@ -37,13 +39,17 @@ func (st *StateTracker) get(ddbClnt DDBConnecter) error {
 
 func (st *StateTracker) put(ddbClnt DDBConnecter) error {
 	st.Key = stateTrackerKey
-	return putDdbObject(ddbClnt, string(stateTrackerTable), st)
+	if err := putDdbObject(ddbClnt, string(stateTrackerTable), st); err != nil {
+		return fmt.Errorf("StateTracker put: %w", err)
+	}
+
+	return nil
 }
 
 func (s *State) update(ddbClnt DDBConnecter, remove bool) error {
 	st := StateTracker{}
 	if err := st.get(ddbClnt); err != nil {
-		return err
+		return fmt.Errorf("State update: %w", err)
 	}
 
 	states := &st.States
@@ -58,7 +64,7 @@ func (s *State) update(ddbClnt DDBConnecter, remove bool) error {
 	}
 
 	if err := st.put(ddbClnt); err != nil {
-		return err
+		return fmt.Errorf("State update: %w", err)
 	}
 
 	return nil

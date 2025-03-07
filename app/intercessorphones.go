@@ -1,6 +1,7 @@
 package prayertexter
 
 import (
+	"fmt"
 	"log/slog"
 	"math/rand/v2"
 	"slices"
@@ -21,10 +22,10 @@ const (
 func (i *IntercessorPhones) get(ddbClnt DDBConnecter) error {
 	intr, err := getDdbObject[IntercessorPhones](ddbClnt, intercessorPhonesAttribute, intercessorPhonesKey, intercessorPhonesTable)
 	if err != nil {
-		return err
+		return fmt.Errorf("IntercessorPhones get: %w", err)
 	}
 
-	// this is important so that the original IntercessorPhones object doesn't get reset to all 
+	// this is important so that the original IntercessorPhones object doesn't get reset to all
 	// empty struct values if the IntercessorPhones does not exist in ddb
 	if intr.Key != "" {
 		*i = *intr
@@ -35,7 +36,11 @@ func (i *IntercessorPhones) get(ddbClnt DDBConnecter) error {
 
 func (i *IntercessorPhones) put(ddbClnt DDBConnecter) error {
 	i.Key = intercessorPhonesKey
-	return putDdbObject(ddbClnt, intercessorPhonesTable, i)
+	if err := putDdbObject(ddbClnt, intercessorPhonesTable, i); err != nil {
+		return fmt.Errorf("IntercessorPhones put: %w", err)
+	}
+
+	return nil
 }
 
 func (i *IntercessorPhones) addPhone(phone string) {

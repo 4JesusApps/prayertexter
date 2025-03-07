@@ -87,14 +87,18 @@ func TestUpdate(t *testing.T) {
 	}
 
 	//// test adding the new State to StateTracker
-	state.update(ddbMock, false)
+	if err := state.update(ddbMock, false); err != nil {
+		t.Errorf("unexpected error %v", err)
+	}
 	input := ddbMock.PutItemInputs[0]
 	testStateTracker(input, t, expectedStateTracker)
 
 	//// test removing the State from StateTracker
 	// this resets the GetItem mock so that it can re-use mockGetItemResults
 	ddbMock.GetItemCalls = 0
-	state.update(ddbMock, true)
+	if err := state.update(ddbMock, true); err != nil {
+		t.Errorf("unexpected error %v", err)
+	}
 
 	// this removes the last State because remove is set to true, so it is expected to not be there
 	expectedStateTracker.States = expectedStateTracker.States[:1]

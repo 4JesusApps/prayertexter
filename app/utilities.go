@@ -4,7 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"log/slog"
+	"fmt"
 	"os"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -14,8 +14,7 @@ import (
 func generateID() (string, error) {
 	bytes := make([]byte, 16)
 	if _, err := rand.Read(bytes); err != nil {
-		slog.Error("failed to generate random bytes")
-		return "", err
+		return "", fmt.Errorf("generateID: %w", err)
 	}
 
 	return hex.EncodeToString(bytes), nil
@@ -36,7 +35,11 @@ func removeItem[T comparable](items *[]T, target T) {
 
 func getAwsConfig() (aws.Config, error) {
 	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion("us-west-1"))
-	return cfg, err
+	if err != nil {
+		return cfg, fmt.Errorf("getAwsConfig: %w", err)
+	}
+
+	return cfg, nil
 }
 
 func isAwsLocal() bool {
