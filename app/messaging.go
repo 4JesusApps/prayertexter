@@ -76,14 +76,8 @@ func sendText(smsClnt TextSender, msg TextMessage) error {
 		return err
 	}
 
-	isLocal, err := isAwsLocal()
-	if err != nil {
-		slog.Error("unable to convert AWS_SAM_LOCAL value to boolean")
-		return err
-	}
-
 	// this helps with unit testing and sam local testing so you can view the text message flow from the logs
-	if isLocal {
+	if isAwsLocal() {
 		slog.Info("sent text message", "phone", msg.Phone, "body", msg.Body)
 	}
 

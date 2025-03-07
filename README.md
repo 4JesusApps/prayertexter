@@ -6,7 +6,8 @@ Prayer Texter allows members to send in prayer requests to a specific phone numb
 
 # unit tests
 
-For unit tests to work, you need to set this local variable:
+You can add the following environmental variable to your linux session when running unit tests and it will log every text message response. This can be helpful when running unit tests to see all text messages sent out prior to some
+unexpected error, as it will generally give you a hint on what is going wrong right before the failure.
 1. export AWS_SAM_LOCAL=true
 
 # sam local testing

@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"log/slog"
 	"os"
-	"strconv"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -40,7 +39,10 @@ func getAwsConfig() (aws.Config, error) {
 	return cfg, err
 }
 
-func isAwsLocal() (bool, error) {
-	isLocal, err := strconv.ParseBool(os.Getenv("AWS_SAM_LOCAL"))
-	return isLocal, err
+func isAwsLocal() bool {
+	if local := os.Getenv("AWS_SAM_LOCAL"); local == "true" {
+		return true
+	} else {
+		return false
+	}
 }

@@ -30,15 +30,9 @@ func GetDdbClient() (*dynamodb.Client, error) {
 		return nil, err
 	}
 
-	isLocal, err := isAwsLocal()
-	if err != nil {
-		slog.Error("unable to convert AWS_SAM_LOCAL value to boolean")
-		return nil, err
-	}
-
 	var ddbClnt *dynamodb.Client
 
-	if isLocal {
+	if isAwsLocal() {
 		ddbClnt = dynamodb.NewFromConfig(cfg, func(o *dynamodb.Options) {
 			o.BaseEndpoint = aws.String("http://dynamodb:8000")
 		})
