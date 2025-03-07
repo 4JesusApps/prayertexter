@@ -440,7 +440,7 @@ func findIntercessors(ddbClnt DDBConnecter, skipPhone string) ([]Member, error) 
 			}
 
 			if intr.PrayerCount < intr.WeeklyPrayerLimit {
-				intr.PrayerCount += 1
+				intr.PrayerCount ++
 				intercessors = append(intercessors, intr)
 				allPhones.removePhone(intr.Phone)
 				if err := intr.put(ddbClnt); err != nil {

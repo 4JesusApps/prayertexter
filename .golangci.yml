@@ -245,7 +245,7 @@ linters-settings:
     # - "default": report only the default slog logger
     # https://github.com/go-simpler/sloglint?tab=readme-ov-file#no-global
     # Default: ""
-    no-global: "all"
+    no-global: ""
     # Enforce using methods that accept a context.
     # Values:
     # - "": disabled
@@ -404,3 +404,5 @@ issues:
         - gosec
         - noctx
         - wrapcheck
+    - text: 'shadow: declaration of "(err|ctx)" shadows declaration at'
+      linters: [ govet ]

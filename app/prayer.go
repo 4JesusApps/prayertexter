@@ -74,7 +74,7 @@ func isPrayerActive(ddbClnt DDBConnecter, phone string) (bool, error) {
 	// return empty data if the key does not exist inside the database
 	if pryr.Request == "" {
 		return false, nil
-	} else {
-		return true, nil
 	}
+
+	return true, nil
 }

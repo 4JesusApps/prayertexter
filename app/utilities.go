@@ -45,7 +45,7 @@ func getAwsConfig() (aws.Config, error) {
 func isAwsLocal() bool {
 	if local := os.Getenv("AWS_SAM_LOCAL"); local == "true" {
 		return true
-	} else {
-		return false
 	}
+
+	return false
 }

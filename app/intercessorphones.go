@@ -20,7 +20,8 @@ const (
 )
 
 func (i *IntercessorPhones) get(ddbClnt DDBConnecter) error {
-	intr, err := getDdbObject[IntercessorPhones](ddbClnt, intercessorPhonesAttribute, intercessorPhonesKey, intercessorPhonesTable)
+	intr, err := getDdbObject[IntercessorPhones](ddbClnt, intercessorPhonesAttribute,
+		intercessorPhonesKey, intercessorPhonesTable)
 	if err != nil {
 		return fmt.Errorf("IntercessorPhones get: %w", err)
 	}

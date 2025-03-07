@@ -54,7 +54,4 @@ Good dynamodb commands:
     - implement secure way to save authentication
 - rename state tracker to fault tracker???
 - unit test state tracker in real flow to verify errors are saved
-- improve error handling; try to log at lowest level to reduce log code
-    - review all functions/methods properly return each error
-    - find way to log error path so logging at top level is unnecessary
 - move 10-DLC number from sandbox to prod

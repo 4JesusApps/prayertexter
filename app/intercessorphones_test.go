@@ -60,7 +60,6 @@ func TestGenRandPhones(t *testing.T) {
 	if phones = i.genRandPhones(); phones != nil {
 		t.Errorf("expected nil return when phone slice is empty, got %v", phones)
 	}
-
 }
 
 func checkDuplicates(slice []string) bool {

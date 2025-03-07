@@ -77,7 +77,7 @@ func isMemberActive(ddbClnt DDBConnecter, phone string) (bool, error) {
 	// return empty data if the key does not exist inside the database
 	if mem.SetupStatus == "" {
 		return false, nil
-	} else {
-		return true, nil
 	}
+
+	return true, nil
 }
