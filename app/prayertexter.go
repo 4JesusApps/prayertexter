@@ -153,31 +153,32 @@ func MainFlow(msg TextMessage, ddbClnt DDBConnecter, smsClnt TextSender) error {
 }
 
 func signUp(msg TextMessage, mem Member, ddbClnt DDBConnecter, smsClnt TextSender) error {
-	if strings.ToLower(msg.Body) == "pray" {
+	switch {
+	case strings.ToLower(msg.Body) == "pray":
 		if err := signUpStageOne(mem, ddbClnt, smsClnt); err != nil {
 			return fmt.Errorf("signUpStageOne: %w", err)
 		}
-	} else if msg.Body != "2" && mem.SetupStage == 1 {
+	case msg.Body != "2" && mem.SetupStage == 1:
 		if err := signUpStageTwoA(mem, ddbClnt, smsClnt, msg); err != nil {
 			return fmt.Errorf("signUpStageTwoA: %w", err)
 		}
-	} else if msg.Body == "2" && mem.SetupStage == 1 {
+	case msg.Body == "2" && mem.SetupStage == 1:
 		if err := signUpStageTwoB(mem, ddbClnt, smsClnt); err != nil {
 			return fmt.Errorf("signUpStageTwoB: %w", err)
 		}
-	} else if msg.Body == "1" && mem.SetupStage == 2 {
+	case msg.Body == "1" && mem.SetupStage == 2:
 		if err := signUpFinalPrayerMessage(mem, ddbClnt, smsClnt); err != nil {
 			return fmt.Errorf("signUpFinalPrayerMessage: %w", err)
 		}
-	} else if msg.Body == "2" && mem.SetupStage == 2 {
+	case msg.Body == "2" && mem.SetupStage == 2:
 		if err := signUpStageThree(mem, ddbClnt, smsClnt); err != nil {
 			return fmt.Errorf("signUpStageThree: %w", err)
 		}
-	} else if mem.SetupStage == 3 {
+	case mem.SetupStage == 3:
 		if err := signUpFinalIntercessorMessage(mem, ddbClnt, smsClnt, msg); err != nil {
 			return fmt.Errorf("signUpFinalIntercessorMessage: %w", err)
 		}
-	} else {
+	default:
 		if err := signUpWrongInput(mem, smsClnt); err != nil {
 			return fmt.Errorf("signUpWrongInput: %w", err)
 		}
@@ -440,7 +441,7 @@ func findIntercessors(ddbClnt DDBConnecter, skipPhone string) ([]Member, error) 
 			}
 
 			if intr.PrayerCount < intr.WeeklyPrayerLimit {
-				intr.PrayerCount ++
+				intr.PrayerCount++
 				intercessors = append(intercessors, intr)
 				allPhones.removePhone(intr.Phone)
 				if err := intr.put(ddbClnt); err != nil {
