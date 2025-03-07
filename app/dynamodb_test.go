@@ -83,7 +83,7 @@ var expectedDdbItems = []struct {
 			Item: map[string]types.AttributeValue{
 				"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
 				"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
-				"Phone":             &types.AttributeValueMemberS{Value: "111-111-1111"},
+				"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
 				"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
 				"SetupStage":        &types.AttributeValueMemberN{Value: "99"},
 				"SetupStatus":       &types.AttributeValueMemberS{Value: "completed"},
@@ -99,8 +99,8 @@ var expectedDdbItems = []struct {
 			Item: map[string]types.AttributeValue{
 				"Key": &types.AttributeValueMemberS{Value: intercessorPhonesKey},
 				"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
-					&types.AttributeValueMemberS{Value: "111-111-1111"},
-					&types.AttributeValueMemberS{Value: "222-222-2222"},
+					&types.AttributeValueMemberS{Value: "+11111111111"},
+					&types.AttributeValueMemberS{Value: "+12222222222"},
 				}},
 			},
 		},
@@ -114,7 +114,7 @@ var expectedDdbItems = []struct {
 					Value: map[string]types.AttributeValue{
 						"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
 						"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
-						"Phone":             &types.AttributeValueMemberS{Value: "111-111-1111"},
+						"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
 						"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
 						"SetupStage":        &types.AttributeValueMemberN{Value: "99"},
 						"SetupStatus":       &types.AttributeValueMemberS{Value: "completed"},
@@ -122,13 +122,13 @@ var expectedDdbItems = []struct {
 						"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 					},
 				},
-				"IntercessorPhone": &types.AttributeValueMemberS{Value: "111-111-1111"},
+				"IntercessorPhone": &types.AttributeValueMemberS{Value: "+11111111111"},
 				"Request":          &types.AttributeValueMemberS{Value: "I need prayer for..."},
 				"Requestor": &types.AttributeValueMemberM{
 					Value: map[string]types.AttributeValue{
 						"Intercessor":       &types.AttributeValueMemberBOOL{Value: false},
 						"Name":              &types.AttributeValueMemberS{Value: "John Doe"},
-						"Phone":             &types.AttributeValueMemberS{Value: "123-456-7890"},
+						"Phone":             &types.AttributeValueMemberS{Value: "+11234567890"},
 						"PrayerCount":       &types.AttributeValueMemberN{Value: "0"},
 						"SetupStage":        &types.AttributeValueMemberN{Value: "99"},
 						"SetupStatus":       &types.AttributeValueMemberS{Value: "completed"},
@@ -153,7 +153,7 @@ var expectedDdbItems = []struct {
 								"Message": &types.AttributeValueMemberM{
 									Value: map[string]types.AttributeValue{
 										"Body":  &types.AttributeValueMemberS{Value: "sample text message 1"},
-										"Phone": &types.AttributeValueMemberS{Value: "123-456-7890"},
+										"Phone": &types.AttributeValueMemberS{Value: "+11234567890"},
 									},
 								},
 								"ID":         &types.AttributeValueMemberS{Value: "67f8ce776cc147c2b8700af909639ba2"},
@@ -168,7 +168,7 @@ var expectedDdbItems = []struct {
 								"Message": &types.AttributeValueMemberM{
 									Value: map[string]types.AttributeValue{
 										"Body":  &types.AttributeValueMemberS{Value: "sample text message 2"},
-										"Phone": &types.AttributeValueMemberS{Value: "998-765-4321"},
+										"Phone": &types.AttributeValueMemberS{Value: "+19987654321"},
 									},
 								},
 								"ID":         &types.AttributeValueMemberS{Value: "19ee2955d41d08325e1a97cbba1e544b"},
@@ -189,7 +189,7 @@ var expectedObjects = []any{
 	&Member{
 		Intercessor:       true,
 		Name:              "Intercessor1",
-		Phone:             "111-111-1111",
+		Phone:             "+11111111111",
 		PrayerCount:       1,
 		SetupStage:        99,
 		SetupStatus:       "completed",
@@ -199,27 +199,27 @@ var expectedObjects = []any{
 	&IntercessorPhones{
 		Key: intercessorPhonesKey,
 		Phones: []string{
-			"111-111-1111",
-			"222-222-2222",
+			"+11111111111",
+			"+12222222222",
 		},
 	},
 	&Prayer{
 		Intercessor: Member{
 			Intercessor:       true,
 			Name:              "Intercessor1",
-			Phone:             "111-111-1111",
+			Phone:             "+11111111111",
 			PrayerCount:       1,
 			SetupStage:        99,
 			SetupStatus:       "completed",
 			WeeklyPrayerDate:  "2025-02-13T23:54:01Z",
 			WeeklyPrayerLimit: 5,
 		},
-		IntercessorPhone: "111-111-1111",
+		IntercessorPhone: "+11111111111",
 		Request:          "I need prayer for...",
 		Requestor: Member{
 			Intercessor:       false,
 			Name:              "John Doe",
-			Phone:             "123-456-7890",
+			Phone:             "+11234567890",
 			PrayerCount:       0,
 			SetupStage:        99,
 			SetupStatus:       "completed",
@@ -234,7 +234,7 @@ var expectedObjects = []any{
 				Error: "sample error text",
 				Message: TextMessage{
 					Body:  "sample text message 1",
-					Phone: "123-456-7890",
+					Phone: "+11234567890",
 				},
 				ID:         "67f8ce776cc147c2b8700af909639ba2",
 				Stage:      "HELP",
@@ -245,7 +245,7 @@ var expectedObjects = []any{
 				Error: "",
 				Message: TextMessage{
 					Body:  "sample text message 2",
-					Phone: "998-765-4321",
+					Phone: "+19987654321",
 				},
 				ID:         "19ee2955d41d08325e1a97cbba1e544b",
 				Stage:      "MEMBER DELETE",

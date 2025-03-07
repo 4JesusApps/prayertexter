@@ -39,13 +39,13 @@ func (m *Member) delete(ddbClnt DDBConnecter) error {
 	return delDdbItem(ddbClnt, memberAttribute, m.Phone, memberTable)
 }
 
-func (m *Member) sendMessage(ddbClnt DDBConnecter, smsClnt TextSender, body string) error {
+func (m *Member) sendMessage(smsClnt TextSender, body string) error {
 	message := TextMessage{
 		Body:  body,
 		Phone: m.Phone,
 	}
 
-	return sendText(ddbClnt, smsClnt, message)
+	return sendText(smsClnt, message)
 }
 
 func isMemberActive(ddbClnt DDBConnecter, phone string) (bool, error) {

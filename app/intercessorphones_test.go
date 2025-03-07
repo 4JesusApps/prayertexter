@@ -8,16 +8,16 @@ import (
 var i = IntercessorPhones{
 	Key: intercessorPhonesKey,
 	Phones: []string{
-		"111-111-1111",
-		"222-222-2222",
-		"333-333-3333",
-		"444-444-4444",
-		"555-555-5555",
+		"+11111111111",
+		"+12222222222",
+		"+13333333333",
+		"+14444444444",
+		"+15555555555",
 	},
 }
 
 func TestAddPhone(t *testing.T) {
-	newPhone := "666-666-6666"
+	newPhone := "+1666-666-6666"
 	i.addPhone(newPhone)
 	if !slices.Contains(i.Phones, newPhone) {
 		t.Errorf("expected slice to contain %v, got %v", newPhone, i.Phones)
@@ -25,7 +25,7 @@ func TestAddPhone(t *testing.T) {
 }
 
 func TestRemovePhone(t *testing.T) {
-	removePhone := "333-333-3333"
+	removePhone := "+13333333333"
 	i.removePhone(removePhone)
 	if slices.Contains(i.Phones, removePhone) {
 		t.Errorf("expected slice to not contain %v, got %v", removePhone, i.Phones)

@@ -42,7 +42,7 @@ func TestRemoveItem(t *testing.T) {
 			Error: "sample error text",
 			Message: TextMessage{
 				Body:  "sample text message 1",
-				Phone: "123-456-7890",
+				Phone: "+11234567890",
 			},
 			ID:        "67f8ce776cc147c2b8700af909639ba2",
 			Stage:     "HELP",
@@ -53,7 +53,7 @@ func TestRemoveItem(t *testing.T) {
 			Error: "",
 			Message: TextMessage{
 				Body:  "sample text message 2",
-				Phone: "998-765-4321",
+				Phone: "+19987654321",
 			},
 			ID:        "19ee2955d41d08325e1a97cbba1e544b",
 			Stage:     "MEMBER DELETE",

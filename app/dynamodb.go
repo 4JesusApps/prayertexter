@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"os"
-	"strconv"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
@@ -29,9 +27,10 @@ func GetDdbClient() (*dynamodb.Client, error) {
 	cfg, err := getAwsConfig()
 	if err != nil {
 		slog.Error("unable to load aws-sdk-go-v2 for ddb client")
+		return nil, err
 	}
 
-	local, err := strconv.ParseBool(os.Getenv("AWS_SAM_LOCAL"))
+	isLocal, err := isAwsLocal()
 	if err != nil {
 		slog.Error("unable to convert AWS_SAM_LOCAL value to boolean")
 		return nil, err
@@ -39,7 +38,7 @@ func GetDdbClient() (*dynamodb.Client, error) {
 
 	var ddbClnt *dynamodb.Client
 
-	if local {
+	if isLocal {
 		ddbClnt = dynamodb.NewFromConfig(cfg, func(o *dynamodb.Options) {
 			o.BaseEndpoint = aws.String("http://dynamodb:8000")
 		})
@@ -70,10 +69,9 @@ func getDdbObject[T any](ddbClnt DDBConnecter, attr, key, table string) (*T, err
 	var object T
 	if err := attributevalue.UnmarshalMap(resp.Item, &object); err != nil {
 		slog.Error("unmarshal failed during getDdbObject", "type", fmt.Sprintf("%T", object))
-		return nil, err
 	}
 
-	return &object, nil
+	return &object, err
 }
 
 func putDdbItem(ddbClnt DDBConnecter, table string, data map[string]types.AttributeValue) error {

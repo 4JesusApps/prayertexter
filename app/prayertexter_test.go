@@ -2,7 +2,6 @@ package prayertexter
 
 import (
 	"errors"
-	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -121,7 +120,6 @@ func testPrayers(inputs []dynamodb.PutItemInput, t *testing.T, test TestCase, qu
 	expectedTable := getPrayerTable(queue)
 
 	for _, input := range inputs {
-
 		if *input.TableName != expectedTable {
 			continue
 		}
@@ -239,8 +237,13 @@ func testDeleteItem(inputs []dynamodb.DeleteItemInput, t *testing.T, test TestCa
 }
 
 func testTxtMessage(txtMock *MockTextSender, t *testing.T, test TestCase) {
-	for i, input := range txtMock.SendTextInputs {
-		fmt.Printf("TESTTTT input.MessageBody: %v", input.MessageBody)
+	index := 0
+
+	for _, input := range txtMock.SendTextInputs {
+		if index >= len(test.expectedTexts) {
+			t.Errorf("there are more text message inputs than expected texts")
+		}
+
 		// Some text messages use PLACEHOLDER and replace that with the txt recipients name
 		// Therefor to make testing easier, the message body is replaced by the msg constant
 		if strings.Contains(*input.MessageBody, "Hello! Please pray for") {
@@ -251,23 +254,28 @@ func testTxtMessage(txtMock *MockTextSender, t *testing.T, test TestCase) {
 			input.MessageBody = aws.String(msgPrayerConfirmation)
 		}
 
-		recievedText := TextMessage{
+		receivedText := TextMessage{
 			Body:  *input.MessageBody,
-			Phone: *input.OriginationIdentity,
+			Phone: *input.DestinationPhoneNumber,
 		}
 
 		// This part makes mocking messages less painful. We do not need to worry about new lines,
 		// pre, or post messages. They are removed when messages are tested.
-		for _, t := range []*TextMessage{&recievedText, &test.expectedTexts[i]} {
+		for _, t := range []*TextMessage{&receivedText, &test.expectedTexts[index]} {
 			for _, str := range []string{"\n", msgPre, msgPost} {
 				t.Body = strings.ReplaceAll(t.Body, str, "")
 			}
 		}
 
-		if recievedText != test.expectedTexts[i] {
-			t.Errorf("expected txt %v, got %v",
-				test.expectedTexts[i], recievedText)
+		if receivedText != test.expectedTexts[index] {
+			t.Errorf("expected txt %v, got %v", test.expectedTexts[index], receivedText)
 		}
+
+		index++
+	}
+
+	if index < len(test.expectedTexts) {
+		t.Errorf("there are more expected texts than text message inputs")
 	}
 }
 
@@ -278,12 +286,12 @@ func TestMainFlowSignUp(t *testing.T) {
 
 			initialMessage: TextMessage{
 				Body:  "pray",
-				Phone: "123-456-7890",
+				Phone: "+11234567890",
 			},
 
 			expectedMembers: []Member{
 				{
-					Phone:       "123-456-7890",
+					Phone:       "+11234567890",
 					SetupStage:  1,
 					SetupStatus: "in-progress",
 				},
@@ -292,7 +300,7 @@ func TestMainFlowSignUp(t *testing.T) {
 			expectedTexts: []TextMessage{
 				{
 					Body:  msgNameRequest,
-					Phone: "123-456-7890",
+					Phone: "+11234567890",
 				},
 			},
 
@@ -305,12 +313,12 @@ func TestMainFlowSignUp(t *testing.T) {
 
 			initialMessage: TextMessage{
 				Body:  "Pray",
-				Phone: "123-456-7890",
+				Phone: "+11234567890",
 			},
 
 			expectedMembers: []Member{
 				{
-					Phone:       "123-456-7890",
+					Phone:       "+11234567890",
 					SetupStage:  1,
 					SetupStatus: "in-progress",
 				},
@@ -319,7 +327,7 @@ func TestMainFlowSignUp(t *testing.T) {
 			expectedTexts: []TextMessage{
 				{
 					Body:  msgNameRequest,
-					Phone: "123-456-7890",
+					Phone: "+11234567890",
 				},
 			},
 
@@ -332,7 +340,7 @@ func TestMainFlowSignUp(t *testing.T) {
 
 			initialMessage: TextMessage{
 				Body:  "pray",
-				Phone: "123-456-7890",
+				Phone: "+11234567890",
 			},
 
 			mockGetItemResults: []struct {
@@ -359,7 +367,7 @@ func TestMainFlowSignUp(t *testing.T) {
 
 			initialMessage: TextMessage{
 				Body:  "John Doe",
-				Phone: "123-456-7890",
+				Phone: "+11234567890",
 			},
 
 			mockGetItemResults: []struct {
@@ -374,7 +382,7 @@ func TestMainFlowSignUp(t *testing.T) {
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
-							"Phone":       &types.AttributeValueMemberS{Value: "123-456-7890"},
+							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
 							"SetupStage":  &types.AttributeValueMemberN{Value: "1"},
 							"SetupStatus": &types.AttributeValueMemberS{Value: "in-progress"},
 						},
@@ -386,7 +394,7 @@ func TestMainFlowSignUp(t *testing.T) {
 			expectedMembers: []Member{
 				{
 					Name:        "John Doe",
-					Phone:       "123-456-7890",
+					Phone:       "+11234567890",
 					SetupStage:  2,
 					SetupStatus: "in-progress",
 				},
@@ -395,7 +403,7 @@ func TestMainFlowSignUp(t *testing.T) {
 			expectedTexts: []TextMessage{
 				{
 					Body:  msgMemberTypeRequest,
-					Phone: "123-456-7890",
+					Phone: "+11234567890",
 				},
 			},
 
@@ -408,7 +416,7 @@ func TestMainFlowSignUp(t *testing.T) {
 
 			initialMessage: TextMessage{
 				Body:  "2",
-				Phone: "123-456-7890",
+				Phone: "+11234567890",
 			},
 
 			mockGetItemResults: []struct {
@@ -423,7 +431,7 @@ func TestMainFlowSignUp(t *testing.T) {
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
-							"Phone":       &types.AttributeValueMemberS{Value: "123-456-7890"},
+							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
 							"SetupStage":  &types.AttributeValueMemberN{Value: "1"},
 							"SetupStatus": &types.AttributeValueMemberS{Value: "in-progress"},
 						},
@@ -435,7 +443,7 @@ func TestMainFlowSignUp(t *testing.T) {
 			expectedMembers: []Member{
 				{
 					Name:        "Anonymous",
-					Phone:       "123-456-7890",
+					Phone:       "+11234567890",
 					SetupStage:  2,
 					SetupStatus: "in-progress",
 				},
@@ -444,7 +452,7 @@ func TestMainFlowSignUp(t *testing.T) {
 			expectedTexts: []TextMessage{
 				{
 					Body:  msgMemberTypeRequest,
-					Phone: "123-456-7890",
+					Phone: "+11234567890",
 				},
 			},
 
@@ -457,7 +465,7 @@ func TestMainFlowSignUp(t *testing.T) {
 
 			initialMessage: TextMessage{
 				Body:  "1",
-				Phone: "123-456-7890",
+				Phone: "+11234567890",
 			},
 
 			mockGetItemResults: []struct {
@@ -473,7 +481,7 @@ func TestMainFlowSignUp(t *testing.T) {
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
 							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
-							"Phone":       &types.AttributeValueMemberS{Value: "123-456-7890"},
+							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
 							"SetupStage":  &types.AttributeValueMemberN{Value: "2"},
 							"SetupStatus": &types.AttributeValueMemberS{Value: "in-progress"},
 						},
@@ -486,7 +494,7 @@ func TestMainFlowSignUp(t *testing.T) {
 				{
 					Intercessor: false,
 					Name:        "John Doe",
-					Phone:       "123-456-7890",
+					Phone:       "+11234567890",
 					SetupStage:  99,
 					SetupStatus: "completed",
 				},
@@ -495,7 +503,7 @@ func TestMainFlowSignUp(t *testing.T) {
 			expectedTexts: []TextMessage{
 				{
 					Body:  msgPrayerInstructions + "\n\n" + msgSignUpConfirmation,
-					Phone: "123-456-7890",
+					Phone: "+11234567890",
 				},
 			},
 
@@ -508,7 +516,7 @@ func TestMainFlowSignUp(t *testing.T) {
 
 			initialMessage: TextMessage{
 				Body:  "2",
-				Phone: "123-456-7890",
+				Phone: "+11234567890",
 			},
 
 			mockGetItemResults: []struct {
@@ -524,7 +532,7 @@ func TestMainFlowSignUp(t *testing.T) {
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
 							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
-							"Phone":       &types.AttributeValueMemberS{Value: "123-456-7890"},
+							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
 							"SetupStage":  &types.AttributeValueMemberN{Value: "2"},
 							"SetupStatus": &types.AttributeValueMemberS{Value: "in-progress"},
 						},
@@ -537,7 +545,7 @@ func TestMainFlowSignUp(t *testing.T) {
 				{
 					Intercessor: true,
 					Name:        "John Doe",
-					Phone:       "123-456-7890",
+					Phone:       "+11234567890",
 					SetupStage:  3,
 					SetupStatus: "in-progress",
 				},
@@ -546,7 +554,7 @@ func TestMainFlowSignUp(t *testing.T) {
 			expectedTexts: []TextMessage{
 				{
 					Body:  msgPrayerNumRequest,
-					Phone: "123-456-7890",
+					Phone: "+11234567890",
 				},
 			},
 
@@ -559,7 +567,7 @@ func TestMainFlowSignUp(t *testing.T) {
 
 			initialMessage: TextMessage{
 				Body:  "10",
-				Phone: "123-456-7890",
+				Phone: "+11234567890",
 			},
 
 			mockGetItemResults: []struct {
@@ -576,7 +584,7 @@ func TestMainFlowSignUp(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Intercessor": &types.AttributeValueMemberBOOL{Value: true},
 							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
-							"Phone":       &types.AttributeValueMemberS{Value: "123-456-7890"},
+							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
 							"SetupStage":  &types.AttributeValueMemberN{Value: "3"},
 							"SetupStatus": &types.AttributeValueMemberS{Value: "in-progress"},
 						},
@@ -593,9 +601,9 @@ func TestMainFlowSignUp(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Key": &types.AttributeValueMemberS{Value: intercessorPhonesKey},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
-								&types.AttributeValueMemberS{Value: "111-111-1111"},
-								&types.AttributeValueMemberS{Value: "222-222-2222"},
-								&types.AttributeValueMemberS{Value: "333-333-3333"},
+								&types.AttributeValueMemberS{Value: "+11111111111"},
+								&types.AttributeValueMemberS{Value: "+12222222222"},
+								&types.AttributeValueMemberS{Value: "+13333333333"},
 							}},
 						},
 					},
@@ -607,7 +615,7 @@ func TestMainFlowSignUp(t *testing.T) {
 				{
 					Intercessor:       true,
 					Name:              "John Doe",
-					Phone:             "123-456-7890",
+					Phone:             "+11234567890",
 					SetupStage:        99,
 					SetupStatus:       "completed",
 					WeeklyPrayerDate:  "dummy date/time",
@@ -618,17 +626,17 @@ func TestMainFlowSignUp(t *testing.T) {
 			expectedPhones: IntercessorPhones{
 				Key: intercessorPhonesKey,
 				Phones: []string{
-					"111-111-1111",
-					"222-222-2222",
-					"333-333-3333",
-					"123-456-7890",
+					"+11111111111",
+					"+12222222222",
+					"+13333333333",
+					"+11234567890",
 				},
 			},
 
 			expectedTexts: []TextMessage{
 				{
 					Body:  msgPrayerInstructions + "\n\n" + msgIntercessorInstructions + "\n\n" + msgSignUpConfirmation,
-					Phone: "123-456-7890",
+					Phone: "+11234567890",
 				},
 			},
 
@@ -641,7 +649,7 @@ func TestMainFlowSignUp(t *testing.T) {
 
 			initialMessage: TextMessage{
 				Body:  "10",
-				Phone: "123-456-7890",
+				Phone: "+11234567890",
 			},
 
 			mockGetItemResults: []struct {
@@ -658,7 +666,7 @@ func TestMainFlowSignUp(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Intercessor": &types.AttributeValueMemberBOOL{Value: true},
 							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
-							"Phone":       &types.AttributeValueMemberS{Value: "123-456-7890"},
+							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
 							"SetupStage":  &types.AttributeValueMemberN{Value: "3"},
 							"SetupStatus": &types.AttributeValueMemberS{Value: "in-progress"},
 						},
@@ -675,9 +683,9 @@ func TestMainFlowSignUp(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Key": &types.AttributeValueMemberS{Value: intercessorPhonesKey},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
-								&types.AttributeValueMemberS{Value: "111-111-1111"},
-								&types.AttributeValueMemberS{Value: "222-222-2222"},
-								&types.AttributeValueMemberS{Value: "333-333-3333"},
+								&types.AttributeValueMemberS{Value: "+11111111111"},
+								&types.AttributeValueMemberS{Value: "+12222222222"},
+								&types.AttributeValueMemberS{Value: "+13333333333"},
 							}},
 						},
 					},
@@ -742,7 +750,7 @@ func TestMainFlowSignUpWrongInputs(t *testing.T) {
 
 			initialMessage: TextMessage{
 				Body:  "prayyy",
-				Phone: "123-456-7890",
+				Phone: "+11234567890",
 			},
 
 			expectedGetItemCalls: 4,
@@ -753,7 +761,7 @@ func TestMainFlowSignUpWrongInputs(t *testing.T) {
 
 			initialMessage: TextMessage{
 				Body:  "wrong response to question",
-				Phone: "123-456-7890",
+				Phone: "+11234567890",
 			},
 
 			mockGetItemResults: []struct {
@@ -769,7 +777,7 @@ func TestMainFlowSignUpWrongInputs(t *testing.T) {
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
 							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
-							"Phone":       &types.AttributeValueMemberS{Value: "123-456-7890"},
+							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
 							"SetupStage":  &types.AttributeValueMemberN{Value: "2"},
 							"SetupStatus": &types.AttributeValueMemberS{Value: "in-progress"},
 						},
@@ -781,7 +789,7 @@ func TestMainFlowSignUpWrongInputs(t *testing.T) {
 			expectedTexts: []TextMessage{
 				{
 					Body:  msgWrongInput,
-					Phone: "123-456-7890",
+					Phone: "+11234567890",
 				},
 			},
 
@@ -794,7 +802,7 @@ func TestMainFlowSignUpWrongInputs(t *testing.T) {
 
 			initialMessage: TextMessage{
 				Body:  "wrong response to question",
-				Phone: "123-456-7890",
+				Phone: "+11234567890",
 			},
 
 			mockGetItemResults: []struct {
@@ -811,7 +819,7 @@ func TestMainFlowSignUpWrongInputs(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Intercessor": &types.AttributeValueMemberBOOL{Value: true},
 							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
-							"Phone":       &types.AttributeValueMemberS{Value: "123-456-7890"},
+							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
 							"SetupStage":  &types.AttributeValueMemberN{Value: "3"},
 							"SetupStatus": &types.AttributeValueMemberS{Value: "in-progress"},
 						},
@@ -823,7 +831,7 @@ func TestMainFlowSignUpWrongInputs(t *testing.T) {
 			expectedTexts: []TextMessage{
 				{
 					Body:  msgWrongInput,
-					Phone: "123-456-7890",
+					Phone: "+11234567890",
 				},
 			},
 
@@ -857,7 +865,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 
 			initialMessage: TextMessage{
 				Body:  "cancel",
-				Phone: "123-456-7890",
+				Phone: "1234567890",
 			},
 
 			mockGetItemResults: []struct {
@@ -873,7 +881,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
 							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
-							"Phone":       &types.AttributeValueMemberS{Value: "123-456-7890"},
+							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
 							"SetupStage":  &types.AttributeValueMemberN{Value: "99"},
 							"SetupStatus": &types.AttributeValueMemberS{Value: "completed"},
 						},
@@ -887,7 +895,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 				table string
 			}{
 				{
-					key:   "123-456-7890",
+					key:   "+11234567890",
 					table: memberTable,
 				},
 			},
@@ -895,7 +903,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 			expectedTexts: []TextMessage{
 				{
 					Body:  msgRemoveUser,
-					Phone: "123-456-7890",
+					Phone: "+11234567890",
 				},
 			},
 
@@ -909,7 +917,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 
 			initialMessage: TextMessage{
 				Body:  "STOP",
-				Phone: "444-444-4444",
+				Phone: "+14444444444",
 			},
 
 			mockGetItemResults: []struct {
@@ -926,7 +934,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor4"},
-							"Phone":             &types.AttributeValueMemberS{Value: "444-444-4444"},
+							"Phone":             &types.AttributeValueMemberS{Value: "+14444444444"},
 							"SetupStage":        &types.AttributeValueMemberN{Value: "99"},
 							"SetupStatus":       &types.AttributeValueMemberS{Value: "completed"},
 							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "dummy date"},
@@ -945,10 +953,10 @@ func TestMainFlowMemberDelete(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Key": &types.AttributeValueMemberS{Value: intercessorPhonesKey},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
-								&types.AttributeValueMemberS{Value: "111-111-1111"},
-								&types.AttributeValueMemberS{Value: "222-222-2222"},
-								&types.AttributeValueMemberS{Value: "333-333-3333"},
-								&types.AttributeValueMemberS{Value: "444-444-4444"},
+								&types.AttributeValueMemberS{Value: "+11111111111"},
+								&types.AttributeValueMemberS{Value: "+12222222222"},
+								&types.AttributeValueMemberS{Value: "+13333333333"},
+								&types.AttributeValueMemberS{Value: "+14444444444"},
 							}},
 						},
 					},
@@ -959,9 +967,9 @@ func TestMainFlowMemberDelete(t *testing.T) {
 			expectedPhones: IntercessorPhones{
 				Key: intercessorPhonesKey,
 				Phones: []string{
-					"111-111-1111",
-					"222-222-2222",
-					"333-333-3333",
+					"+11111111111",
+					"+12222222222",
+					"+13333333333",
 				},
 			},
 
@@ -970,7 +978,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 				table string
 			}{
 				{
-					key:   "444-444-4444",
+					key:   "+14444444444",
 					table: memberTable,
 				},
 			},
@@ -978,7 +986,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 			expectedTexts: []TextMessage{
 				{
 					Body:  msgRemoveUser,
-					Phone: "444-444-4444",
+					Phone: "+14444444444",
 				},
 			},
 
@@ -992,7 +1000,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 
 			initialMessage: TextMessage{
 				Body:  "STOP",
-				Phone: "444-444-4444",
+				Phone: "+14444444444",
 			},
 
 			mockGetItemResults: []struct {
@@ -1009,7 +1017,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor4"},
-							"Phone":             &types.AttributeValueMemberS{Value: "444-444-4444"},
+							"Phone":             &types.AttributeValueMemberS{Value: "+14444444444"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
 							"SetupStage":        &types.AttributeValueMemberN{Value: "99"},
 							"SetupStatus":       &types.AttributeValueMemberS{Value: "completed"},
@@ -1029,10 +1037,10 @@ func TestMainFlowMemberDelete(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Key": &types.AttributeValueMemberS{Value: intercessorPhonesKey},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
-								&types.AttributeValueMemberS{Value: "111-111-1111"},
-								&types.AttributeValueMemberS{Value: "222-222-2222"},
-								&types.AttributeValueMemberS{Value: "333-333-3333"},
-								&types.AttributeValueMemberS{Value: "444-444-4444"},
+								&types.AttributeValueMemberS{Value: "+11111111111"},
+								&types.AttributeValueMemberS{Value: "+12222222222"},
+								&types.AttributeValueMemberS{Value: "+13333333333"},
+								&types.AttributeValueMemberS{Value: "+14444444444"},
 							}},
 						},
 					},
@@ -1045,7 +1053,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 								Value: map[string]types.AttributeValue{
 									"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
 									"Name":              &types.AttributeValueMemberS{Value: "Intercessor4"},
-									"Phone":             &types.AttributeValueMemberS{Value: "444-444-4444"},
+									"Phone":             &types.AttributeValueMemberS{Value: "+14444444444"},
 									"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
 									"SetupStage":        &types.AttributeValueMemberN{Value: "99"},
 									"SetupStatus":       &types.AttributeValueMemberS{Value: "completed"},
@@ -1053,13 +1061,13 @@ func TestMainFlowMemberDelete(t *testing.T) {
 									"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 								},
 							},
-							"IntercessorPhone": &types.AttributeValueMemberS{Value: "444-444-4444"},
+							"IntercessorPhone": &types.AttributeValueMemberS{Value: "+14444444444"},
 							"Request":          &types.AttributeValueMemberS{Value: "Please pray me.."},
 							"Requestor": &types.AttributeValueMemberM{
 								Value: map[string]types.AttributeValue{
 									"Intercessor": &types.AttributeValueMemberBOOL{Value: false},
 									"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
-									"Phone":       &types.AttributeValueMemberS{Value: "123-456-7890"},
+									"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
 									"SetupStage":  &types.AttributeValueMemberN{Value: "99"},
 									"SetupStatus": &types.AttributeValueMemberS{Value: "completed"},
 								},
@@ -1075,7 +1083,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 								Value: map[string]types.AttributeValue{
 									"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
 									"Name":              &types.AttributeValueMemberS{Value: "Intercessor4"},
-									"Phone":             &types.AttributeValueMemberS{Value: "444-444-4444"},
+									"Phone":             &types.AttributeValueMemberS{Value: "+14444444444"},
 									"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
 									"SetupStage":        &types.AttributeValueMemberN{Value: "99"},
 									"SetupStatus":       &types.AttributeValueMemberS{Value: "completed"},
@@ -1083,13 +1091,13 @@ func TestMainFlowMemberDelete(t *testing.T) {
 									"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 								},
 							},
-							"IntercessorPhone": &types.AttributeValueMemberS{Value: "444-444-4444"},
+							"IntercessorPhone": &types.AttributeValueMemberS{Value: "+14444444444"},
 							"Request":          &types.AttributeValueMemberS{Value: "Please pray me.."},
 							"Requestor": &types.AttributeValueMemberM{
 								Value: map[string]types.AttributeValue{
 									"Intercessor": &types.AttributeValueMemberBOOL{Value: false},
 									"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
-									"Phone":       &types.AttributeValueMemberS{Value: "123-456-7890"},
+									"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
 									"SetupStage":  &types.AttributeValueMemberN{Value: "99"},
 									"SetupStatus": &types.AttributeValueMemberS{Value: "completed"},
 								},
@@ -1103,9 +1111,9 @@ func TestMainFlowMemberDelete(t *testing.T) {
 			expectedPhones: IntercessorPhones{
 				Key: intercessorPhonesKey,
 				Phones: []string{
-					"111-111-1111",
-					"222-222-2222",
-					"333-333-3333",
+					"+11111111111",
+					"+12222222222",
+					"+13333333333",
 				},
 			},
 
@@ -1117,7 +1125,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 					Requestor: Member{
 						Intercessor: false,
 						Name:        "John Doe",
-						Phone:       "123-456-7890",
+						Phone:       "+11234567890",
 						SetupStage:  99,
 						SetupStatus: "completed",
 					},
@@ -1129,11 +1137,11 @@ func TestMainFlowMemberDelete(t *testing.T) {
 				table string
 			}{
 				{
-					key:   "444-444-4444",
+					key:   "+14444444444",
 					table: memberTable,
 				},
 				{
-					key:   "444-444-4444",
+					key:   "+14444444444",
 					table: activePrayersTable,
 				},
 			},
@@ -1141,7 +1149,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 			expectedTexts: []TextMessage{
 				{
 					Body:  msgRemoveUser,
-					Phone: "444-444-4444",
+					Phone: "+14444444444",
 				},
 			},
 
@@ -1155,7 +1163,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 
 			initialMessage: TextMessage{
 				Body:  "cancel",
-				Phone: "123-456-7890",
+				Phone: "+11234567890",
 			},
 
 			mockGetItemResults: []struct {
@@ -1172,7 +1180,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Intercessor": &types.AttributeValueMemberBOOL{Value: true},
 							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
-							"Phone":       &types.AttributeValueMemberS{Value: "123-456-7890"},
+							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
 							"SetupStage":  &types.AttributeValueMemberN{Value: "99"},
 							"SetupStatus": &types.AttributeValueMemberS{Value: "completed"},
 						},
@@ -1232,7 +1240,7 @@ func TestMainFlowHelp(t *testing.T) {
 
 			initialMessage: TextMessage{
 				Body:  "help",
-				Phone: "123-456-7890",
+				Phone: "+11234567890",
 			},
 
 			mockGetItemResults: []struct {
@@ -1248,7 +1256,7 @@ func TestMainFlowHelp(t *testing.T) {
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
 							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
-							"Phone":       &types.AttributeValueMemberS{Value: "123-456-7890"},
+							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
 							"SetupStage":  &types.AttributeValueMemberN{Value: "99"},
 							"SetupStatus": &types.AttributeValueMemberS{Value: "completed"},
 						},
@@ -1260,7 +1268,7 @@ func TestMainFlowHelp(t *testing.T) {
 			expectedTexts: []TextMessage{
 				{
 					Body:  msgHelp,
-					Phone: "123-456-7890",
+					Phone: "+11234567890",
 				},
 			},
 
@@ -1273,7 +1281,7 @@ func TestMainFlowHelp(t *testing.T) {
 
 			initialMessage: TextMessage{
 				Body:  "help",
-				Phone: "123-456-7890",
+				Phone: "+11234567890",
 			},
 
 			mockGetItemResults: []struct {
@@ -1289,7 +1297,7 @@ func TestMainFlowHelp(t *testing.T) {
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
 							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
-							"Phone":       &types.AttributeValueMemberS{Value: "123-456-7890"},
+							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
 							"SetupStage":  &types.AttributeValueMemberN{Value: "1"},
 							"SetupStatus": &types.AttributeValueMemberS{Value: "in-progress"},
 						},
@@ -1301,7 +1309,7 @@ func TestMainFlowHelp(t *testing.T) {
 			expectedTexts: []TextMessage{
 				{
 					Body:  msgHelp,
-					Phone: "123-456-7890",
+					Phone: "+11234567890",
 				},
 			},
 
@@ -1337,7 +1345,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 
 			initialMessage: TextMessage{
 				Body:  "I need prayer for...",
-				Phone: "123-456-7890",
+				Phone: "+11234567890",
 			},
 
 			mockGetItemResults: []struct {
@@ -1353,7 +1361,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
 							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
-							"Phone":       &types.AttributeValueMemberS{Value: "123-456-7890"},
+							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
 							"SetupStage":  &types.AttributeValueMemberN{Value: "99"},
 							"SetupStatus": &types.AttributeValueMemberS{Value: "completed"},
 						},
@@ -1370,8 +1378,8 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Key": &types.AttributeValueMemberS{Value: intercessorPhonesKey},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
-								&types.AttributeValueMemberS{Value: "111-111-1111"},
-								&types.AttributeValueMemberS{Value: "222-222-2222"},
+								&types.AttributeValueMemberS{Value: "+11111111111"},
+								&types.AttributeValueMemberS{Value: "+12222222222"},
 							}},
 						},
 					},
@@ -1382,7 +1390,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
-							"Phone":             &types.AttributeValueMemberS{Value: "111-111-1111"},
+							"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "0"},
 							"SetupStage":        &types.AttributeValueMemberN{Value: "99"},
 							"SetupStatus":       &types.AttributeValueMemberS{Value: "completed"},
@@ -1402,7 +1410,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor2"},
-							"Phone":             &types.AttributeValueMemberS{Value: "222-222-2222"},
+							"Phone":             &types.AttributeValueMemberS{Value: "+12222222222"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "0"},
 							"SetupStage":        &types.AttributeValueMemberN{Value: "99"},
 							"SetupStatus":       &types.AttributeValueMemberS{Value: "completed"},
@@ -1423,7 +1431,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				{
 					Intercessor:       true,
 					Name:              "Intercessor1",
-					Phone:             "111-111-1111",
+					Phone:             "+11111111111",
 					PrayerCount:       1,
 					SetupStage:        99,
 					SetupStatus:       "completed",
@@ -1433,7 +1441,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				{
 					Intercessor:       true,
 					Name:              "Intercessor2",
-					Phone:             "222-222-2222",
+					Phone:             "+12222222222",
 					PrayerCount:       1,
 					SetupStage:        99,
 					SetupStatus:       "completed",
@@ -1447,18 +1455,18 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 					Intercessor: Member{
 						Intercessor:       true,
 						Name:              "Intercessor1",
-						Phone:             "111-111-1111",
+						Phone:             "+11111111111",
 						PrayerCount:       1,
 						SetupStage:        99,
 						SetupStatus:       "completed",
 						WeeklyPrayerDate:  "dummy date/time",
 						WeeklyPrayerLimit: 5,
 					},
-					IntercessorPhone: "111-111-1111",
+					IntercessorPhone: "+11111111111",
 					Request:          "I need prayer for...",
 					Requestor: Member{
 						Name:        "John Doe",
-						Phone:       "123-456-7890",
+						Phone:       "+11234567890",
 						SetupStage:  99,
 						SetupStatus: "completed",
 					},
@@ -1467,18 +1475,18 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 					Intercessor: Member{
 						Intercessor:       true,
 						Name:              "Intercessor2",
-						Phone:             "222-222-2222",
+						Phone:             "+12222222222",
 						PrayerCount:       1,
 						SetupStage:        99,
 						SetupStatus:       "completed",
 						WeeklyPrayerDate:  "dummy date/time",
 						WeeklyPrayerLimit: 5,
 					},
-					IntercessorPhone: "222-222-2222",
+					IntercessorPhone: "+12222222222",
 					Request:          "I need prayer for...",
 					Requestor: Member{
 						Name:        "John Doe",
-						Phone:       "123-456-7890",
+						Phone:       "+11234567890",
 						SetupStage:  99,
 						SetupStatus: "completed",
 					},
@@ -1488,15 +1496,15 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 			expectedTexts: []TextMessage{
 				{
 					Body:  msgPrayerIntro,
-					Phone: "111-111-1111",
+					Phone: "+11111111111",
 				},
 				{
 					Body:  msgPrayerIntro,
-					Phone: "222-222-2222",
+					Phone: "+12222222222",
 				},
 				{
 					Body:  msgPrayerSentOut,
-					Phone: "123-456-7890",
+					Phone: "+11234567890",
 				},
 			},
 
@@ -1508,8 +1516,8 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 			description: "Profanity detected",
 
 			initialMessage: TextMessage{
-				Body:  "fuckkk you",
-				Phone: "123-456-7890",
+				Body:  "sh!t",
+				Phone: "+11234567890",
 			},
 
 			mockGetItemResults: []struct {
@@ -1525,7 +1533,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
 							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
-							"Phone":       &types.AttributeValueMemberS{Value: "123-456-7890"},
+							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
 							"SetupStage":  &types.AttributeValueMemberN{Value: "99"},
 							"SetupStatus": &types.AttributeValueMemberS{Value: "completed"},
 						},
@@ -1537,7 +1545,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 			expectedTexts: []TextMessage{
 				{
 					Body:  msgProfanityFound,
-					Phone: "123-456-7890",
+					Phone: "+11234567890",
 				},
 			},
 
@@ -1550,7 +1558,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 
 			initialMessage: TextMessage{
 				Body:  "I need prayer for...",
-				Phone: "123-456-7890",
+				Phone: "+11234567890",
 			},
 
 			mockGetItemResults: []struct {
@@ -1566,7 +1574,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
 							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
-							"Phone":       &types.AttributeValueMemberS{Value: "123-456-7890"},
+							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
 							"SetupStage":  &types.AttributeValueMemberN{Value: "99"},
 							"SetupStatus": &types.AttributeValueMemberS{Value: "completed"},
 						},
@@ -1583,8 +1591,8 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Key": &types.AttributeValueMemberS{Value: intercessorPhonesKey},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
-								&types.AttributeValueMemberS{Value: "111-111-1111"},
-								&types.AttributeValueMemberS{Value: "222-222-2222"},
+								&types.AttributeValueMemberS{Value: "+11111111111"},
+								&types.AttributeValueMemberS{Value: "+12222222222"},
 							}},
 						},
 					},
@@ -1595,7 +1603,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
-							"Phone":             &types.AttributeValueMemberS{Value: "111-111-1111"},
+							"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "0"},
 							"SetupStage":        &types.AttributeValueMemberN{Value: "99"},
 							"SetupStatus":       &types.AttributeValueMemberS{Value: "completed"},
@@ -1615,7 +1623,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor2"},
-							"Phone":             &types.AttributeValueMemberS{Value: "222-222-2222"},
+							"Phone":             &types.AttributeValueMemberS{Value: "+12222222222"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "0"},
 							"SetupStage":        &types.AttributeValueMemberN{Value: "99"},
 							"SetupStatus":       &types.AttributeValueMemberS{Value: "completed"},
@@ -1655,7 +1663,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 
 			initialMessage: TextMessage{
 				Body:  "I need prayer for...",
-				Phone: "123-456-7890",
+				Phone: "+11234567890",
 			},
 
 			mockGetItemResults: []struct {
@@ -1671,7 +1679,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
 							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
-							"Phone":       &types.AttributeValueMemberS{Value: "123-456-7890"},
+							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
 							"SetupStage":  &types.AttributeValueMemberN{Value: "99"},
 							"SetupStatus": &types.AttributeValueMemberS{Value: "completed"},
 						},
@@ -1688,8 +1696,8 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Key": &types.AttributeValueMemberS{Value: intercessorPhonesKey},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
-								&types.AttributeValueMemberS{Value: "111-111-1111"},
-								&types.AttributeValueMemberS{Value: "222-222-2222"},
+								&types.AttributeValueMemberS{Value: "+11111111111"},
+								&types.AttributeValueMemberS{Value: "+12222222222"},
 							}},
 						},
 					},
@@ -1700,7 +1708,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
-							"Phone":             &types.AttributeValueMemberS{Value: "111-111-1111"},
+							"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "5"},
 							"SetupStage":        &types.AttributeValueMemberN{Value: "99"},
 							"SetupStatus":       &types.AttributeValueMemberS{Value: "completed"},
@@ -1720,7 +1728,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor2"},
-							"Phone":             &types.AttributeValueMemberS{Value: "222-222-2222"},
+							"Phone":             &types.AttributeValueMemberS{Value: "+12222222222"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "5"},
 							"SetupStage":        &types.AttributeValueMemberN{Value: "99"},
 							"SetupStatus":       &types.AttributeValueMemberS{Value: "completed"},
@@ -1743,7 +1751,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 					Request:          "I need prayer for...",
 					Requestor: Member{
 						Name:        "John Doe",
-						Phone:       "123-456-7890",
+						Phone:       "+11234567890",
 						SetupStage:  99,
 						SetupStatus: "completed",
 					},
@@ -1753,7 +1761,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 			expectedTexts: []TextMessage{
 				{
 					Body:  msgPrayerQueued,
-					Phone: "123-456-7890",
+					Phone: "+11234567890",
 				},
 			},
 
@@ -1806,11 +1814,11 @@ func TestFindIntercessors(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Key": &types.AttributeValueMemberS{Value: intercessorPhonesKey},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
-								&types.AttributeValueMemberS{Value: "111-111-1111"},
-								&types.AttributeValueMemberS{Value: "222-222-2222"},
-								&types.AttributeValueMemberS{Value: "333-333-3333"},
-								&types.AttributeValueMemberS{Value: "444-444-4444"},
-								&types.AttributeValueMemberS{Value: "555-555-5555"},
+								&types.AttributeValueMemberS{Value: "+11111111111"},
+								&types.AttributeValueMemberS{Value: "+12222222222"},
+								&types.AttributeValueMemberS{Value: "+13333333333"},
+								&types.AttributeValueMemberS{Value: "+14444444444"},
+								&types.AttributeValueMemberS{Value: "+15555555555"},
 							}},
 						},
 					},
@@ -1821,7 +1829,7 @@ func TestFindIntercessors(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
-							"Phone":             &types.AttributeValueMemberS{Value: "111-111-1111"},
+							"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "5"},
 							"SetupStage":        &types.AttributeValueMemberN{Value: "99"},
 							"SetupStatus":       &types.AttributeValueMemberS{Value: "completed"},
@@ -1841,7 +1849,7 @@ func TestFindIntercessors(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor2"},
-							"Phone":             &types.AttributeValueMemberS{Value: "222-222-2222"},
+							"Phone":             &types.AttributeValueMemberS{Value: "+12222222222"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "100"},
 							"SetupStage":        &types.AttributeValueMemberN{Value: "99"},
 							"SetupStatus":       &types.AttributeValueMemberS{Value: "completed"},
@@ -1861,7 +1869,7 @@ func TestFindIntercessors(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor3"},
-							"Phone":             &types.AttributeValueMemberS{Value: "333-333-3333"},
+							"Phone":             &types.AttributeValueMemberS{Value: "+13333333333"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "15"},
 							"SetupStage":        &types.AttributeValueMemberN{Value: "99"},
 							"SetupStatus":       &types.AttributeValueMemberS{Value: "completed"},
@@ -1881,7 +1889,7 @@ func TestFindIntercessors(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor4"},
-							"Phone":             &types.AttributeValueMemberS{Value: "444-444-4444"},
+							"Phone":             &types.AttributeValueMemberS{Value: "+14444444444"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "9"},
 							"SetupStage":        &types.AttributeValueMemberN{Value: "99"},
 							"SetupStatus":       &types.AttributeValueMemberS{Value: "completed"},
@@ -1901,7 +1909,7 @@ func TestFindIntercessors(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor5"},
-							"Phone":             &types.AttributeValueMemberS{Value: "555-555-5555"},
+							"Phone":             &types.AttributeValueMemberS{Value: "+15555555555"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "4"},
 							"SetupStage":        &types.AttributeValueMemberN{Value: "99"},
 							"SetupStatus":       &types.AttributeValueMemberS{Value: "completed"},
@@ -1922,7 +1930,7 @@ func TestFindIntercessors(t *testing.T) {
 				{
 					Intercessor:       true,
 					Name:              "Intercessor3",
-					Phone:             "333-333-3333",
+					Phone:             "+13333333333",
 					PrayerCount:       1,
 					SetupStage:        99,
 					SetupStatus:       "completed",
@@ -1932,7 +1940,7 @@ func TestFindIntercessors(t *testing.T) {
 				{
 					Intercessor:       true,
 					Name:              "Intercessor5",
-					Phone:             "555-555-5555",
+					Phone:             "+15555555555",
 					PrayerCount:       5,
 					SetupStage:        99,
 					SetupStatus:       "completed",
@@ -1956,9 +1964,9 @@ func TestFindIntercessors(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Key": &types.AttributeValueMemberS{Value: intercessorPhonesKey},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
-								&types.AttributeValueMemberS{Value: "111-111-1111"},
-								&types.AttributeValueMemberS{Value: "222-222-2222"},
-								&types.AttributeValueMemberS{Value: "333-333-3333"},
+								&types.AttributeValueMemberS{Value: "+11111111111"},
+								&types.AttributeValueMemberS{Value: "+12222222222"},
+								&types.AttributeValueMemberS{Value: "+13333333333"},
 							}},
 						},
 					},
@@ -1969,7 +1977,7 @@ func TestFindIntercessors(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
-							"Phone":             &types.AttributeValueMemberS{Value: "111-111-1111"},
+							"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "5"},
 							"SetupStage":        &types.AttributeValueMemberN{Value: "99"},
 							"SetupStatus":       &types.AttributeValueMemberS{Value: "completed"},
@@ -1989,7 +1997,7 @@ func TestFindIntercessors(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor2"},
-							"Phone":             &types.AttributeValueMemberS{Value: "222-222-2222"},
+							"Phone":             &types.AttributeValueMemberS{Value: "+12222222222"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "5"},
 							"SetupStage":        &types.AttributeValueMemberN{Value: "99"},
 							"SetupStatus":       &types.AttributeValueMemberS{Value: "completed"},
@@ -2009,7 +2017,7 @@ func TestFindIntercessors(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor3"},
-							"Phone":             &types.AttributeValueMemberS{Value: "333-333-3333"},
+							"Phone":             &types.AttributeValueMemberS{Value: "+13333333333"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "4"},
 							"SetupStage":        &types.AttributeValueMemberN{Value: "99"},
 							"SetupStatus":       &types.AttributeValueMemberS{Value: "completed"},
@@ -2030,7 +2038,7 @@ func TestFindIntercessors(t *testing.T) {
 				{
 					Intercessor:       true,
 					Name:              "Intercessor3",
-					Phone:             "333-333-3333",
+					Phone:             "+13333333333",
 					PrayerCount:       5,
 					SetupStage:        99,
 					SetupStatus:       "completed",
@@ -2055,8 +2063,8 @@ func TestFindIntercessors(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Key": &types.AttributeValueMemberS{Value: intercessorPhonesKey},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
-								&types.AttributeValueMemberS{Value: "111-111-1111"},
-								&types.AttributeValueMemberS{Value: "888-888-8888"},
+								&types.AttributeValueMemberS{Value: "+11111111111"},
+								&types.AttributeValueMemberS{Value: "+18888888888"},
 							}},
 						},
 					},
@@ -2067,7 +2075,7 @@ func TestFindIntercessors(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
-							"Phone":             &types.AttributeValueMemberS{Value: "111-111-1111"},
+							"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
 							"SetupStage":        &types.AttributeValueMemberN{Value: "99"},
 							"SetupStatus":       &types.AttributeValueMemberS{Value: "completed"},
@@ -2088,7 +2096,7 @@ func TestFindIntercessors(t *testing.T) {
 				{
 					Intercessor:       true,
 					Name:              "Intercessor1",
-					Phone:             "111-111-1111",
+					Phone:             "+11111111111",
 					PrayerCount:       2,
 					SetupStage:        99,
 					SetupStatus:       "completed",
@@ -2112,8 +2120,8 @@ func TestFindIntercessors(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Key": &types.AttributeValueMemberS{Value: intercessorPhonesKey},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
-								&types.AttributeValueMemberS{Value: "111-111-1111"},
-								&types.AttributeValueMemberS{Value: "222-222-2222"},
+								&types.AttributeValueMemberS{Value: "+11111111111"},
+								&types.AttributeValueMemberS{Value: "+12222222222"},
 							}},
 						},
 					},
@@ -2124,7 +2132,7 @@ func TestFindIntercessors(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
-							"Phone":             &types.AttributeValueMemberS{Value: "111-111-1111"},
+							"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "5"},
 							"SetupStage":        &types.AttributeValueMemberN{Value: "99"},
 							"SetupStatus":       &types.AttributeValueMemberS{Value: "completed"},
@@ -2144,7 +2152,7 @@ func TestFindIntercessors(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor2"},
-							"Phone":             &types.AttributeValueMemberS{Value: "222-222-2222"},
+							"Phone":             &types.AttributeValueMemberS{Value: "+12222222222"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "5"},
 							"SetupStage":        &types.AttributeValueMemberN{Value: "99"},
 							"SetupStatus":       &types.AttributeValueMemberS{Value: "completed"},
@@ -2177,9 +2185,9 @@ func TestFindIntercessors(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Key": &types.AttributeValueMemberS{Value: intercessorPhonesKey},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
-								&types.AttributeValueMemberS{Value: "111-111-1111"},
-								&types.AttributeValueMemberS{Value: "222-222-2222"},
-								&types.AttributeValueMemberS{Value: "333-333-3333"},
+								&types.AttributeValueMemberS{Value: "+11111111111"},
+								&types.AttributeValueMemberS{Value: "+12222222222"},
+								&types.AttributeValueMemberS{Value: "+13333333333"},
 							}},
 						},
 					},
@@ -2190,7 +2198,7 @@ func TestFindIntercessors(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
-							"Phone":             &types.AttributeValueMemberS{Value: "111-111-1111"},
+							"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
 							"SetupStage":        &types.AttributeValueMemberN{Value: "99"},
 							"SetupStatus":       &types.AttributeValueMemberS{Value: "completed"},
@@ -2207,7 +2215,7 @@ func TestFindIntercessors(t *testing.T) {
 								Value: map[string]types.AttributeValue{
 									"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
 									"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
-									"Phone":             &types.AttributeValueMemberS{Value: "111-111-1111"},
+									"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
 									"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
 									"SetupStage":        &types.AttributeValueMemberN{Value: "99"},
 									"SetupStatus":       &types.AttributeValueMemberS{Value: "completed"},
@@ -2215,13 +2223,13 @@ func TestFindIntercessors(t *testing.T) {
 									"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 								},
 							},
-							"IntercessorPhone": &types.AttributeValueMemberS{Value: "111-111-1111"},
+							"IntercessorPhone": &types.AttributeValueMemberS{Value: "+11111111111"},
 							"Request":          &types.AttributeValueMemberS{Value: "Please pray me.."},
 							"Requestor": &types.AttributeValueMemberM{
 								Value: map[string]types.AttributeValue{
 									"Intercessor": &types.AttributeValueMemberBOOL{Value: false},
 									"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
-									"Phone":       &types.AttributeValueMemberS{Value: "123-456-7890"},
+									"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
 									"SetupStage":  &types.AttributeValueMemberN{Value: "99"},
 									"SetupStatus": &types.AttributeValueMemberS{Value: "completed"},
 								},
@@ -2235,7 +2243,7 @@ func TestFindIntercessors(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor2"},
-							"Phone":             &types.AttributeValueMemberS{Value: "222-222-2222"},
+							"Phone":             &types.AttributeValueMemberS{Value: "+12222222222"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
 							"SetupStage":        &types.AttributeValueMemberN{Value: "99"},
 							"SetupStatus":       &types.AttributeValueMemberS{Value: "completed"},
@@ -2255,7 +2263,7 @@ func TestFindIntercessors(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor3"},
-							"Phone":             &types.AttributeValueMemberS{Value: "333-333-3333"},
+							"Phone":             &types.AttributeValueMemberS{Value: "+13333333333"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
 							"SetupStage":        &types.AttributeValueMemberN{Value: "99"},
 							"SetupStatus":       &types.AttributeValueMemberS{Value: "completed"},
@@ -2272,7 +2280,7 @@ func TestFindIntercessors(t *testing.T) {
 								Value: map[string]types.AttributeValue{
 									"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
 									"Name":              &types.AttributeValueMemberS{Value: "Intercessor3"},
-									"Phone":             &types.AttributeValueMemberS{Value: "333-333-3333"},
+									"Phone":             &types.AttributeValueMemberS{Value: "+13333333333"},
 									"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
 									"SetupStage":        &types.AttributeValueMemberN{Value: "99"},
 									"SetupStatus":       &types.AttributeValueMemberS{Value: "completed"},
@@ -2280,13 +2288,13 @@ func TestFindIntercessors(t *testing.T) {
 									"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 								},
 							},
-							"IntercessorPhone": &types.AttributeValueMemberS{Value: "333-333-3333"},
+							"IntercessorPhone": &types.AttributeValueMemberS{Value: "+13333333333"},
 							"Request":          &types.AttributeValueMemberS{Value: "Please pray me.."},
 							"Requestor": &types.AttributeValueMemberM{
 								Value: map[string]types.AttributeValue{
 									"Intercessor": &types.AttributeValueMemberBOOL{Value: false},
 									"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
-									"Phone":       &types.AttributeValueMemberS{Value: "123-456-7890"},
+									"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
 									"SetupStage":  &types.AttributeValueMemberN{Value: "99"},
 									"SetupStatus": &types.AttributeValueMemberS{Value: "completed"},
 								},
@@ -2301,7 +2309,7 @@ func TestFindIntercessors(t *testing.T) {
 				{
 					Intercessor:       true,
 					Name:              "Intercessor2",
-					Phone:             "222-222-2222",
+					Phone:             "+12222222222",
 					PrayerCount:       2,
 					SetupStage:        99,
 					SetupStatus:       "completed",
@@ -2324,13 +2332,13 @@ func TestFindIntercessors(t *testing.T) {
 
 			if test.expectedError {
 				// handles failures for error mocks
-				if _, err := findIntercessors(ddbMock, "888-888-8888"); err == nil {
+				if _, err := findIntercessors(ddbMock, "+18888888888"); err == nil {
 					t.Fatalf("expected error, got nil")
 				}
 				testNumMethodCalls(ddbMock, txtMock, t, test)
 			} else {
 				// handles success test cases
-				_, err := findIntercessors(ddbMock, "888-888-8888")
+				_, err := findIntercessors(ddbMock, "+18888888888")
 				if err != nil {
 					t.Fatalf("unexpected error starting findIntercessors: %v", err)
 				}
@@ -2349,7 +2357,7 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 
 			initialMessage: TextMessage{
 				Body:  "prayed",
-				Phone: "111-111-1111",
+				Phone: "+11111111111",
 			},
 
 			mockGetItemResults: []struct {
@@ -2366,7 +2374,7 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
-							"Phone":             &types.AttributeValueMemberS{Value: "111-111-1111"},
+							"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
 							"SetupStage":        &types.AttributeValueMemberN{Value: "99"},
 							"SetupStatus":       &types.AttributeValueMemberS{Value: "completed"},
@@ -2388,7 +2396,7 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 								Value: map[string]types.AttributeValue{
 									"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
 									"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
-									"Phone":             &types.AttributeValueMemberS{Value: "111-111-1111"},
+									"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
 									"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
 									"SetupStage":        &types.AttributeValueMemberN{Value: "99"},
 									"SetupStatus":       &types.AttributeValueMemberS{Value: "completed"},
@@ -2396,13 +2404,120 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 									"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 								},
 							},
-							"IntercessorPhone": &types.AttributeValueMemberS{Value: "111-111-1111"},
+							"IntercessorPhone": &types.AttributeValueMemberS{Value: "+11111111111"},
 							"Request":          &types.AttributeValueMemberS{Value: "Please pray me.."},
 							"Requestor": &types.AttributeValueMemberM{
 								Value: map[string]types.AttributeValue{
 									"Intercessor": &types.AttributeValueMemberBOOL{Value: false},
 									"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
-									"Phone":       &types.AttributeValueMemberS{Value: "123-456-7890"},
+									"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
+									"SetupStage":  &types.AttributeValueMemberN{Value: "99"},
+									"SetupStatus": &types.AttributeValueMemberS{Value: "completed"},
+								},
+							},
+						},
+					},
+					Error: nil,
+				},
+				{
+					Output: &dynamodb.GetItemOutput{
+						Item: map[string]types.AttributeValue{
+							"Intercessor": &types.AttributeValueMemberBOOL{Value: false},
+							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
+							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
+							"SetupStage":  &types.AttributeValueMemberN{Value: "99"},
+							"SetupStatus": &types.AttributeValueMemberS{Value: "completed"},
+						},
+					},
+					Error: nil,
+				},
+			},
+
+			expectedDeleteItems: []struct {
+				key   string
+				table string
+			}{
+				{
+					key:   "+11111111111",
+					table: activePrayersTable,
+				},
+			},
+
+			expectedTexts: []TextMessage{
+				{
+					Body:  msgPrayerThankYou,
+					Phone: "+11111111111",
+				},
+				{
+					Body:  msgPrayerConfirmation,
+					Phone: "+11234567890",
+				},
+			},
+
+			expectedGetItemCalls:    6,
+			expectedPutItemCalls:    3,
+			expectedDeleteItemCalls: 1,
+			expectedSendTextCalls:   2,
+		},
+		{
+			description: "Successful prayer request completion - skip sending prayer confirmation text to prayer requestor because they are no longer a member",
+
+			initialMessage: TextMessage{
+				Body:  "prayed",
+				Phone: "+11111111111",
+			},
+
+			mockGetItemResults: []struct {
+				Output *dynamodb.GetItemOutput
+				Error  error
+			}{
+				{
+					// StateTracker empty get response. It would over complicate to test this here
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
+				{
+					Output: &dynamodb.GetItemOutput{
+						Item: map[string]types.AttributeValue{
+							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
+							"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
+							"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
+							"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
+							"SetupStage":        &types.AttributeValueMemberN{Value: "99"},
+							"SetupStatus":       &types.AttributeValueMemberS{Value: "completed"},
+							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "dummy date"},
+							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
+						},
+					},
+					Error: nil,
+				},
+				{
+					// StateTracker empty get response. It would over complicate to test this here
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
+				{
+					Output: &dynamodb.GetItemOutput{
+						Item: map[string]types.AttributeValue{
+							"Intercessor": &types.AttributeValueMemberM{
+								Value: map[string]types.AttributeValue{
+									"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
+									"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
+									"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
+									"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
+									"SetupStage":        &types.AttributeValueMemberN{Value: "99"},
+									"SetupStatus":       &types.AttributeValueMemberS{Value: "completed"},
+									"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "dummy date"},
+									"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
+								},
+							},
+							"IntercessorPhone": &types.AttributeValueMemberS{Value: "+11111111111"},
+							"Request":          &types.AttributeValueMemberS{Value: "Please pray me.."},
+							"Requestor": &types.AttributeValueMemberM{
+								Value: map[string]types.AttributeValue{
+									"Intercessor": &types.AttributeValueMemberBOOL{Value: false},
+									"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
+									"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
 									"SetupStage":  &types.AttributeValueMemberN{Value: "99"},
 									"SetupStatus": &types.AttributeValueMemberS{Value: "completed"},
 								},
@@ -2418,7 +2533,7 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 				table string
 			}{
 				{
-					key:   "111-111-1111",
+					key:   "+11111111111",
 					table: activePrayersTable,
 				},
 			},
@@ -2426,25 +2541,21 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 			expectedTexts: []TextMessage{
 				{
 					Body:  msgPrayerThankYou,
-					Phone: "111-111-1111",
-				},
-				{
-					Body:  msgPrayerConfirmation,
-					Phone: "123-456-7890",
+					Phone: "+11111111111",
 				},
 			},
 
-			expectedGetItemCalls:    5,
+			expectedGetItemCalls:    6,
 			expectedPutItemCalls:    3,
 			expectedDeleteItemCalls: 1,
-			expectedSendTextCalls:   2,
+			expectedSendTextCalls:   1,
 		},
 		{
 			description: "No active prayers to mark as prayed",
 
 			initialMessage: TextMessage{
 				Body:  "prayed",
-				Phone: "111-111-1111",
+				Phone: "+11111111111",
 			},
 
 			mockGetItemResults: []struct {
@@ -2461,7 +2572,7 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
-							"Phone":             &types.AttributeValueMemberS{Value: "111-111-1111"},
+							"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
 							"SetupStage":        &types.AttributeValueMemberN{Value: "99"},
 							"SetupStatus":       &types.AttributeValueMemberS{Value: "completed"},
@@ -2476,7 +2587,7 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 			expectedTexts: []TextMessage{
 				{
 					Body:  msgNoActivePrayer,
-					Phone: "111-111-1111",
+					Phone: "+11111111111",
 				},
 			},
 
@@ -2489,7 +2600,7 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 
 			initialMessage: TextMessage{
 				Body:  "prayed",
-				Phone: "123-456-7890",
+				Phone: "+11234567890",
 			},
 
 			mockGetItemResults: []struct {
@@ -2506,7 +2617,7 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
-							"Phone":             &types.AttributeValueMemberS{Value: "111-111-1111"},
+							"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
 							"SetupStage":        &types.AttributeValueMemberN{Value: "99"},
 							"SetupStatus":       &types.AttributeValueMemberS{Value: "completed"},
@@ -2528,7 +2639,7 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 								Value: map[string]types.AttributeValue{
 									"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
 									"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
-									"Phone":             &types.AttributeValueMemberS{Value: "111-111-1111"},
+									"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
 									"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
 									"SetupStage":        &types.AttributeValueMemberN{Value: "99"},
 									"SetupStatus":       &types.AttributeValueMemberS{Value: "completed"},
@@ -2536,17 +2647,29 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 									"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 								},
 							},
-							"IntercessorPhone": &types.AttributeValueMemberS{Value: "111-111-1111"},
+							"IntercessorPhone": &types.AttributeValueMemberS{Value: "+11111111111"},
 							"Request":          &types.AttributeValueMemberS{Value: "Please pray me.."},
 							"Requestor": &types.AttributeValueMemberM{
 								Value: map[string]types.AttributeValue{
 									"Intercessor": &types.AttributeValueMemberBOOL{Value: false},
 									"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
-									"Phone":       &types.AttributeValueMemberS{Value: "123-456-7890"},
+									"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
 									"SetupStage":  &types.AttributeValueMemberN{Value: "99"},
 									"SetupStatus": &types.AttributeValueMemberS{Value: "completed"},
 								},
 							},
+						},
+					},
+					Error: nil,
+				},
+				{
+					Output: &dynamodb.GetItemOutput{
+						Item: map[string]types.AttributeValue{
+							"Intercessor": &types.AttributeValueMemberBOOL{Value: false},
+							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
+							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
+							"SetupStage":  &types.AttributeValueMemberN{Value: "99"},
+							"SetupStatus": &types.AttributeValueMemberS{Value: "completed"},
 						},
 					},
 					Error: nil,
@@ -2562,7 +2685,7 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 			},
 
 			expectedError:           true,
-			expectedGetItemCalls:    5,
+			expectedGetItemCalls:    6,
 			expectedPutItemCalls:    3,
 			expectedDeleteItemCalls: 1,
 			expectedSendTextCalls:   2,

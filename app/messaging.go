@@ -33,10 +33,9 @@ const (
 	msgPrayerConfirmation = "You're prayer request has been prayed for by PLACEHOLDER"
 
 	// other
-	msgPre  = "PrayerTexter: "
-	msgPost = "Reply HELP for help or STOP to cancel."
-	msgHelp = "To receive support, please email info@4jesusministries.com or call/text (657) 217-1678. Thank you!"
-
+	msgPre            = "PrayerTexter: "
+	msgPost           = "Reply HELP for help or STOP to cancel."
+	msgHelp           = "To receive support, please email info@4jesusministries.com or call/text (657) 217-1678. Thank you!"
 	prayerTexterPhone = "+12762908579"
 )
 
@@ -55,6 +54,7 @@ func GetSmsClient() (*pinpointsmsvoicev2.Client, error) {
 	cfg, err := getAwsConfig()
 	if err != nil {
 		slog.Error("unable to load aws-sdk-go-v2 for sms client")
+		return nil, err
 	}
 
 	smsClnt := pinpointsmsvoicev2.NewFromConfig(cfg)
@@ -62,30 +62,31 @@ func GetSmsClient() (*pinpointsmsvoicev2.Client, error) {
 	return smsClnt, nil
 }
 
-func sendText(ddbClnt DDBConnecter, smsClnt TextSender, msg TextMessage) error {
-	isActive, err := isMemberActive(ddbClnt, msg.Phone)
-	if err != nil {
+func sendText(smsClnt TextSender, msg TextMessage) error {
+	body := msgPre + msg.Body + "\n\n" + msgPost
+
+	input := &pinpointsmsvoicev2.SendTextMessageInput{
+		DestinationPhoneNumber: aws.String(msg.Phone),
+		MessageBody:            aws.String(body),
+		MessageType:            types.MessageTypeTransactional,
+		OriginationIdentity:    aws.String(prayerTexterPhone),
+	}
+
+	if _, err := smsClnt.SendTextMessage(context.TODO(), input); err != nil {
 		return err
 	}
 
-	if isActive {
-		body := msgPre + msg.Body + "\n\n" + msgPost
-
-		input := &pinpointsmsvoicev2.SendTextMessageInput{
-			DestinationPhoneNumber: aws.String("+1" + msg.Phone),
-			MessageBody:            aws.String(body),
-			MessageType:            types.MessageTypeTransactional,
-			OriginationIdentity:    aws.String(prayerTexterPhone),
-		}
-
-		_, err := smsClnt.SendTextMessage(context.TODO(), input)
-		if err != nil {
-			return err
-		}
-
-	} else {
-		slog.Warn("Skip sending message, member is not active", "recipient", msg.Phone, "body", msg.Body)
+	isLocal, err := isAwsLocal()
+	if err != nil {
+		slog.Error("unable to convert AWS_SAM_LOCAL value to boolean")
+		return err
 	}
+
+	// this helps with unit testing and sam local testing so you can view the text message flow from the logs
+	if isLocal {
+		slog.Info("sent text message", "phone", msg.Phone, "body", msg.Body)
+	}
+
 	return nil
 }
 

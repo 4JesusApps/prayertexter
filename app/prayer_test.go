@@ -38,7 +38,7 @@ func TestCheckIfActivePrayer(t *testing.T) {
 						Value: map[string]types.AttributeValue{
 							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
-							"Phone":             &types.AttributeValueMemberS{Value: "111-111-1111"},
+							"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
 							"SetupStage":        &types.AttributeValueMemberN{Value: "99"},
 							"SetupStatus":       &types.AttributeValueMemberS{Value: "completed"},
@@ -46,13 +46,13 @@ func TestCheckIfActivePrayer(t *testing.T) {
 							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 						},
 					},
-					"IntercessorPhone": &types.AttributeValueMemberS{Value: "111-111-1111"},
+					"IntercessorPhone": &types.AttributeValueMemberS{Value: "+11111111111"},
 					"Request":          &types.AttributeValueMemberS{Value: "I need prayer for..."},
 					"Requestor": &types.AttributeValueMemberM{
 						Value: map[string]types.AttributeValue{
 							"Intercessor":       &types.AttributeValueMemberBOOL{Value: false},
 							"Name":              &types.AttributeValueMemberS{Value: "John Doe"},
-							"Phone":             &types.AttributeValueMemberS{Value: "123-456-7890"},
+							"Phone":             &types.AttributeValueMemberS{Value: "+11234567890"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "0"},
 							"SetupStage":        &types.AttributeValueMemberN{Value: "99"},
 							"SetupStatus":       &types.AttributeValueMemberS{Value: "completed"},
@@ -73,21 +73,21 @@ func TestCheckIfActivePrayer(t *testing.T) {
 	ddbMock := &MockDDBConnecter{}
 	ddbMock.GetItemResults = mockGetItemResults
 
-	isActive, err := isPrayerActive(ddbMock, "111-111-1111")
+	isActive, err := isPrayerActive(ddbMock, "+11111111111")
 	if err != nil {
 		t.Errorf("unexpected error %v", err)
 	} else if isActive {
 		t.Errorf("expected return of false (inactive prayer), got %v", isActive)
 	}
 
-	isActive, err = isPrayerActive(ddbMock, "111-111-1111")
+	isActive, err = isPrayerActive(ddbMock, "+11111111111")
 	if err != nil {
 		t.Errorf("unexpected error %v", err)
 	} else if !isActive {
 		t.Errorf("expected return of true (active prayer), got %v", isActive)
 	}
 
-	_, err = isPrayerActive(ddbMock, "111-111-1111")
+	_, err = isPrayerActive(ddbMock, "+11111111111")
 	if err == nil {
 		t.Errorf("expected error, got %v", err)
 	}

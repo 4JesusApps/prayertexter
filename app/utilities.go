@@ -5,6 +5,8 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"log/slog"
+	"os"
+	"strconv"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -35,9 +37,10 @@ func removeItem[T comparable](items *[]T, target T) {
 
 func getAwsConfig() (aws.Config, error) {
 	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion("us-west-1"))
-	if err != nil {
-		return aws.Config{}, err
-	}
+	return cfg, err
+}
 
-	return cfg, nil
+func isAwsLocal() (bool, error) {
+	isLocal, err := strconv.ParseBool(os.Getenv("AWS_SAM_LOCAL"))
+	return isLocal, err
 }
