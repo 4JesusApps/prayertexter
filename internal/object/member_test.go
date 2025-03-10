@@ -1,4 +1,4 @@
-package prayertexter
+package object_test
 
 import (
 	"errors"
@@ -7,16 +7,19 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/mshort55/prayertexter/internal/messaging"
+	"github.com/mshort55/prayertexter/internal/mock"
+	"github.com/mshort55/prayertexter/internal/object"
 )
 
 func TestSendMessage(t *testing.T) {
 	txtBody := "test message"
-	expectedText := TextMessage{
-		Body:  msgPre + txtBody + "\n\n" + msgPost,
+	expectedText := messaging.TextMessage{
+		Body:  messaging.MsgPre + txtBody + "\n\n" + messaging.MsgPost,
 		Phone: "+11234567890",
 	}
 
-	member := Member{
+	member := object.Member{
 		Intercessor: false,
 		Name:        "John Doe",
 		Phone:       "+11234567890",
@@ -24,12 +27,12 @@ func TestSendMessage(t *testing.T) {
 		SetupStatus: "completed",
 	}
 
-	txtMock := &MockTextSender{}
-	if err := member.sendMessage(txtMock, txtBody); err != nil {
+	txtMock := &mock.TextSender{}
+	if err := member.SendMessage(txtMock, txtBody); err != nil {
 		t.Errorf("unexpected error %v", err)
 	}
 
-	actualText := TextMessage{
+	actualText := messaging.TextMessage{
 		Body:  *txtMock.SendTextInputs[0].MessageBody,
 		Phone: *txtMock.SendTextInputs[0].DestinationPhoneNumber,
 	}
@@ -67,24 +70,24 @@ func TestCheckIfActiveMember(t *testing.T) {
 		},
 	}
 
-	ddbMock := &MockDDBConnecter{}
+	ddbMock := &mock.DDBConnecter{}
 	ddbMock.GetItemResults = mockGetItemResults
 
-	isActive, err := isMemberActive(ddbMock, "+11234567890")
+	isActive, err := object.IsMemberActive(ddbMock, "+11234567890")
 	if err != nil {
 		t.Errorf("unexpected error %v", err)
 	} else if isActive {
 		t.Errorf("expected return of false (inactive member), got %v", isActive)
 	}
 
-	isActive, err = isMemberActive(ddbMock, "+11234567890")
+	isActive, err = object.IsMemberActive(ddbMock, "+11234567890")
 	if err != nil {
 		t.Errorf("unexpected error %v", err)
 	} else if !isActive {
 		t.Errorf("expected return of true (active member), got %v", isActive)
 	}
 
-	_, err = isMemberActive(ddbMock, "+11234567890")
+	_, err = object.IsMemberActive(ddbMock, "+11234567890")
 	if err == nil {
 		t.Errorf("expected error, got %v", err)
 	}

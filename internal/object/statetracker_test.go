@@ -1,4 +1,4 @@
-package prayertexter
+package object_test
 
 import (
 	"reflect"
@@ -7,6 +7,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/mshort55/prayertexter/internal/messaging"
+	"github.com/mshort55/prayertexter/internal/mock"
+	"github.com/mshort55/prayertexter/internal/object"
 )
 
 func TestUpdate(t *testing.T) {
@@ -17,7 +20,7 @@ func TestUpdate(t *testing.T) {
 		{
 			Output: &dynamodb.GetItemOutput{
 				Item: map[string]types.AttributeValue{
-					"Key": &types.AttributeValueMemberS{Value: stateTrackerKey},
+					"Key": &types.AttributeValueMemberS{Value: object.StateTrackerKey},
 					"States": &types.AttributeValueMemberL{
 						Value: []types.AttributeValue{
 							&types.AttributeValueMemberM{
@@ -43,12 +46,12 @@ func TestUpdate(t *testing.T) {
 		},
 	}
 
-	expectedStateTracker := StateTracker{
-		Key: stateTrackerKey,
-		States: []State{
+	expectedStateTracker := object.StateTracker{
+		Key: object.StateTrackerKey,
+		States: []object.State{
 			{
 				Error: "sample error text",
-				Message: TextMessage{
+				Message: messaging.TextMessage{
 					Body:  "sample text message 1",
 					Phone: "+11234567890",
 				},
@@ -59,7 +62,7 @@ func TestUpdate(t *testing.T) {
 			},
 			{
 				Error: "",
-				Message: TextMessage{
+				Message: messaging.TextMessage{
 					Body:  "sample text message 2",
 					Phone: "+19987654321",
 				},
@@ -71,12 +74,12 @@ func TestUpdate(t *testing.T) {
 		},
 	}
 
-	ddbMock := &MockDDBConnecter{}
+	ddbMock := &mock.DDBConnecter{}
 	ddbMock.GetItemResults = mockGetItemResults
 
-	state := State{
+	state := object.State{
 		Error: "",
-		Message: TextMessage{
+		Message: messaging.TextMessage{
 			Body:  "sample text message 2",
 			Phone: "+19987654321",
 		},
@@ -87,7 +90,7 @@ func TestUpdate(t *testing.T) {
 	}
 
 	//// test adding the new State to StateTracker
-	if err := state.update(ddbMock, false); err != nil {
+	if err := state.Update(ddbMock, false); err != nil {
 		t.Errorf("unexpected error %v", err)
 	}
 	input := ddbMock.PutItemInputs[0]
@@ -96,7 +99,7 @@ func TestUpdate(t *testing.T) {
 	//// test removing the State from StateTracker
 	// this resets the GetItem mock so that it can re-use mockGetItemResults
 	ddbMock.GetItemCalls = 0
-	if err := state.update(ddbMock, true); err != nil {
+	if err := state.Update(ddbMock, true); err != nil {
 		t.Errorf("unexpected error %v", err)
 	}
 
@@ -107,12 +110,12 @@ func TestUpdate(t *testing.T) {
 	testStateTracker(input, t, expectedStateTracker)
 }
 
-func testStateTracker(input dynamodb.PutItemInput, t *testing.T, expectedStateTracker StateTracker) {
-	if *input.TableName != stateTrackerTable {
-		t.Errorf("expected table %v, got %v", stateTrackerTable, *input.TableName)
+func testStateTracker(input dynamodb.PutItemInput, t *testing.T, expectedStateTracker object.StateTracker) {
+	if *input.TableName != object.StateTrackerTable {
+		t.Errorf("expected table %v, got %v", object.StateTrackerTable, *input.TableName)
 	}
 
-	actualStateTracker := StateTracker{}
+	actualStateTracker := object.StateTracker{}
 	if err := attributevalue.UnmarshalMap(input.Item, &actualStateTracker); err != nil {
 		t.Errorf("failed to unmarshal PutItemInput into StateTracker: %v", err)
 	}

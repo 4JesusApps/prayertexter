@@ -1,6 +1,10 @@
-package prayertexter
+package object
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/mshort55/prayertexter/internal/db"
+)
 
 type Prayer struct {
 	Intercessor      Member
@@ -10,15 +14,15 @@ type Prayer struct {
 }
 
 const (
-	prayersAttribute   = "IntercessorPhone"
-	activePrayersTable = "ActivePrayers"
-	prayersQueueTable  = "PrayersQueue"
+	PrayersAttribute   = "IntercessorPhone"
+	ActivePrayersTable = "ActivePrayers"
+	QueuedPrayersTable = "PrayersQueue"
 )
 
-func (p *Prayer) get(ddbClnt DDBConnecter, queue bool) error {
+func (p *Prayer) Get(ddbClnt db.DDBConnecter, queue bool) error {
 	// queue determines whether ActivePrayers or PrayersQueue table is used for get
-	table := getPrayerTable(queue)
-	pryr, err := getDdbObject[Prayer](ddbClnt, prayersAttribute, p.IntercessorPhone, table)
+	table := GetPrayerTable(queue)
+	pryr, err := db.GetDdbObject[Prayer](ddbClnt, PrayersAttribute, p.IntercessorPhone, table)
 	if err != nil {
 		return fmt.Errorf("Prayer get: %w", err)
 	}
@@ -32,41 +36,41 @@ func (p *Prayer) get(ddbClnt DDBConnecter, queue bool) error {
 	return nil
 }
 
-func (p *Prayer) put(ddbClnt DDBConnecter, queue bool) error {
+func (p *Prayer) Put(ddbClnt db.DDBConnecter, queue bool) error {
 	// queue is only used if there are not enough intercessors available to take a prayer request
 	// prayers get queued in order to save them for a time when intercessors are available
 	// this will change the ddb table that the prayer is saved to
-	table := getPrayerTable(queue)
-	if err := putDdbObject(ddbClnt, table, p); err != nil {
+	table := GetPrayerTable(queue)
+	if err := db.PutDdbObject(ddbClnt, table, p); err != nil {
 		return fmt.Errorf("Prayer put: %w", err)
 	}
 
 	return nil
 }
 
-func (p *Prayer) delete(ddbClnt DDBConnecter, queue bool) error {
-	table := getPrayerTable(queue)
-	if err := delDdbItem(ddbClnt, prayersAttribute, p.IntercessorPhone, table); err != nil {
+func (p *Prayer) Delete(ddbClnt db.DDBConnecter, queue bool) error {
+	table := GetPrayerTable(queue)
+	if err := db.DelDdbItem(ddbClnt, PrayersAttribute, p.IntercessorPhone, table); err != nil {
 		return fmt.Errorf("Prayer delete: %w", err)
 	}
 
 	return nil
 }
 
-func getPrayerTable(queue bool) string {
+func GetPrayerTable(queue bool) string {
 	var table string
 	if queue {
-		table = prayersQueueTable
+		table = QueuedPrayersTable
 	} else {
-		table = activePrayersTable
+		table = ActivePrayersTable
 	}
 
 	return table
 }
 
-func isPrayerActive(ddbClnt DDBConnecter, phone string) (bool, error) {
+func IsPrayerActive(ddbClnt db.DDBConnecter, phone string) (bool, error) {
 	pryr := Prayer{IntercessorPhone: phone}
-	if err := pryr.get(ddbClnt, false); err != nil {
+	if err := pryr.Get(ddbClnt, false); err != nil {
 		return false, fmt.Errorf("isPrayerActive: %w", err)
 	}
 

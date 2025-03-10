@@ -1,12 +1,16 @@
-package prayertexter
+package utility_test
 
 import (
 	"reflect"
 	"testing"
+
+	"github.com/mshort55/prayertexter/internal/messaging"
+	"github.com/mshort55/prayertexter/internal/object"
+	"github.com/mshort55/prayertexter/internal/utility"
 )
 
 func TestGenerateID(t *testing.T) {
-	id, err := generateID()
+	id, err := utility.GenerateID()
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -17,7 +21,7 @@ func TestGenerateID(t *testing.T) {
 }
 
 func testRemoveItem[T comparable](t *testing.T, items []T, target T, expected []T) {
-	removeItem(&items, target)
+	utility.RemoveItem(&items, target)
 	if items == nil {
 		items = []T{}
 	}
@@ -37,10 +41,10 @@ func TestRemoveItem(t *testing.T) {
 	testRemoveItem(t, []int{}, 42, []int{})
 
 	// State slice test
-	states := []State{
+	states := []object.State{
 		{
 			Error: "sample error text",
-			Message: TextMessage{
+			Message: messaging.TextMessage{
 				Body:  "sample text message 1",
 				Phone: "+11234567890",
 			},
@@ -51,7 +55,7 @@ func TestRemoveItem(t *testing.T) {
 		},
 		{
 			Error: "",
-			Message: TextMessage{
+			Message: messaging.TextMessage{
 				Body:  "sample text message 2",
 				Phone: "+19987654321",
 			},

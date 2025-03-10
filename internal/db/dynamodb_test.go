@@ -1,77 +1,17 @@
-package prayertexter
+package db_test
 
 import (
-	"context"
 	"reflect"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/mshort55/prayertexter/internal/db"
+	"github.com/mshort55/prayertexter/internal/messaging"
+	"github.com/mshort55/prayertexter/internal/mock"
+	"github.com/mshort55/prayertexter/internal/object"
 )
-
-type MockDDBConnecter struct {
-	GetItemCalls    int
-	PutItemCalls    int
-	DeleteItemCalls int
-
-	GetItemInputs    []dynamodb.GetItemInput
-	PutItemInputs    []dynamodb.PutItemInput
-	DeleteItemInputs []dynamodb.DeleteItemInput
-
-	GetItemResults []struct {
-		Output *dynamodb.GetItemOutput
-		Error  error
-	}
-	PutItemResults []struct {
-		Error error
-	}
-	DeleteItemResults []struct {
-		Error error
-	}
-}
-
-func (m *MockDDBConnecter) GetItem(ctx context.Context, input *dynamodb.GetItemInput,
-	opts ...func(*dynamodb.Options)) (*dynamodb.GetItemOutput, error) {
-
-	m.GetItemCalls++
-	m.GetItemInputs = append(m.GetItemInputs, *input)
-
-	if len(m.GetItemResults) <= m.GetItemCalls-1 {
-		return &dynamodb.GetItemOutput{}, nil
-	}
-
-	result := m.GetItemResults[m.GetItemCalls-1]
-	return result.Output, result.Error
-}
-
-func (m *MockDDBConnecter) PutItem(ctx context.Context, input *dynamodb.PutItemInput,
-	opts ...func(*dynamodb.Options)) (*dynamodb.PutItemOutput, error) {
-
-	m.PutItemCalls++
-	m.PutItemInputs = append(m.PutItemInputs, *input)
-
-	if len(m.PutItemResults) <= m.PutItemCalls-1 {
-		return &dynamodb.PutItemOutput{}, nil
-	}
-
-	result := m.PutItemResults[m.PutItemCalls-1]
-	return nil, result.Error
-}
-
-func (m *MockDDBConnecter) DeleteItem(ctx context.Context, input *dynamodb.DeleteItemInput,
-	opts ...func(*dynamodb.Options)) (*dynamodb.DeleteItemOutput, error) {
-
-	m.DeleteItemCalls++
-	m.DeleteItemInputs = append(m.DeleteItemInputs, *input)
-
-	if len(m.DeleteItemResults) <= m.DeleteItemCalls-1 {
-		return &dynamodb.DeleteItemOutput{}, nil
-	}
-
-	result := m.DeleteItemResults[m.DeleteItemCalls-1]
-	return nil, result.Error
-}
 
 var expectedDdbItems = []struct {
 	Output *dynamodb.GetItemOutput
@@ -97,7 +37,7 @@ var expectedDdbItems = []struct {
 	{
 		Output: &dynamodb.GetItemOutput{
 			Item: map[string]types.AttributeValue{
-				"Key": &types.AttributeValueMemberS{Value: intercessorPhonesKey},
+				"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKey},
 				"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
 					&types.AttributeValueMemberS{Value: "+11111111111"},
 					&types.AttributeValueMemberS{Value: "+12222222222"},
@@ -144,7 +84,7 @@ var expectedDdbItems = []struct {
 	{
 		Output: &dynamodb.GetItemOutput{
 			Item: map[string]types.AttributeValue{
-				"Key": &types.AttributeValueMemberS{Value: stateTrackerKey},
+				"Key": &types.AttributeValueMemberS{Value: object.StateTrackerKey},
 				"States": &types.AttributeValueMemberL{
 					Value: []types.AttributeValue{
 						&types.AttributeValueMemberM{
@@ -186,7 +126,7 @@ var expectedDdbItems = []struct {
 }
 
 var expectedObjects = []any{
-	&Member{
+	&object.Member{
 		Intercessor:       true,
 		Name:              "Intercessor1",
 		Phone:             "+11111111111",
@@ -196,15 +136,15 @@ var expectedObjects = []any{
 		WeeklyPrayerDate:  "2025-02-16T23:54:01Z",
 		WeeklyPrayerLimit: 5,
 	},
-	&IntercessorPhones{
-		Key: intercessorPhonesKey,
+	&object.IntercessorPhones{
+		Key: object.IntercessorPhonesKey,
 		Phones: []string{
 			"+11111111111",
 			"+12222222222",
 		},
 	},
-	&Prayer{
-		Intercessor: Member{
+	&object.Prayer{
+		Intercessor: object.Member{
 			Intercessor:       true,
 			Name:              "Intercessor1",
 			Phone:             "+11111111111",
@@ -216,7 +156,7 @@ var expectedObjects = []any{
 		},
 		IntercessorPhone: "+11111111111",
 		Request:          "I need prayer for...",
-		Requestor: Member{
+		Requestor: object.Member{
 			Intercessor:       false,
 			Name:              "John Doe",
 			Phone:             "+11234567890",
@@ -227,12 +167,12 @@ var expectedObjects = []any{
 			WeeklyPrayerLimit: 0,
 		},
 	},
-	&StateTracker{
-		Key: stateTrackerKey,
-		States: []State{
+	&object.StateTracker{
+		Key: object.StateTrackerKey,
+		States: []object.State{
 			{
 				Error: "sample error text",
-				Message: TextMessage{
+				Message: messaging.TextMessage{
 					Body:  "sample text message 1",
 					Phone: "+11234567890",
 				},
@@ -243,7 +183,7 @@ var expectedObjects = []any{
 			},
 			{
 				Error: "",
-				Message: TextMessage{
+				Message: messaging.TextMessage{
 					Body:  "sample text message 2",
 					Phone: "+19987654321",
 				},
@@ -257,18 +197,18 @@ var expectedObjects = []any{
 }
 
 func TestGetDdbObject(t *testing.T) {
-	ddbMock := &MockDDBConnecter{}
+	ddbMock := &mock.DDBConnecter{}
 	ddbMock.GetItemResults = expectedDdbItems
 
 	for _, expectedObject := range expectedObjects {
 		switch obj := expectedObject.(type) {
-		case *Member:
+		case *object.Member:
 			testGetObject(t, ddbMock, obj)
-		case *IntercessorPhones:
+		case *object.IntercessorPhones:
 			testGetObject(t, ddbMock, obj)
-		case *Prayer:
+		case *object.Prayer:
 			testGetObject(t, ddbMock, obj)
-		case *StateTracker:
+		case *object.StateTracker:
 			testGetObject(t, ddbMock, obj)
 		default:
 			t.Errorf("unexpected type %T", expectedObject)
@@ -276,9 +216,9 @@ func TestGetDdbObject(t *testing.T) {
 	}
 }
 
-func testGetObject[T any](t *testing.T, ddbMock DDBConnecter, expectedObject *T) {
+func testGetObject[T any](t *testing.T, ddbMock db.DDBConnecter, expectedObject *T) {
 	// using test test test here because get ddb function is mocked so parameters are irrelevant
-	testedObject, err := getDdbObject[T](ddbMock, "test", "test", "test")
+	testedObject, err := db.GetDdbObject[T](ddbMock, "test", "test", "test")
 	if err != nil {
 		t.Errorf("getDdbObject failed for type %T: %v", expectedObject, err)
 	}
@@ -289,17 +229,17 @@ func testGetObject[T any](t *testing.T, ddbMock DDBConnecter, expectedObject *T)
 }
 
 func TestPutDdbObject(t *testing.T) {
-	ddbMock := &MockDDBConnecter{}
+	ddbMock := &mock.DDBConnecter{}
 
 	for index, expectedObject := range expectedObjects {
 		switch obj := expectedObject.(type) {
-		case *Member:
+		case *object.Member:
 			testPutObject(t, ddbMock, obj, index)
-		case *IntercessorPhones:
+		case *object.IntercessorPhones:
 			testPutObject(t, ddbMock, obj, index)
-		case *Prayer:
+		case *object.Prayer:
 			testPutObject(t, ddbMock, obj, index)
-		case *StateTracker:
+		case *object.StateTracker:
 			testPutObject(t, ddbMock, obj, index)
 		default:
 			t.Errorf("unexpected type %T", expectedObject)
@@ -307,9 +247,9 @@ func TestPutDdbObject(t *testing.T) {
 	}
 }
 
-func testPutObject[T any](t *testing.T, ddbMock *MockDDBConnecter, expectedObject *T, index int) {
+func testPutObject[T any](t *testing.T, ddbMock *mock.DDBConnecter, expectedObject *T, index int) {
 	// using test here because put ddb function is mocked so this parameter is irrelevant
-	err := putDdbObject(ddbMock, "test", expectedObject)
+	err := db.PutDdbObject(ddbMock, "test", expectedObject)
 	if err != nil {
 		t.Errorf("putDdbObject failed for type %T: %v", expectedObject, err)
 	}

@@ -1,8 +1,11 @@
-package prayertexter
+package object
 
 import (
 	"fmt"
 	"log/slog"
+
+	"github.com/mshort55/prayertexter/internal/db"
+	"github.com/mshort55/prayertexter/internal/messaging"
 )
 
 type Member struct {
@@ -17,12 +20,12 @@ type Member struct {
 }
 
 const (
-	memberAttribute = "Phone"
-	memberTable     = "Members"
+	MemberAttribute = "Phone"
+	MemberTable     = "Members"
 )
 
-func (m *Member) get(ddbClnt DDBConnecter) error {
-	mem, err := getDdbObject[Member](ddbClnt, memberAttribute, m.Phone, memberTable)
+func (m *Member) Get(ddbClnt db.DDBConnecter) error {
+	mem, err := db.GetDdbObject[Member](ddbClnt, MemberAttribute, m.Phone, MemberTable)
 	if err != nil {
 		return fmt.Errorf("Member get: %w", err)
 	}
@@ -36,29 +39,29 @@ func (m *Member) get(ddbClnt DDBConnecter) error {
 	return nil
 }
 
-func (m *Member) put(ddbClnt DDBConnecter) error {
-	if err := putDdbObject(ddbClnt, memberTable, m); err != nil {
+func (m *Member) Put(ddbClnt db.DDBConnecter) error {
+	if err := db.PutDdbObject(ddbClnt, MemberTable, m); err != nil {
 		return fmt.Errorf("Member put: %w", err)
 	}
 
 	return nil
 }
 
-func (m *Member) delete(ddbClnt DDBConnecter) error {
-	if err := delDdbItem(ddbClnt, memberAttribute, m.Phone, memberTable); err != nil {
+func (m *Member) Delete(ddbClnt db.DDBConnecter) error {
+	if err := db.DelDdbItem(ddbClnt, MemberAttribute, m.Phone, MemberTable); err != nil {
 		return fmt.Errorf("Member delete: %w", err)
 	}
 
 	return nil
 }
 
-func (m *Member) sendMessage(smsClnt TextSender, body string) error {
-	message := TextMessage{
+func (m *Member) SendMessage(smsClnt messaging.TextSender, body string) error {
+	message := messaging.TextMessage{
 		Body:  body,
 		Phone: m.Phone,
 	}
 
-	if err := sendText(smsClnt, message); err != nil {
+	if err := messaging.SendText(smsClnt, message); err != nil {
 		slog.Error("sendMessage failed", "recipient", m.Phone, "msg", body, "error", err)
 		return fmt.Errorf("Member sendText: %w", err)
 	}
@@ -66,9 +69,9 @@ func (m *Member) sendMessage(smsClnt TextSender, body string) error {
 	return nil
 }
 
-func isMemberActive(ddbClnt DDBConnecter, phone string) (bool, error) {
+func IsMemberActive(ddbClnt db.DDBConnecter, phone string) (bool, error) {
 	mem := Member{Phone: phone}
-	if err := mem.get(ddbClnt); err != nil {
+	if err := mem.Get(ddbClnt); err != nil {
 		// returning false but it really should be nil due to error
 		return false, fmt.Errorf("isMemberActive: %w", err)
 	}

@@ -1,4 +1,4 @@
-package prayertexter
+package object_test
 
 import (
 	"errors"
@@ -6,17 +6,19 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/mshort55/prayertexter/internal/mock"
+	"github.com/mshort55/prayertexter/internal/object"
 )
 
 func TestGetPrayerTable(t *testing.T) {
-	table := getPrayerTable(true)
-	if table != prayersQueueTable {
-		t.Errorf("expected prayer table to be %v, got %v", prayersQueueTable, table)
+	table := object.GetPrayerTable(true)
+	if table != object.QueuedPrayersTable {
+		t.Errorf("expected prayer table to be %v, got %v", object.QueuedPrayersTable, table)
 	}
 
-	table = getPrayerTable(false)
-	if table != activePrayersTable {
-		t.Errorf("expected prayer table to be %v, got %v", activePrayersTable, table)
+	table = object.GetPrayerTable(false)
+	if table != object.ActivePrayersTable {
+		t.Errorf("expected prayer table to be %v, got %v", object.ActivePrayersTable, table)
 	}
 }
 
@@ -70,24 +72,24 @@ func TestCheckIfActivePrayer(t *testing.T) {
 		},
 	}
 
-	ddbMock := &MockDDBConnecter{}
+	ddbMock := &mock.DDBConnecter{}
 	ddbMock.GetItemResults = mockGetItemResults
 
-	isActive, err := isPrayerActive(ddbMock, "+11111111111")
+	isActive, err := object.IsPrayerActive(ddbMock, "+11111111111")
 	if err != nil {
 		t.Errorf("unexpected error %v", err)
 	} else if isActive {
 		t.Errorf("expected return of false (inactive prayer), got %v", isActive)
 	}
 
-	isActive, err = isPrayerActive(ddbMock, "+11111111111")
+	isActive, err = object.IsPrayerActive(ddbMock, "+11111111111")
 	if err != nil {
 		t.Errorf("unexpected error %v", err)
 	} else if !isActive {
 		t.Errorf("expected return of true (active prayer), got %v", isActive)
 	}
 
-	_, err = isPrayerActive(ddbMock, "+11111111111")
+	_, err = object.IsPrayerActive(ddbMock, "+11111111111")
 	if err == nil {
 		t.Errorf("expected error, got %v", err)
 	}

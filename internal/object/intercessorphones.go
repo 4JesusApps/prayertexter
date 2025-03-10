@@ -1,10 +1,12 @@
-package prayertexter
+package object
 
 import (
 	"fmt"
 	"log/slog"
 	"math/rand/v2"
 	"slices"
+
+	"github.com/mshort55/prayertexter/internal/db"
 )
 
 type IntercessorPhones struct {
@@ -13,15 +15,15 @@ type IntercessorPhones struct {
 }
 
 const (
-	intercessorPhonesAttribute = "Key"
-	intercessorPhonesKey       = "IntercessorPhones"
-	intercessorPhonesTable     = "General"
-	numIntercessorsPerPrayer   = 2
+	IntercessorPhonesAttribute = "Key"
+	IntercessorPhonesKey       = "IntercessorPhones"
+	IntercessorPhonesTable     = "General"
+	NumIntercessorsPerPrayer   = 2
 )
 
-func (i *IntercessorPhones) get(ddbClnt DDBConnecter) error {
-	intr, err := getDdbObject[IntercessorPhones](ddbClnt, intercessorPhonesAttribute,
-		intercessorPhonesKey, intercessorPhonesTable)
+func (i *IntercessorPhones) Get(ddbClnt db.DDBConnecter) error {
+	intr, err := db.GetDdbObject[IntercessorPhones](ddbClnt, IntercessorPhonesAttribute,
+		IntercessorPhonesKey, IntercessorPhonesTable)
 	if err != nil {
 		return fmt.Errorf("IntercessorPhones get: %w", err)
 	}
@@ -35,20 +37,20 @@ func (i *IntercessorPhones) get(ddbClnt DDBConnecter) error {
 	return nil
 }
 
-func (i *IntercessorPhones) put(ddbClnt DDBConnecter) error {
-	i.Key = intercessorPhonesKey
-	if err := putDdbObject(ddbClnt, intercessorPhonesTable, i); err != nil {
+func (i *IntercessorPhones) Put(ddbClnt db.DDBConnecter) error {
+	i.Key = IntercessorPhonesKey
+	if err := db.PutDdbObject(ddbClnt, IntercessorPhonesTable, i); err != nil {
 		return fmt.Errorf("IntercessorPhones put: %w", err)
 	}
 
 	return nil
 }
 
-func (i *IntercessorPhones) addPhone(phone string) {
+func (i *IntercessorPhones) AddPhone(phone string) {
 	i.Phones = append(i.Phones, phone)
 }
 
-func (i *IntercessorPhones) removePhone(phone string) {
+func (i *IntercessorPhones) RemovePhone(phone string) {
 	var newPhones []string
 
 	for _, p := range i.Phones {
@@ -60,7 +62,7 @@ func (i *IntercessorPhones) removePhone(phone string) {
 	i.Phones = newPhones
 }
 
-func (i *IntercessorPhones) genRandPhones() []string {
+func (i *IntercessorPhones) GenRandPhones() []string {
 	var selectedPhones []string
 
 	if len(i.Phones) == 0 {
@@ -70,12 +72,12 @@ func (i *IntercessorPhones) genRandPhones() []string {
 
 	// this is needed so it can return some/one phones even if it is less than the set # of
 	// intercessors for each prayer
-	if len(i.Phones) <= numIntercessorsPerPrayer {
+	if len(i.Phones) <= NumIntercessorsPerPrayer {
 		selectedPhones = append(selectedPhones, i.Phones...)
 		return selectedPhones
 	}
 
-	for len(selectedPhones) < numIntercessorsPerPrayer {
+	for len(selectedPhones) < NumIntercessorsPerPrayer {
 		phone := i.Phones[rand.IntN(len(i.Phones))]
 		if slices.Contains(selectedPhones, phone) {
 			continue

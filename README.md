@@ -31,7 +31,7 @@ Compile:
 1. make build
 
 Create ddb tables and start local services:
-1. ./local-env/dynamodb-setup.sh 
+1. ./localdev/dynamodbsetup.sh 
 2. sudo sam local start-api --docker-network sam-backend
 
 Test: 
@@ -55,3 +55,4 @@ Good dynamodb commands:
 - rename state tracker to fault tracker???
 - unit test state tracker in real flow to verify errors are saved
 - move 10-DLC number from sandbox to prod
+- remove unnecessary exports that are currently only used for tests (object db keys, attribute constants, etc)

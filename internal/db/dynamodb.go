@@ -1,4 +1,4 @@
-package prayertexter
+package db
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/mshort55/prayertexter/internal/utility"
 )
 
 type DDBConnecter interface {
@@ -23,14 +24,14 @@ type DDBConnecter interface {
 }
 
 func GetDdbClient() (*dynamodb.Client, error) {
-	cfg, err := getAwsConfig()
+	cfg, err := utility.GetAwsConfig()
 	if err != nil {
 		return nil, fmt.Errorf("GetDdbClient: %w", err)
 	}
 
 	var ddbClnt *dynamodb.Client
 
-	if isAwsLocal() {
+	if utility.IsAwsLocal() {
 		ddbClnt = dynamodb.NewFromConfig(cfg, func(o *dynamodb.Options) {
 			o.BaseEndpoint = aws.String("http://dynamodb:8000")
 		})
@@ -52,7 +53,7 @@ func getDdbItem(ddbClnt DDBConnecter, attr, key, table string) (*dynamodb.GetIte
 	return item, err
 }
 
-func getDdbObject[T any](ddbClnt DDBConnecter, attr, key, table string) (*T, error) {
+func GetDdbObject[T any](ddbClnt DDBConnecter, attr, key, table string) (*T, error) {
 	resp, err := getDdbItem(ddbClnt, attr, key, table)
 	if err != nil {
 		return nil, fmt.Errorf("getDdbItem: %w", err)
@@ -75,7 +76,7 @@ func putDdbItem(ddbClnt DDBConnecter, table string, data map[string]types.Attrib
 	return err
 }
 
-func putDdbObject[T any](ddbClnt DDBConnecter, table string, object *T) error {
+func PutDdbObject[T any](ddbClnt DDBConnecter, table string, object *T) error {
 	item, err := attributevalue.MarshalMap(object)
 	if err != nil {
 		return fmt.Errorf("putDdbObject failed marshal: %w", err)
@@ -88,7 +89,7 @@ func putDdbObject[T any](ddbClnt DDBConnecter, table string, object *T) error {
 	return nil
 }
 
-func delDdbItem(ddbClnt DDBConnecter, attr, key, table string) error {
+func DelDdbItem(ddbClnt DDBConnecter, attr, key, table string) error {
 	_, err := ddbClnt.DeleteItem(context.TODO(), &dynamodb.DeleteItemInput{
 		TableName: &table,
 		Key: map[string]types.AttributeValue{

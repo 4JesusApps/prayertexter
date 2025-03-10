@@ -1,4 +1,4 @@
-package prayertexter
+package prayertexter_test
 
 import (
 	"errors"
@@ -11,21 +11,25 @@ import (
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/mshort55/prayertexter/internal/messaging"
+	"github.com/mshort55/prayertexter/internal/mock"
+	"github.com/mshort55/prayertexter/internal/object"
+	"github.com/mshort55/prayertexter/internal/prayertexter"
 )
 
 type TestCase struct {
 	description    string
-	initialMessage TextMessage
+	initialMessage messaging.TextMessage
 
 	expectedGetItemCalls    int
 	expectedPutItemCalls    int
 	expectedDeleteItemCalls int
 	expectedSendTextCalls   int
 
-	expectedMembers     []Member
-	expectedPrayers     []Prayer
-	expectedTexts       []TextMessage
-	expectedPhones      IntercessorPhones
+	expectedMembers     []object.Member
+	expectedPrayers     []object.Prayer
+	expectedTexts       []messaging.TextMessage
+	expectedPhones      object.IntercessorPhones
 	expectedError       bool
 	expectedPrayerQueue bool
 
@@ -49,14 +53,14 @@ type TestCase struct {
 	}
 }
 
-func setMocks(ddbMock *MockDDBConnecter, txtMock *MockTextSender, test TestCase) {
+func setMocks(ddbMock *mock.DDBConnecter, txtMock *mock.TextSender, test TestCase) {
 	ddbMock.GetItemResults = test.mockGetItemResults
 	ddbMock.PutItemResults = test.mockPutItemResults
 	ddbMock.DeleteItemResults = test.mockDeleteItemResults
 	txtMock.SendTextResults = test.mockSendTextResults
 }
 
-func testNumMethodCalls(ddbMock *MockDDBConnecter, txtMock *MockTextSender, t *testing.T, test TestCase) {
+func testNumMethodCalls(ddbMock *mock.DDBConnecter, txtMock *mock.TextSender, t *testing.T, test TestCase) {
 	if ddbMock.GetItemCalls != test.expectedGetItemCalls {
 		t.Errorf("expected GetItem to be called %v, got %v",
 			test.expectedGetItemCalls, ddbMock.GetItemCalls)
@@ -82,7 +86,7 @@ func testMembers(inputs []dynamodb.PutItemInput, t *testing.T, test TestCase) {
 	index := 0
 
 	for _, input := range inputs {
-		if *input.TableName != memberTable {
+		if *input.TableName != object.MemberTable {
 			continue
 		}
 
@@ -90,7 +94,7 @@ func testMembers(inputs []dynamodb.PutItemInput, t *testing.T, test TestCase) {
 			t.Errorf("there are more Members in put inputs than in expected Members")
 		}
 
-		var actualMem Member
+		var actualMem object.Member
 		if err := attributevalue.UnmarshalMap(input.Item, &actualMem); err != nil {
 			t.Errorf("failed to unmarshal PutItemInput into Member: %v", err)
 		}
@@ -117,7 +121,7 @@ func testPrayers(inputs []dynamodb.PutItemInput, t *testing.T, test TestCase, qu
 	// need to be careful here not to do unit tests with prayers from both the active prayer
 	// table and queued prayers table because it will probably break this mock
 	index := 0
-	expectedTable := getPrayerTable(queue)
+	expectedTable := object.GetPrayerTable(queue)
 
 	for _, input := range inputs {
 		if *input.TableName != expectedTable {
@@ -128,7 +132,7 @@ func testPrayers(inputs []dynamodb.PutItemInput, t *testing.T, test TestCase, qu
 			t.Errorf("there are more Prayers in put inputs than in expected Prayers of table type: %v", expectedTable)
 		}
 
-		var actualPryr Prayer
+		var actualPryr object.Prayer
 		if err := attributevalue.UnmarshalMap(input.Item, &actualPryr); err != nil {
 			t.Errorf("failed to unmarshal PutItemInput into Prayer: %v", err)
 		}
@@ -157,13 +161,13 @@ func testPhones(inputs []dynamodb.PutItemInput, t *testing.T, test TestCase) {
 	index := 0
 
 	for _, input := range inputs {
-		if *input.TableName != intercessorPhonesTable {
+		if *input.TableName != object.IntercessorPhonesTable {
 			continue
-		} else if val, ok := input.Item[intercessorPhonesAttribute]; !ok {
+		} else if val, ok := input.Item[object.IntercessorPhonesAttribute]; !ok {
 			continue
 		} else if stringVal, isString := val.(*types.AttributeValueMemberS); !isString {
 			continue
-		} else if stringVal.Value != intercessorPhonesKey {
+		} else if stringVal.Value != object.IntercessorPhonesKey {
 			continue
 		}
 
@@ -171,7 +175,7 @@ func testPhones(inputs []dynamodb.PutItemInput, t *testing.T, test TestCase) {
 			t.Errorf("there are more IntercessorPhones in expected IntercessorPhones than 1 which is not expected")
 		}
 
-		var actualPhones IntercessorPhones
+		var actualPhones object.IntercessorPhones
 		if err := attributevalue.UnmarshalMap(input.Item, &actualPhones); err != nil {
 			t.Errorf("failed to unmarshal PutItemInput into IntercessorPhones: %v", err)
 		}
@@ -192,13 +196,13 @@ func testDeleteItem(inputs []dynamodb.DeleteItemInput, t *testing.T, test TestCa
 			t.Errorf("there are more delete item inputs than expected delete items")
 		}
 
-		if *input.TableName == memberTable {
+		if *input.TableName == object.MemberTable {
 			if *input.TableName != test.expectedDeleteItems[index].table {
 				t.Errorf("expected Member table %v, got %v",
 					test.expectedDeleteItems[index].table, *input.TableName)
 			}
 
-			mem := Member{}
+			mem := object.Member{}
 			if err := attributevalue.UnmarshalMap(input.Key, &mem); err != nil {
 				t.Fatalf("failed to unmarshal to Member: %v", err)
 			}
@@ -209,13 +213,13 @@ func testDeleteItem(inputs []dynamodb.DeleteItemInput, t *testing.T, test TestCa
 			}
 
 			index++
-		} else if *input.TableName == activePrayersTable {
+		} else if *input.TableName == object.ActivePrayersTable {
 			if *input.TableName != test.expectedDeleteItems[index].table {
 				t.Errorf("expected Prayer table %v, got %v",
 					test.expectedDeleteItems[index].table, *input.TableName)
 			}
 
-			pryr := Prayer{}
+			pryr := object.Prayer{}
 			if err := attributevalue.UnmarshalMap(input.Key, &pryr); err != nil {
 				t.Fatalf("failed to unmarshal to Prayer: %v", err)
 			}
@@ -236,7 +240,7 @@ func testDeleteItem(inputs []dynamodb.DeleteItemInput, t *testing.T, test TestCa
 	}
 }
 
-func testTxtMessage(txtMock *MockTextSender, t *testing.T, test TestCase) {
+func testTxtMessage(txtMock *mock.TextSender, t *testing.T, test TestCase) {
 	index := 0
 
 	for _, input := range txtMock.SendTextInputs {
@@ -247,22 +251,22 @@ func testTxtMessage(txtMock *MockTextSender, t *testing.T, test TestCase) {
 		// Some text messages use PLACEHOLDER and replace that with the txt recipients name
 		// Therefor to make testing easier, the message body is replaced by the msg constant
 		if strings.Contains(*input.MessageBody, "Hello! Please pray for") {
-			input.MessageBody = aws.String(msgPrayerIntro)
+			input.MessageBody = aws.String(messaging.MsgPrayerIntro)
 		} else if strings.Contains(*input.MessageBody, "There was profanity found in your prayer request:") {
-			input.MessageBody = aws.String(msgProfanityFound)
+			input.MessageBody = aws.String(messaging.MsgProfanityFound)
 		} else if strings.Contains(*input.MessageBody, "You're prayer request has been prayed for by") {
-			input.MessageBody = aws.String(msgPrayerConfirmation)
+			input.MessageBody = aws.String(messaging.MsgPrayerConfirmation)
 		}
 
-		receivedText := TextMessage{
+		receivedText := messaging.TextMessage{
 			Body:  *input.MessageBody,
 			Phone: *input.DestinationPhoneNumber,
 		}
 
 		// This part makes mocking messages less painful. We do not need to worry about new lines,
 		// pre, or post messages. They are removed when messages are tested.
-		for _, t := range []*TextMessage{&receivedText, &test.expectedTexts[index]} {
-			for _, str := range []string{"\n", msgPre, msgPost} {
+		for _, t := range []*messaging.TextMessage{&receivedText, &test.expectedTexts[index]} {
+			for _, str := range []string{"\n", messaging.MsgPre, messaging.MsgPost} {
 				t.Body = strings.ReplaceAll(t.Body, str, "")
 			}
 		}
@@ -284,12 +288,12 @@ func TestMainFlowSignUp(t *testing.T) {
 		{
 			description: "Sign up stage ONE: user texts the word pray to start sign up process",
 
-			initialMessage: TextMessage{
+			initialMessage: messaging.TextMessage{
 				Body:  "pray",
 				Phone: "+11234567890",
 			},
 
-			expectedMembers: []Member{
+			expectedMembers: []object.Member{
 				{
 					Phone:       "+11234567890",
 					SetupStage:  1,
@@ -297,9 +301,9 @@ func TestMainFlowSignUp(t *testing.T) {
 				},
 			},
 
-			expectedTexts: []TextMessage{
+			expectedTexts: []messaging.TextMessage{
 				{
-					Body:  msgNameRequest,
+					Body:  messaging.MsgNameRequest,
 					Phone: "+11234567890",
 				},
 			},
@@ -311,12 +315,12 @@ func TestMainFlowSignUp(t *testing.T) {
 		{
 			description: "Sign up stage ONE: user texts the word Pray (capitol P) to start sign up process",
 
-			initialMessage: TextMessage{
+			initialMessage: messaging.TextMessage{
 				Body:  "Pray",
 				Phone: "+11234567890",
 			},
 
-			expectedMembers: []Member{
+			expectedMembers: []object.Member{
 				{
 					Phone:       "+11234567890",
 					SetupStage:  1,
@@ -324,9 +328,9 @@ func TestMainFlowSignUp(t *testing.T) {
 				},
 			},
 
-			expectedTexts: []TextMessage{
+			expectedTexts: []messaging.TextMessage{
 				{
-					Body:  msgNameRequest,
+					Body:  messaging.MsgNameRequest,
 					Phone: "+11234567890",
 				},
 			},
@@ -338,7 +342,7 @@ func TestMainFlowSignUp(t *testing.T) {
 		{
 			description: "Sign up stage ONE: get Member error",
 
-			initialMessage: TextMessage{
+			initialMessage: messaging.TextMessage{
 				Body:  "pray",
 				Phone: "+11234567890",
 			},
@@ -365,7 +369,7 @@ func TestMainFlowSignUp(t *testing.T) {
 		{
 			description: "Sign up stage TWO-A: user texts name",
 
-			initialMessage: TextMessage{
+			initialMessage: messaging.TextMessage{
 				Body:  "John Doe",
 				Phone: "+11234567890",
 			},
@@ -391,7 +395,7 @@ func TestMainFlowSignUp(t *testing.T) {
 				},
 			},
 
-			expectedMembers: []Member{
+			expectedMembers: []object.Member{
 				{
 					Name:        "John Doe",
 					Phone:       "+11234567890",
@@ -400,9 +404,9 @@ func TestMainFlowSignUp(t *testing.T) {
 				},
 			},
 
-			expectedTexts: []TextMessage{
+			expectedTexts: []messaging.TextMessage{
 				{
-					Body:  msgMemberTypeRequest,
+					Body:  messaging.MsgMemberTypeRequest,
 					Phone: "+11234567890",
 				},
 			},
@@ -414,7 +418,7 @@ func TestMainFlowSignUp(t *testing.T) {
 		{
 			description: "Sign up stage TWO-B: user texts 2 to remain anonymous",
 
-			initialMessage: TextMessage{
+			initialMessage: messaging.TextMessage{
 				Body:  "2",
 				Phone: "+11234567890",
 			},
@@ -440,7 +444,7 @@ func TestMainFlowSignUp(t *testing.T) {
 				},
 			},
 
-			expectedMembers: []Member{
+			expectedMembers: []object.Member{
 				{
 					Name:        "Anonymous",
 					Phone:       "+11234567890",
@@ -449,9 +453,9 @@ func TestMainFlowSignUp(t *testing.T) {
 				},
 			},
 
-			expectedTexts: []TextMessage{
+			expectedTexts: []messaging.TextMessage{
 				{
-					Body:  msgMemberTypeRequest,
+					Body:  messaging.MsgMemberTypeRequest,
 					Phone: "+11234567890",
 				},
 			},
@@ -463,7 +467,7 @@ func TestMainFlowSignUp(t *testing.T) {
 		{
 			description: "Sign up final prayer message: user texts 1 which means they do not want to be an intercessor",
 
-			initialMessage: TextMessage{
+			initialMessage: messaging.TextMessage{
 				Body:  "1",
 				Phone: "+11234567890",
 			},
@@ -490,7 +494,7 @@ func TestMainFlowSignUp(t *testing.T) {
 				},
 			},
 
-			expectedMembers: []Member{
+			expectedMembers: []object.Member{
 				{
 					Intercessor: false,
 					Name:        "John Doe",
@@ -500,9 +504,9 @@ func TestMainFlowSignUp(t *testing.T) {
 				},
 			},
 
-			expectedTexts: []TextMessage{
+			expectedTexts: []messaging.TextMessage{
 				{
-					Body:  msgPrayerInstructions + "\n\n" + msgSignUpConfirmation,
+					Body:  messaging.MsgPrayerInstructions + "\n\n" + messaging.MsgSignUpConfirmation,
 					Phone: "+11234567890",
 				},
 			},
@@ -514,7 +518,7 @@ func TestMainFlowSignUp(t *testing.T) {
 		{
 			description: "Sign up stage THREE: user texts 2 which means they want to be an intercessor",
 
-			initialMessage: TextMessage{
+			initialMessage: messaging.TextMessage{
 				Body:  "2",
 				Phone: "+11234567890",
 			},
@@ -541,7 +545,7 @@ func TestMainFlowSignUp(t *testing.T) {
 				},
 			},
 
-			expectedMembers: []Member{
+			expectedMembers: []object.Member{
 				{
 					Intercessor: true,
 					Name:        "John Doe",
@@ -551,9 +555,9 @@ func TestMainFlowSignUp(t *testing.T) {
 				},
 			},
 
-			expectedTexts: []TextMessage{
+			expectedTexts: []messaging.TextMessage{
 				{
-					Body:  msgPrayerNumRequest,
+					Body:  messaging.MsgPrayerNumRequest,
 					Phone: "+11234567890",
 				},
 			},
@@ -565,7 +569,7 @@ func TestMainFlowSignUp(t *testing.T) {
 		{
 			description: "Sign up final intercessor message: user texts the number of prayers they are willing to receive per week",
 
-			initialMessage: TextMessage{
+			initialMessage: messaging.TextMessage{
 				Body:  "10",
 				Phone: "+11234567890",
 			},
@@ -599,7 +603,7 @@ func TestMainFlowSignUp(t *testing.T) {
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: intercessorPhonesKey},
+							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKey},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
 								&types.AttributeValueMemberS{Value: "+11111111111"},
 								&types.AttributeValueMemberS{Value: "+12222222222"},
@@ -611,7 +615,7 @@ func TestMainFlowSignUp(t *testing.T) {
 				},
 			},
 
-			expectedMembers: []Member{
+			expectedMembers: []object.Member{
 				{
 					Intercessor:       true,
 					Name:              "John Doe",
@@ -623,8 +627,8 @@ func TestMainFlowSignUp(t *testing.T) {
 				},
 			},
 
-			expectedPhones: IntercessorPhones{
-				Key: intercessorPhonesKey,
+			expectedPhones: object.IntercessorPhones{
+				Key: object.IntercessorPhonesKey,
 				Phones: []string{
 					"+11111111111",
 					"+12222222222",
@@ -633,9 +637,9 @@ func TestMainFlowSignUp(t *testing.T) {
 				},
 			},
 
-			expectedTexts: []TextMessage{
+			expectedTexts: []messaging.TextMessage{
 				{
-					Body:  msgPrayerInstructions + "\n\n" + msgIntercessorInstructions + "\n\n" + msgSignUpConfirmation,
+					Body:  messaging.MsgPrayerInstructions + "\n\n" + messaging.MsgIntercessorInstructions + "\n\n" + messaging.MsgSignUpConfirmation,
 					Phone: "+11234567890",
 				},
 			},
@@ -647,7 +651,7 @@ func TestMainFlowSignUp(t *testing.T) {
 		{
 			description: "Sign up final intercessor message: put IntercessorPhones error",
 
-			initialMessage: TextMessage{
+			initialMessage: messaging.TextMessage{
 				Body:  "10",
 				Phone: "+11234567890",
 			},
@@ -681,7 +685,7 @@ func TestMainFlowSignUp(t *testing.T) {
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: intercessorPhonesKey},
+							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKey},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
 								&types.AttributeValueMemberS{Value: "+11111111111"},
 								&types.AttributeValueMemberS{Value: "+12222222222"},
@@ -714,21 +718,21 @@ func TestMainFlowSignUp(t *testing.T) {
 	}
 
 	for _, test := range testCases {
-		txtMock := &MockTextSender{}
-		ddbMock := &MockDDBConnecter{}
+		txtMock := &mock.TextSender{}
+		ddbMock := &mock.DDBConnecter{}
 
 		t.Run(test.description, func(t *testing.T) {
 			setMocks(ddbMock, txtMock, test)
 
 			if test.expectedError {
 				// handles failures for error mocks
-				if err := MainFlow(test.initialMessage, ddbMock, txtMock); err == nil {
+				if err := prayertexter.MainFlow(test.initialMessage, ddbMock, txtMock); err == nil {
 					t.Fatalf("expected error, got nil")
 				}
 				testNumMethodCalls(ddbMock, txtMock, t, test)
 			} else {
 				// handles success test cases
-				if err := MainFlow(test.initialMessage, ddbMock, txtMock); err != nil {
+				if err := prayertexter.MainFlow(test.initialMessage, ddbMock, txtMock); err != nil {
 					t.Fatalf("unexpected error starting MainFlow: %v", err)
 				}
 
@@ -748,7 +752,7 @@ func TestMainFlowSignUpWrongInputs(t *testing.T) {
 		{
 			description: "pray misspelled - returns non registered user and exits",
 
-			initialMessage: TextMessage{
+			initialMessage: messaging.TextMessage{
 				Body:  "prayyy",
 				Phone: "+11234567890",
 			},
@@ -757,9 +761,9 @@ func TestMainFlowSignUpWrongInputs(t *testing.T) {
 			expectedPutItemCalls: 3,
 		},
 		{
-			description: "Sign up stage THREE: did not send 1 or 2 as expected to answer msgMemberTypeRequest",
+			description: "Sign up stage THREE: did not send 1 or 2 as expected to answer MsgMemberTypeRequest",
 
-			initialMessage: TextMessage{
+			initialMessage: messaging.TextMessage{
 				Body:  "wrong response to question",
 				Phone: "+11234567890",
 			},
@@ -786,9 +790,9 @@ func TestMainFlowSignUpWrongInputs(t *testing.T) {
 				},
 			},
 
-			expectedTexts: []TextMessage{
+			expectedTexts: []messaging.TextMessage{
 				{
-					Body:  msgWrongInput,
+					Body:  messaging.MsgWrongInput,
 					Phone: "+11234567890",
 				},
 			},
@@ -800,7 +804,7 @@ func TestMainFlowSignUpWrongInputs(t *testing.T) {
 		{
 			description: "Sign up final intercessor message: did not send number as expected",
 
-			initialMessage: TextMessage{
+			initialMessage: messaging.TextMessage{
 				Body:  "wrong response to question",
 				Phone: "+11234567890",
 			},
@@ -828,9 +832,9 @@ func TestMainFlowSignUpWrongInputs(t *testing.T) {
 				},
 			},
 
-			expectedTexts: []TextMessage{
+			expectedTexts: []messaging.TextMessage{
 				{
-					Body:  msgWrongInput,
+					Body:  messaging.MsgWrongInput,
 					Phone: "+11234567890",
 				},
 			},
@@ -842,13 +846,13 @@ func TestMainFlowSignUpWrongInputs(t *testing.T) {
 	}
 
 	for _, test := range testCases {
-		txtMock := &MockTextSender{}
-		ddbMock := &MockDDBConnecter{}
+		txtMock := &mock.TextSender{}
+		ddbMock := &mock.DDBConnecter{}
 
 		t.Run(test.description, func(t *testing.T) {
 			setMocks(ddbMock, txtMock, test)
 
-			if err := MainFlow(test.initialMessage, ddbMock, txtMock); err != nil {
+			if err := prayertexter.MainFlow(test.initialMessage, ddbMock, txtMock); err != nil {
 				t.Fatalf("unexpected error starting MainFlow: %v", err)
 			}
 
@@ -863,7 +867,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 		{
 			description: "Delete non intercessor member with cancel txt - phone list stays the same",
 
-			initialMessage: TextMessage{
+			initialMessage: messaging.TextMessage{
 				Body:  "cancel",
 				Phone: "1234567890",
 			},
@@ -896,13 +900,13 @@ func TestMainFlowMemberDelete(t *testing.T) {
 			}{
 				{
 					key:   "+11234567890",
-					table: memberTable,
+					table: object.MemberTable,
 				},
 			},
 
-			expectedTexts: []TextMessage{
+			expectedTexts: []messaging.TextMessage{
 				{
-					Body:  msgRemoveUser,
+					Body:  messaging.MsgRemoveUser,
 					Phone: "+11234567890",
 				},
 			},
@@ -915,7 +919,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 		{
 			description: "Delete intercessor member with STOP txt - phone list changes",
 
-			initialMessage: TextMessage{
+			initialMessage: messaging.TextMessage{
 				Body:  "STOP",
 				Phone: "+14444444444",
 			},
@@ -951,7 +955,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: intercessorPhonesKey},
+							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKey},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
 								&types.AttributeValueMemberS{Value: "+11111111111"},
 								&types.AttributeValueMemberS{Value: "+12222222222"},
@@ -964,8 +968,8 @@ func TestMainFlowMemberDelete(t *testing.T) {
 				},
 			},
 
-			expectedPhones: IntercessorPhones{
-				Key: intercessorPhonesKey,
+			expectedPhones: object.IntercessorPhones{
+				Key: object.IntercessorPhonesKey,
 				Phones: []string{
 					"+11111111111",
 					"+12222222222",
@@ -979,13 +983,13 @@ func TestMainFlowMemberDelete(t *testing.T) {
 			}{
 				{
 					key:   "+14444444444",
-					table: memberTable,
+					table: object.MemberTable,
 				},
 			},
 
-			expectedTexts: []TextMessage{
+			expectedTexts: []messaging.TextMessage{
 				{
-					Body:  msgRemoveUser,
+					Body:  messaging.MsgRemoveUser,
 					Phone: "+14444444444",
 				},
 			},
@@ -998,7 +1002,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 		{
 			description: "Delete intercessor member with STOP txt - phone list changes, active prayer gets moved to prayer queue",
 
-			initialMessage: TextMessage{
+			initialMessage: messaging.TextMessage{
 				Body:  "STOP",
 				Phone: "+14444444444",
 			},
@@ -1035,7 +1039,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: intercessorPhonesKey},
+							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKey},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
 								&types.AttributeValueMemberS{Value: "+11111111111"},
 								&types.AttributeValueMemberS{Value: "+12222222222"},
@@ -1108,8 +1112,8 @@ func TestMainFlowMemberDelete(t *testing.T) {
 				},
 			},
 
-			expectedPhones: IntercessorPhones{
-				Key: intercessorPhonesKey,
+			expectedPhones: object.IntercessorPhones{
+				Key: object.IntercessorPhonesKey,
 				Phones: []string{
 					"+11111111111",
 					"+12222222222",
@@ -1117,12 +1121,12 @@ func TestMainFlowMemberDelete(t *testing.T) {
 				},
 			},
 
-			expectedPrayers: []Prayer{
+			expectedPrayers: []object.Prayer{
 				{
-					Intercessor:      Member{},
+					Intercessor:      object.Member{},
 					IntercessorPhone: "dummy ID",
 					Request:          "Please pray me..",
-					Requestor: Member{
+					Requestor: object.Member{
 						Intercessor: false,
 						Name:        "John Doe",
 						Phone:       "+11234567890",
@@ -1138,17 +1142,17 @@ func TestMainFlowMemberDelete(t *testing.T) {
 			}{
 				{
 					key:   "+14444444444",
-					table: memberTable,
+					table: object.MemberTable,
 				},
 				{
 					key:   "+14444444444",
-					table: activePrayersTable,
+					table: object.ActivePrayersTable,
 				},
 			},
 
-			expectedTexts: []TextMessage{
+			expectedTexts: []messaging.TextMessage{
 				{
-					Body:  msgRemoveUser,
+					Body:  messaging.MsgRemoveUser,
 					Phone: "+14444444444",
 				},
 			},
@@ -1161,7 +1165,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 		{
 			description: "Delete member - expected error on DelItem",
 
-			initialMessage: TextMessage{
+			initialMessage: messaging.TextMessage{
 				Body:  "cancel",
 				Phone: "+11234567890",
 			},
@@ -1205,21 +1209,21 @@ func TestMainFlowMemberDelete(t *testing.T) {
 	}
 
 	for _, test := range testCases {
-		txtMock := &MockTextSender{}
-		ddbMock := &MockDDBConnecter{}
+		txtMock := &mock.TextSender{}
+		ddbMock := &mock.DDBConnecter{}
 
 		t.Run(test.description, func(t *testing.T) {
 			setMocks(ddbMock, txtMock, test)
 
 			if test.expectedError {
 				// handles failures for error mocks
-				if err := MainFlow(test.initialMessage, ddbMock, txtMock); err == nil {
+				if err := prayertexter.MainFlow(test.initialMessage, ddbMock, txtMock); err == nil {
 					t.Fatalf("expected error, got nil")
 				}
 				testNumMethodCalls(ddbMock, txtMock, t, test)
 			} else {
 				// handles success test cases
-				if err := MainFlow(test.initialMessage, ddbMock, txtMock); err != nil {
+				if err := prayertexter.MainFlow(test.initialMessage, ddbMock, txtMock); err != nil {
 					t.Fatalf("unexpected error starting MainFlow: %v", err)
 				}
 
@@ -1238,7 +1242,7 @@ func TestMainFlowHelp(t *testing.T) {
 		{
 			description: "Setup stage 99 user texts help and receives the help message",
 
-			initialMessage: TextMessage{
+			initialMessage: messaging.TextMessage{
 				Body:  "help",
 				Phone: "+11234567890",
 			},
@@ -1265,9 +1269,9 @@ func TestMainFlowHelp(t *testing.T) {
 				},
 			},
 
-			expectedTexts: []TextMessage{
+			expectedTexts: []messaging.TextMessage{
 				{
-					Body:  msgHelp,
+					Body:  messaging.MsgHelp,
 					Phone: "+11234567890",
 				},
 			},
@@ -1279,7 +1283,7 @@ func TestMainFlowHelp(t *testing.T) {
 		{
 			description: "Setup stage 1 user texts help and receives the help message",
 
-			initialMessage: TextMessage{
+			initialMessage: messaging.TextMessage{
 				Body:  "help",
 				Phone: "+11234567890",
 			},
@@ -1306,9 +1310,9 @@ func TestMainFlowHelp(t *testing.T) {
 				},
 			},
 
-			expectedTexts: []TextMessage{
+			expectedTexts: []messaging.TextMessage{
 				{
-					Body:  msgHelp,
+					Body:  messaging.MsgHelp,
 					Phone: "+11234567890",
 				},
 			},
@@ -1320,13 +1324,13 @@ func TestMainFlowHelp(t *testing.T) {
 	}
 
 	for _, test := range testCases {
-		txtMock := &MockTextSender{}
-		ddbMock := &MockDDBConnecter{}
+		txtMock := &mock.TextSender{}
+		ddbMock := &mock.DDBConnecter{}
 
 		t.Run(test.description, func(t *testing.T) {
 			setMocks(ddbMock, txtMock, test)
 
-			if err := MainFlow(test.initialMessage, ddbMock, txtMock); err != nil {
+			if err := prayertexter.MainFlow(test.initialMessage, ddbMock, txtMock); err != nil {
 				t.Fatalf("unexpected error starting MainFlow: %v", err)
 			}
 
@@ -1343,7 +1347,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 		{
 			description: "Successful simple prayer request flow",
 
-			initialMessage: TextMessage{
+			initialMessage: messaging.TextMessage{
 				Body:  "I need prayer for...",
 				Phone: "+11234567890",
 			},
@@ -1376,7 +1380,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: intercessorPhonesKey},
+							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKey},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
 								&types.AttributeValueMemberS{Value: "+11111111111"},
 								&types.AttributeValueMemberS{Value: "+12222222222"},
@@ -1427,7 +1431,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				},
 			},
 
-			expectedMembers: []Member{
+			expectedMembers: []object.Member{
 				{
 					Intercessor:       true,
 					Name:              "Intercessor1",
@@ -1450,9 +1454,9 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				},
 			},
 
-			expectedPrayers: []Prayer{
+			expectedPrayers: []object.Prayer{
 				{
-					Intercessor: Member{
+					Intercessor: object.Member{
 						Intercessor:       true,
 						Name:              "Intercessor1",
 						Phone:             "+11111111111",
@@ -1464,7 +1468,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 					},
 					IntercessorPhone: "+11111111111",
 					Request:          "I need prayer for...",
-					Requestor: Member{
+					Requestor: object.Member{
 						Name:        "John Doe",
 						Phone:       "+11234567890",
 						SetupStage:  99,
@@ -1472,7 +1476,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 					},
 				},
 				{
-					Intercessor: Member{
+					Intercessor: object.Member{
 						Intercessor:       true,
 						Name:              "Intercessor2",
 						Phone:             "+12222222222",
@@ -1484,7 +1488,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 					},
 					IntercessorPhone: "+12222222222",
 					Request:          "I need prayer for...",
-					Requestor: Member{
+					Requestor: object.Member{
 						Name:        "John Doe",
 						Phone:       "+11234567890",
 						SetupStage:  99,
@@ -1493,17 +1497,17 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				},
 			},
 
-			expectedTexts: []TextMessage{
+			expectedTexts: []messaging.TextMessage{
 				{
-					Body:  msgPrayerIntro,
+					Body:  messaging.MsgPrayerIntro,
 					Phone: "+11111111111",
 				},
 				{
-					Body:  msgPrayerIntro,
+					Body:  messaging.MsgPrayerIntro,
 					Phone: "+12222222222",
 				},
 				{
-					Body:  msgPrayerSentOut,
+					Body:  messaging.MsgPrayerSentOut,
 					Phone: "+11234567890",
 				},
 			},
@@ -1515,7 +1519,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 		{
 			description: "Profanity detected",
 
-			initialMessage: TextMessage{
+			initialMessage: messaging.TextMessage{
 				Body:  "sh!t",
 				Phone: "+11234567890",
 			},
@@ -1542,9 +1546,9 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				},
 			},
 
-			expectedTexts: []TextMessage{
+			expectedTexts: []messaging.TextMessage{
 				{
-					Body:  msgProfanityFound,
+					Body:  messaging.MsgProfanityFound,
 					Phone: "+11234567890",
 				},
 			},
@@ -1554,9 +1558,9 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 			expectedSendTextCalls: 1,
 		},
 		{
-			description: "Error with first put Prayer in findIntercessors",
+			description: "Error with first put Prayer in FindIntercessors",
 
-			initialMessage: TextMessage{
+			initialMessage: messaging.TextMessage{
 				Body:  "I need prayer for...",
 				Phone: "+11234567890",
 			},
@@ -1589,7 +1593,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: intercessorPhonesKey},
+							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKey},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
 								&types.AttributeValueMemberS{Value: "+11111111111"},
 								&types.AttributeValueMemberS{Value: "+12222222222"},
@@ -1661,7 +1665,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 		{
 			description: "No available intercessors because of maxed out prayer counters",
 
-			initialMessage: TextMessage{
+			initialMessage: messaging.TextMessage{
 				Body:  "I need prayer for...",
 				Phone: "+11234567890",
 			},
@@ -1694,7 +1698,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: intercessorPhonesKey},
+							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKey},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
 								&types.AttributeValueMemberS{Value: "+11111111111"},
 								&types.AttributeValueMemberS{Value: "+12222222222"},
@@ -1719,7 +1723,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 					Error: nil,
 				},
 				{
-					// Prayer empty get response because there are no active prayers for this intercessor
+					// object.Prayer empty get response because there are no active prayers for this intercessor
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -1745,11 +1749,11 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				},
 			},
 
-			expectedPrayers: []Prayer{
+			expectedPrayers: []object.Prayer{
 				{
 					IntercessorPhone: "dummy ID",
 					Request:          "I need prayer for...",
-					Requestor: Member{
+					Requestor: object.Member{
 						Name:        "John Doe",
 						Phone:       "+11234567890",
 						SetupStage:  99,
@@ -1758,9 +1762,9 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				},
 			},
 
-			expectedTexts: []TextMessage{
+			expectedTexts: []messaging.TextMessage{
 				{
-					Body:  msgPrayerQueued,
+					Body:  messaging.MsgPrayerQueued,
 					Phone: "+11234567890",
 				},
 			},
@@ -1773,21 +1777,21 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 	}
 
 	for _, test := range testCases {
-		txtMock := &MockTextSender{}
-		ddbMock := &MockDDBConnecter{}
+		txtMock := &mock.TextSender{}
+		ddbMock := &mock.DDBConnecter{}
 
 		t.Run(test.description, func(t *testing.T) {
 			setMocks(ddbMock, txtMock, test)
 
 			if test.expectedError {
 				// handles failures for error mocks
-				if err := MainFlow(test.initialMessage, ddbMock, txtMock); err == nil {
+				if err := prayertexter.MainFlow(test.initialMessage, ddbMock, txtMock); err == nil {
 					t.Fatalf("expected error, got nil")
 				}
 				testNumMethodCalls(ddbMock, txtMock, t, test)
 			} else {
 				// handles success test cases
-				if err := MainFlow(test.initialMessage, ddbMock, txtMock); err != nil {
+				if err := prayertexter.MainFlow(test.initialMessage, ddbMock, txtMock); err != nil {
 					t.Fatalf("unexpected error starting MainFlow: %v", err)
 				}
 
@@ -1812,7 +1816,7 @@ func TestFindIntercessors(t *testing.T) {
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: intercessorPhonesKey},
+							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKey},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
 								&types.AttributeValueMemberS{Value: "+11111111111"},
 								&types.AttributeValueMemberS{Value: "+12222222222"},
@@ -1873,7 +1877,7 @@ func TestFindIntercessors(t *testing.T) {
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "15"},
 							"SetupStage":        &types.AttributeValueMemberN{Value: "99"},
 							"SetupStatus":       &types.AttributeValueMemberS{Value: "completed"},
-							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().AddDate(0, 0, -7).Format(time.RFC3339)},
+							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().AddDate(0, 0, -8).Format(time.RFC3339)},
 							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "15"},
 						},
 					},
@@ -1926,7 +1930,7 @@ func TestFindIntercessors(t *testing.T) {
 				},
 			},
 
-			expectedMembers: []Member{
+			expectedMembers: []object.Member{
 				{
 					Intercessor:       true,
 					Name:              "Intercessor3",
@@ -1962,7 +1966,7 @@ func TestFindIntercessors(t *testing.T) {
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: intercessorPhonesKey},
+							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKey},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
 								&types.AttributeValueMemberS{Value: "+11111111111"},
 								&types.AttributeValueMemberS{Value: "+12222222222"},
@@ -2034,7 +2038,7 @@ func TestFindIntercessors(t *testing.T) {
 				},
 			},
 
-			expectedMembers: []Member{
+			expectedMembers: []object.Member{
 				{
 					Intercessor:       true,
 					Name:              "Intercessor3",
@@ -2052,7 +2056,7 @@ func TestFindIntercessors(t *testing.T) {
 		},
 		{
 			description: "This should return a single intercessor because the other intercessor (888-888-8888) gets removed. In a real situation, this would be because they are the ones who sent in the prayer request.",
-			// findIntercessors has a parameter for skipping a phone number. We are using 888-888-8888 for this, which is set permanently in the main testing logic for this section
+			// FindIntercessors has a parameter for skipping a phone number. We are using 888-888-8888 for this, which is set permanently in the main testing logic for this section
 
 			mockGetItemResults: []struct {
 				Output *dynamodb.GetItemOutput
@@ -2061,7 +2065,7 @@ func TestFindIntercessors(t *testing.T) {
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: intercessorPhonesKey},
+							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKey},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
 								&types.AttributeValueMemberS{Value: "+11111111111"},
 								&types.AttributeValueMemberS{Value: "+18888888888"},
@@ -2092,7 +2096,7 @@ func TestFindIntercessors(t *testing.T) {
 				},
 			},
 
-			expectedMembers: []Member{
+			expectedMembers: []object.Member{
 				{
 					Intercessor:       true,
 					Name:              "Intercessor1",
@@ -2118,7 +2122,7 @@ func TestFindIntercessors(t *testing.T) {
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: intercessorPhonesKey},
+							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKey},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
 								&types.AttributeValueMemberS{Value: "+11111111111"},
 								&types.AttributeValueMemberS{Value: "+12222222222"},
@@ -2183,7 +2187,7 @@ func TestFindIntercessors(t *testing.T) {
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: intercessorPhonesKey},
+							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKey},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
 								&types.AttributeValueMemberS{Value: "+11111111111"},
 								&types.AttributeValueMemberS{Value: "+12222222222"},
@@ -2305,7 +2309,7 @@ func TestFindIntercessors(t *testing.T) {
 				},
 			},
 
-			expectedMembers: []Member{
+			expectedMembers: []object.Member{
 				{
 					Intercessor:       true,
 					Name:              "Intercessor2",
@@ -2324,23 +2328,23 @@ func TestFindIntercessors(t *testing.T) {
 	}
 
 	for _, test := range testCases {
-		txtMock := &MockTextSender{}
-		ddbMock := &MockDDBConnecter{}
+		txtMock := &mock.TextSender{}
+		ddbMock := &mock.DDBConnecter{}
 
 		t.Run(test.description, func(t *testing.T) {
 			setMocks(ddbMock, txtMock, test)
 
 			if test.expectedError {
 				// handles failures for error mocks
-				if _, err := findIntercessors(ddbMock, "+18888888888"); err == nil {
+				if _, err := prayertexter.FindIntercessors(ddbMock, "+18888888888"); err == nil {
 					t.Fatalf("expected error, got nil")
 				}
 				testNumMethodCalls(ddbMock, txtMock, t, test)
 			} else {
 				// handles success test cases
-				_, err := findIntercessors(ddbMock, "+18888888888")
+				_, err := prayertexter.FindIntercessors(ddbMock, "+18888888888")
 				if err != nil {
-					t.Fatalf("unexpected error starting findIntercessors: %v", err)
+					t.Fatalf("unexpected error starting FindIntercessors: %v", err)
 				}
 
 				testNumMethodCalls(ddbMock, txtMock, t, test)
@@ -2355,7 +2359,7 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 		{
 			description: "Successful prayer request completion",
 
-			initialMessage: TextMessage{
+			initialMessage: messaging.TextMessage{
 				Body:  "prayed",
 				Phone: "+11111111111",
 			},
@@ -2439,17 +2443,17 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 			}{
 				{
 					key:   "+11111111111",
-					table: activePrayersTable,
+					table: object.ActivePrayersTable,
 				},
 			},
 
-			expectedTexts: []TextMessage{
+			expectedTexts: []messaging.TextMessage{
 				{
-					Body:  msgPrayerThankYou,
+					Body:  messaging.MsgPrayerThankYou,
 					Phone: "+11111111111",
 				},
 				{
-					Body:  msgPrayerConfirmation,
+					Body:  messaging.MsgPrayerConfirmation,
 					Phone: "+11234567890",
 				},
 			},
@@ -2462,7 +2466,7 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 		{
 			description: "Successful prayer request completion - skip sending prayer confirmation text to prayer requestor because they are no longer a member",
 
-			initialMessage: TextMessage{
+			initialMessage: messaging.TextMessage{
 				Body:  "prayed",
 				Phone: "+11111111111",
 			},
@@ -2534,13 +2538,13 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 			}{
 				{
 					key:   "+11111111111",
-					table: activePrayersTable,
+					table: object.ActivePrayersTable,
 				},
 			},
 
-			expectedTexts: []TextMessage{
+			expectedTexts: []messaging.TextMessage{
 				{
-					Body:  msgPrayerThankYou,
+					Body:  messaging.MsgPrayerThankYou,
 					Phone: "+11111111111",
 				},
 			},
@@ -2553,7 +2557,7 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 		{
 			description: "No active prayers to mark as prayed",
 
-			initialMessage: TextMessage{
+			initialMessage: messaging.TextMessage{
 				Body:  "prayed",
 				Phone: "+11111111111",
 			},
@@ -2584,9 +2588,9 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 				},
 			},
 
-			expectedTexts: []TextMessage{
+			expectedTexts: []messaging.TextMessage{
 				{
-					Body:  msgNoActivePrayer,
+					Body:  messaging.MsgNoActivePrayer,
 					Phone: "+11111111111",
 				},
 			},
@@ -2598,7 +2602,7 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 		{
 			description: "Error with delete Prayer",
 
-			initialMessage: TextMessage{
+			initialMessage: messaging.TextMessage{
 				Body:  "prayed",
 				Phone: "+11234567890",
 			},
@@ -2693,21 +2697,21 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 	}
 
 	for _, test := range testCases {
-		txtMock := &MockTextSender{}
-		ddbMock := &MockDDBConnecter{}
+		txtMock := &mock.TextSender{}
+		ddbMock := &mock.DDBConnecter{}
 
 		t.Run(test.description, func(t *testing.T) {
 			setMocks(ddbMock, txtMock, test)
 
 			if test.expectedError {
 				// handles failures for error mocks
-				if err := MainFlow(test.initialMessage, ddbMock, txtMock); err == nil {
+				if err := prayertexter.MainFlow(test.initialMessage, ddbMock, txtMock); err == nil {
 					t.Fatalf("expected error, got nil")
 				}
 				testNumMethodCalls(ddbMock, txtMock, t, test)
 			} else {
 				// handles success test cases
-				if err := MainFlow(test.initialMessage, ddbMock, txtMock); err != nil {
+				if err := prayertexter.MainFlow(test.initialMessage, ddbMock, txtMock); err != nil {
 					t.Fatalf("unexpected error starting MainFlow: %v", err)
 				}
 
