@@ -28,7 +28,7 @@ Prerequisites:
 4. sam-cli
 
 Compile:
-1. make build
+1. make build-prayertexter
 
 Create ddb tables and start local services:
 1. ./localdev/dynamodbsetup.sh 
@@ -56,3 +56,4 @@ Good dynamodb commands:
 - unit test state tracker in real flow to verify errors are saved
 - move 10-DLC number from sandbox to prod
 - remove unnecessary exports that are currently only used for tests (object db keys, attribute constants, etc)
+- implement way to send fake texts with sam local (currently now it tries to send real texts and fails on token error)
