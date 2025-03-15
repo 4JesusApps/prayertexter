@@ -26,7 +26,7 @@ type DDBConnecter interface {
 func GetDdbClient() (*dynamodb.Client, error) {
 	cfg, err := utility.GetAwsConfig()
 	if err != nil {
-		return nil, fmt.Errorf("GetDdbClient: %w", err)
+		return nil, fmt.Errorf("failed to get dynamodb client: %w", err)
 	}
 
 	var ddbClnt *dynamodb.Client
@@ -61,7 +61,7 @@ func GetDdbObject[T any](ddbClnt DDBConnecter, attr, key, table string) (*T, err
 
 	var object T
 	if err := attributevalue.UnmarshalMap(resp.Item, &object); err != nil {
-		return nil, fmt.Errorf("getDdbObject failed unmarshal: %w", err)
+		return nil, fmt.Errorf("get dynamodb object failed unmarshal: %w", err)
 	}
 
 	return &object, nil
@@ -79,7 +79,7 @@ func putDdbItem(ddbClnt DDBConnecter, table string, data map[string]types.Attrib
 func PutDdbObject[T any](ddbClnt DDBConnecter, table string, object *T) error {
 	item, err := attributevalue.MarshalMap(object)
 	if err != nil {
-		return fmt.Errorf("putDdbObject failed marshal: %w", err)
+		return fmt.Errorf("put dynamodb object failed marshal: %w", err)
 	}
 
 	if err := putDdbItem(ddbClnt, table, item); err != nil {

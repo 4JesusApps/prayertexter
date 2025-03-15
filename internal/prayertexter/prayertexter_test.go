@@ -567,7 +567,8 @@ func TestMainFlowSignUp(t *testing.T) {
 			expectedSendTextCalls: 1,
 		},
 		{
-			description: "Sign up final intercessor message: user texts the number of prayers they are willing to receive per week",
+			description: "Sign up final intercessor message: user texts the number of prayers they are willing to" +
+				"receive per week",
 
 			initialMessage: messaging.TextMessage{
 				Body:  "10",
@@ -639,7 +640,8 @@ func TestMainFlowSignUp(t *testing.T) {
 
 			expectedTexts: []messaging.TextMessage{
 				{
-					Body:  messaging.MsgPrayerInstructions + "\n\n" + messaging.MsgIntercessorInstructions + "\n\n" + messaging.MsgSignUpConfirmation,
+					Body: messaging.MsgPrayerInstructions + "\n\n" + messaging.MsgIntercessorInstructions + "\n\n" +
+						messaging.MsgSignUpConfirmation,
 					Phone: "+11234567890",
 				},
 			},
@@ -1000,7 +1002,8 @@ func TestMainFlowMemberDelete(t *testing.T) {
 			expectedSendTextCalls:   1,
 		},
 		{
-			description: "Delete intercessor member with STOP txt - phone list changes, active prayer gets moved to prayer queue",
+			description: "Delete intercessor member with STOP txt - phone list changes, active prayer gets moved to" +
+				"prayer queue",
 
 			initialMessage: messaging.TextMessage{
 				Body:  "STOP",
@@ -1851,13 +1854,14 @@ func TestFindIntercessors(t *testing.T) {
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
-							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
-							"Name":              &types.AttributeValueMemberS{Value: "Intercessor2"},
-							"Phone":             &types.AttributeValueMemberS{Value: "+12222222222"},
-							"PrayerCount":       &types.AttributeValueMemberN{Value: "100"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: "99"},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: "completed"},
-							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().AddDate(0, 0, -2).Format(time.RFC3339)},
+							"Intercessor": &types.AttributeValueMemberBOOL{Value: true},
+							"Name":        &types.AttributeValueMemberS{Value: "Intercessor2"},
+							"Phone":       &types.AttributeValueMemberS{Value: "+12222222222"},
+							"PrayerCount": &types.AttributeValueMemberN{Value: "100"},
+							"SetupStage":  &types.AttributeValueMemberN{Value: "99"},
+							"SetupStatus": &types.AttributeValueMemberS{Value: "completed"},
+							"WeeklyPrayerDate": &types.AttributeValueMemberS{Value: time.Now().AddDate(
+								0, 0, -2).Format(time.RFC3339)},
 							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "100"},
 						},
 					},
@@ -1871,13 +1875,14 @@ func TestFindIntercessors(t *testing.T) {
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
-							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
-							"Name":              &types.AttributeValueMemberS{Value: "Intercessor3"},
-							"Phone":             &types.AttributeValueMemberS{Value: "+13333333333"},
-							"PrayerCount":       &types.AttributeValueMemberN{Value: "15"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: "99"},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: "completed"},
-							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().AddDate(0, 0, -8).Format(time.RFC3339)},
+							"Intercessor": &types.AttributeValueMemberBOOL{Value: true},
+							"Name":        &types.AttributeValueMemberS{Value: "Intercessor3"},
+							"Phone":       &types.AttributeValueMemberS{Value: "+13333333333"},
+							"PrayerCount": &types.AttributeValueMemberN{Value: "15"},
+							"SetupStage":  &types.AttributeValueMemberN{Value: "99"},
+							"SetupStatus": &types.AttributeValueMemberS{Value: "completed"},
+							"WeeklyPrayerDate": &types.AttributeValueMemberS{Value: time.Now().AddDate(
+								0, 0, -8).Format(time.RFC3339)},
 							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "15"},
 						},
 					},
@@ -1891,13 +1896,14 @@ func TestFindIntercessors(t *testing.T) {
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
-							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
-							"Name":              &types.AttributeValueMemberS{Value: "Intercessor4"},
-							"Phone":             &types.AttributeValueMemberS{Value: "+14444444444"},
-							"PrayerCount":       &types.AttributeValueMemberN{Value: "9"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: "99"},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: "completed"},
-							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().AddDate(0, 0, -6).Format(time.RFC3339)},
+							"Intercessor": &types.AttributeValueMemberBOOL{Value: true},
+							"Name":        &types.AttributeValueMemberS{Value: "Intercessor4"},
+							"Phone":       &types.AttributeValueMemberS{Value: "+14444444444"},
+							"PrayerCount": &types.AttributeValueMemberN{Value: "9"},
+							"SetupStage":  &types.AttributeValueMemberN{Value: "99"},
+							"SetupStatus": &types.AttributeValueMemberS{Value: "completed"},
+							"WeeklyPrayerDate": &types.AttributeValueMemberS{Value: time.Now().AddDate(
+								0, 0, -6).Format(time.RFC3339)},
 							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "9"},
 						},
 					},
@@ -2055,8 +2061,10 @@ func TestFindIntercessors(t *testing.T) {
 			expectedPutItemCalls: 1,
 		},
 		{
-			description: "This should return a single intercessor because the other intercessor (888-888-8888) gets removed. In a real situation, this would be because they are the ones who sent in the prayer request.",
-			// FindIntercessors has a parameter for skipping a phone number. We are using 888-888-8888 for this, which is set permanently in the main testing logic for this section
+			description: "This should return a single intercessor because the other intercessor (888-888-8888) gets" +
+				"removed. In a real situation, this would be because they are the ones who sent in the prayer request.",
+			// FindIntercessors has a parameter for skipping a phone number.
+			// We are using 888-888-8888 for this, which is set permanently in the main testing logic for this section
 
 			mockGetItemResults: []struct {
 				Output *dynamodb.GetItemOutput
@@ -2178,7 +2186,8 @@ func TestFindIntercessors(t *testing.T) {
 			expectedGetItemCalls: 5,
 		},
 		{
-			description: "This should return a single intercessor because, while they all are not maxed out on prayers, 2 of them already have active prayers",
+			description: "This should return a single intercessor because, while they all are not maxed out on" +
+				"prayers, 2 of them already have active prayers",
 
 			mockGetItemResults: []struct {
 				Output *dynamodb.GetItemOutput
@@ -2464,7 +2473,8 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 			expectedSendTextCalls:   2,
 		},
 		{
-			description: "Successful prayer request completion - skip sending prayer confirmation text to prayer requestor because they are no longer a member",
+			description: "Successful prayer request completion - skip sending prayer confirmation text to prayer" +
+				"requestor because they are no longer a member",
 
 			initialMessage: messaging.TextMessage{
 				Body:  "prayed",

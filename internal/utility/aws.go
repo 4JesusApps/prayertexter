@@ -12,7 +12,7 @@ import (
 func GetAwsConfig() (aws.Config, error) {
 	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion("us-west-1"))
 	if err != nil {
-		return cfg, fmt.Errorf("getAwsConfig: %w", err)
+		return cfg, fmt.Errorf("failed to get aws config: %w", err)
 	}
 
 	return cfg, nil

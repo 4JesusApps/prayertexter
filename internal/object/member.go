@@ -27,7 +27,7 @@ const (
 func (m *Member) Get(ddbClnt db.DDBConnecter) error {
 	mem, err := db.GetDdbObject[Member](ddbClnt, MemberAttribute, m.Phone, MemberTable)
 	if err != nil {
-		return fmt.Errorf("Member get: %w", err)
+		return fmt.Errorf("failed to get Member: %w", err)
 	}
 
 	// this is important so that the original Member object doesn't get reset to all empty struct
@@ -41,7 +41,7 @@ func (m *Member) Get(ddbClnt db.DDBConnecter) error {
 
 func (m *Member) Put(ddbClnt db.DDBConnecter) error {
 	if err := db.PutDdbObject(ddbClnt, MemberTable, m); err != nil {
-		return fmt.Errorf("Member put: %w", err)
+		return fmt.Errorf("failed to put Member: %w", err)
 	}
 
 	return nil
@@ -49,7 +49,7 @@ func (m *Member) Put(ddbClnt db.DDBConnecter) error {
 
 func (m *Member) Delete(ddbClnt db.DDBConnecter) error {
 	if err := db.DelDdbItem(ddbClnt, MemberAttribute, m.Phone, MemberTable); err != nil {
-		return fmt.Errorf("Member delete: %w", err)
+		return fmt.Errorf("failed to delete Member: %w", err)
 	}
 
 	return nil
@@ -63,7 +63,7 @@ func (m *Member) SendMessage(smsClnt messaging.TextSender, body string) error {
 
 	if err := messaging.SendText(smsClnt, message); err != nil {
 		slog.Error("sendMessage failed", "recipient", m.Phone, "msg", body, "error", err)
-		return fmt.Errorf("Member sendText: %w", err)
+		return fmt.Errorf("failed to send text to Member: %w", err)
 	}
 
 	return nil
@@ -73,7 +73,7 @@ func IsMemberActive(ddbClnt db.DDBConnecter, phone string) (bool, error) {
 	mem := Member{Phone: phone}
 	if err := mem.Get(ddbClnt); err != nil {
 		// returning false but it really should be nil due to error
-		return false, fmt.Errorf("isMemberActive: %w", err)
+		return false, fmt.Errorf("failed to check if Member is active: %w", err)
 	}
 
 	// empty string means get Member did not return an Member. Dynamodb get requests

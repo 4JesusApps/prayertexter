@@ -25,7 +25,7 @@ func (i *IntercessorPhones) Get(ddbClnt db.DDBConnecter) error {
 	intr, err := db.GetDdbObject[IntercessorPhones](ddbClnt, IntercessorPhonesAttribute,
 		IntercessorPhonesKey, IntercessorPhonesTable)
 	if err != nil {
-		return fmt.Errorf("IntercessorPhones get: %w", err)
+		return fmt.Errorf("failed to get IntercessorPhones: %w", err)
 	}
 
 	// this is important so that the original IntercessorPhones object doesn't get reset to all
@@ -40,7 +40,7 @@ func (i *IntercessorPhones) Get(ddbClnt db.DDBConnecter) error {
 func (i *IntercessorPhones) Put(ddbClnt db.DDBConnecter) error {
 	i.Key = IntercessorPhonesKey
 	if err := db.PutDdbObject(ddbClnt, IntercessorPhonesTable, i); err != nil {
-		return fmt.Errorf("IntercessorPhones put: %w", err)
+		return fmt.Errorf("failed to put IntercessorPhones: %w", err)
 	}
 
 	return nil
@@ -78,7 +78,7 @@ func (i *IntercessorPhones) GenRandPhones() []string {
 	}
 
 	for len(selectedPhones) < NumIntercessorsPerPrayer {
-		phone := i.Phones[rand.IntN(len(i.Phones))]
+		phone := i.Phones[rand.IntN(len(i.Phones))] // #nosec G404 - false positive
 		if slices.Contains(selectedPhones, phone) {
 			continue
 		}

@@ -27,8 +27,8 @@ type DDBConnecter struct {
 	}
 }
 
-func (m *DDBConnecter) GetItem(ctx context.Context, input *dynamodb.GetItemInput,
-	opts ...func(*dynamodb.Options)) (*dynamodb.GetItemOutput, error) {
+func (m *DDBConnecter) GetItem(_ context.Context, input *dynamodb.GetItemInput,
+	_ ...func(*dynamodb.Options)) (*dynamodb.GetItemOutput, error) {
 
 	m.GetItemCalls++
 	m.GetItemInputs = append(m.GetItemInputs, *input)
@@ -41,8 +41,8 @@ func (m *DDBConnecter) GetItem(ctx context.Context, input *dynamodb.GetItemInput
 	return result.Output, result.Error
 }
 
-func (m *DDBConnecter) PutItem(ctx context.Context, input *dynamodb.PutItemInput,
-	opts ...func(*dynamodb.Options)) (*dynamodb.PutItemOutput, error) {
+func (m *DDBConnecter) PutItem(_ context.Context, input *dynamodb.PutItemInput, _ ...func(*dynamodb.Options)) (
+	*dynamodb.PutItemOutput, error) {
 
 	m.PutItemCalls++
 	m.PutItemInputs = append(m.PutItemInputs, *input)
@@ -55,8 +55,8 @@ func (m *DDBConnecter) PutItem(ctx context.Context, input *dynamodb.PutItemInput
 	return nil, result.Error
 }
 
-func (m *DDBConnecter) DeleteItem(ctx context.Context, input *dynamodb.DeleteItemInput,
-	opts ...func(*dynamodb.Options)) (*dynamodb.DeleteItemOutput, error) {
+func (m *DDBConnecter) DeleteItem(_ context.Context, input *dynamodb.DeleteItemInput, _ ...func(*dynamodb.Options)) (
+	*dynamodb.DeleteItemOutput, error) {
 
 	m.DeleteItemCalls++
 	m.DeleteItemInputs = append(m.DeleteItemInputs, *input)

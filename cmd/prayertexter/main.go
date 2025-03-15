@@ -19,23 +19,23 @@ import (
 //lint:ignore U1000 - var used in Makefile
 var version string // do not remove or modify
 
-func handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+func handler(_ context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	msg := messaging.TextMessage{}
 
 	if err := json.Unmarshal([]byte(req.Body), &msg); err != nil {
-		slog.Error("lambda handler: failed to unmarshal api gateway request", "error", err.Error())
+		slog.Error("lambda handler: failed to unmarshal api gateway request", "error", err)
 		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError}, err
 	}
 
 	ddbClnt, err := db.GetDdbClient()
 	if err != nil {
-		slog.Error("lambda handler: failed to get dynamodb client", "error", err.Error())
+		slog.Error("lambda handler: failed to get dynamodb client", "error", err)
 		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError}, err
 	}
 
 	smsClnt, err := messaging.GetSmsClient()
 	if err != nil {
-		slog.Error("lambda handler: failed to get sms client", "error", err.Error())
+		slog.Error("lambda handler: failed to get sms client", "error", err)
 		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError}, err
 	}
 
@@ -43,7 +43,7 @@ func handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.API
 		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError}, err
 	}
 
-	return events.APIGatewayProxyResponse{StatusCode: 200, Body: "Success"}, nil
+	return events.APIGatewayProxyResponse{StatusCode: http.StatusOK, Body: "Success"}, nil
 }
 
 func main() {

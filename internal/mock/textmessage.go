@@ -14,9 +14,8 @@ type TextSender struct {
 	}
 }
 
-func (m *TextSender) SendTextMessage(ctx context.Context,
-	params *pinpointsmsvoicev2.SendTextMessageInput,
-	optFns ...func(*pinpointsmsvoicev2.Options)) (*pinpointsmsvoicev2.SendTextMessageOutput, error) {
+func (m *TextSender) SendTextMessage(_ context.Context, params *pinpointsmsvoicev2.SendTextMessageInput, _ ...func(
+	*pinpointsmsvoicev2.Options)) (*pinpointsmsvoicev2.SendTextMessageOutput, error) {
 
 	m.SendTextCalls++
 	m.SendTextInputs = append(m.SendTextInputs, params)

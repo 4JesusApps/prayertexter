@@ -24,7 +24,7 @@ func (p *Prayer) Get(ddbClnt db.DDBConnecter, queue bool) error {
 	table := GetPrayerTable(queue)
 	pryr, err := db.GetDdbObject[Prayer](ddbClnt, PrayersAttribute, p.IntercessorPhone, table)
 	if err != nil {
-		return fmt.Errorf("Prayer get: %w", err)
+		return fmt.Errorf("failed to get Prayer: %w", err)
 	}
 
 	// this is important so that the original Prayer object doesn't get reset to all empty struct
@@ -42,7 +42,7 @@ func (p *Prayer) Put(ddbClnt db.DDBConnecter, queue bool) error {
 	// this will change the ddb table that the prayer is saved to
 	table := GetPrayerTable(queue)
 	if err := db.PutDdbObject(ddbClnt, table, p); err != nil {
-		return fmt.Errorf("Prayer put: %w", err)
+		return fmt.Errorf("failed to put Prayer: %w", err)
 	}
 
 	return nil
@@ -51,7 +51,7 @@ func (p *Prayer) Put(ddbClnt db.DDBConnecter, queue bool) error {
 func (p *Prayer) Delete(ddbClnt db.DDBConnecter, queue bool) error {
 	table := GetPrayerTable(queue)
 	if err := db.DelDdbItem(ddbClnt, PrayersAttribute, p.IntercessorPhone, table); err != nil {
-		return fmt.Errorf("Prayer delete: %w", err)
+		return fmt.Errorf("failed to delete Prayer: %w", err)
 	}
 
 	return nil
@@ -71,7 +71,7 @@ func GetPrayerTable(queue bool) string {
 func IsPrayerActive(ddbClnt db.DDBConnecter, phone string) (bool, error) {
 	pryr := Prayer{IntercessorPhone: phone}
 	if err := pryr.Get(ddbClnt, false); err != nil {
-		return false, fmt.Errorf("isPrayerActive: %w", err)
+		return false, fmt.Errorf("failed to check if Prayer is active: %w", err)
 	}
 
 	// empty string means get Prayer did not return an active Prayer. Dynamodb get requests

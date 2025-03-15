@@ -31,7 +31,7 @@ const (
 func (st *StateTracker) Get(ddbClnt db.DDBConnecter) error {
 	sttrackr, err := db.GetDdbObject[StateTracker](ddbClnt, StateTrackerAttribute, StateTrackerKey, StateTrackerTable)
 	if err != nil {
-		return fmt.Errorf("StateTracker get: %w", err)
+		return fmt.Errorf("failed to get StateTracker: %w", err)
 	}
 
 	// this is important so that the original Member object doesn't get reset to all empty struct
@@ -46,7 +46,7 @@ func (st *StateTracker) Get(ddbClnt db.DDBConnecter) error {
 func (st *StateTracker) Put(ddbClnt db.DDBConnecter) error {
 	st.Key = StateTrackerKey
 	if err := db.PutDdbObject(ddbClnt, string(StateTrackerTable), st); err != nil {
-		return fmt.Errorf("StateTracker put: %w", err)
+		return fmt.Errorf("failed to put StateTracker: %w", err)
 	}
 
 	return nil
@@ -55,7 +55,7 @@ func (st *StateTracker) Put(ddbClnt db.DDBConnecter) error {
 func (s *State) Update(ddbClnt db.DDBConnecter, remove bool) error {
 	st := StateTracker{}
 	if err := st.Get(ddbClnt); err != nil {
-		return fmt.Errorf("State update: %w", err)
+		return fmt.Errorf("failed state update: %w", err)
 	}
 
 	states := &st.States
@@ -70,7 +70,7 @@ func (s *State) Update(ddbClnt db.DDBConnecter, remove bool) error {
 	}
 
 	if err := st.Put(ddbClnt); err != nil {
-		return fmt.Errorf("State update: %w", err)
+		return fmt.Errorf("failed state update: %w", err)
 	}
 
 	return nil

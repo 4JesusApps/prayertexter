@@ -7,7 +7,8 @@ import (
 )
 
 func GenerateID() (string, error) {
-	bytes := make([]byte, 16)
+	size := 16
+	bytes := make([]byte, size)
 	if _, err := rand.Read(bytes); err != nil {
 		return "", fmt.Errorf("generateID: %w", err)
 	}

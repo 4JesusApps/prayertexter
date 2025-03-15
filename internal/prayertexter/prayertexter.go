@@ -14,143 +14,164 @@ import (
 )
 
 func MainFlow(msg messaging.TextMessage, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender) error {
+	const (
+		errorMsgPreStage                = "failure during pre-stage"
+		errorMsgHelpStage               = "failure during help stage"
+		errorMsgCancelStage             = "failure during cancel stage"
+		errorMsgSignUpStage             = "failure during sign up stage"
+		errorMsgDropMessageStage        = "failure during drop message stage"
+		errorMsgPrayerConfirmationStage = "failure during prayer confirmation stage"
+		errorMsgPrayerRequestStage      = "failure during prayer request stage"
+		errorMsgCompletionStage         = "failure during completion stage"
+
+		stateInProgress = "IN PROGRESS"
+		stateFailed     = "FAILED"
+
+		
+	)
+
 	currTime := time.Now().Format(time.RFC3339)
 	id, err := utility.GenerateID()
 	if err != nil {
-		slog.Error("failure during pre-flow stages", "error", err)
+		slog.Error(errorMsgPreStage, "error", err)
 		return err
 	}
 
 	state := object.State{}
-	state.Status, state.TimeStart, state.ID, state.Message = "IN PROGRESS", currTime, id, msg
+	state.Status, state.TimeStart, state.ID, state.Message = stateInProgress, currTime, id, msg
 	if err := state.Update(ddbClnt, false); err != nil {
-		slog.Error("failure during pre-flow stages", "error", err)
+		slog.Error(errorMsgPreStage, "error", err)
 		return err
 	}
 
 	mem := object.Member{Phone: msg.Phone}
 	if err := mem.Get(ddbClnt); err != nil {
-		slog.Error("failure during pre-flow stages", "error", err)
+		slog.Error(errorMsgPreStage, "error", err)
 		return err
 	}
 
-	// HELP FLOW
+	// HELP STAGE
 	// this responds with contact info and is a requirement to get sent to to anyone regardless
 	// whether they are a member or not
 	if strings.ToLower(msg.Body) == "help" {
 		state.Stage = "HELP"
 		if err := state.Update(ddbClnt, false); err != nil {
-			slog.Error("failure during help flow", "error", err)
+			slog.Error(errorMsgHelpStage, "error", err)
 			return err
 		}
 		if err1 := mem.SendMessage(smsClnt, messaging.MsgHelp); err1 != nil {
+			slog.Error(errorMsgHelpStage, "error", err1)
+
 			state.Error = err1.Error()
-			state.Status = "FAILED"
+			state.Status = stateFailed
 			if err2 := state.Update(ddbClnt, false); err2 != nil {
-				slog.Error("failure during help flow", "error", err)
+				slog.Error(errorMsgHelpStage, "error", err2)
 				return err2
 			}
 
-			slog.Error("failure during help flow", "error", err)
 			return err1
 		}
 
-		// CANCEL FLOW
+		// CANCEL STAGE
 		// this removes member from database
 	} else if strings.ToLower(msg.Body) == "cancel" || strings.ToLower(msg.Body) == "stop" {
 		state.Stage = "MEMBER DELETE"
 		if err := state.Update(ddbClnt, false); err != nil {
-			slog.Error("failure during cancel flow", "error", err)
+			slog.Error(errorMsgCancelStage, "error", err)
 			return err
 		}
 		if err1 := memberDelete(mem, ddbClnt, smsClnt); err1 != nil {
+			slog.Error(errorMsgCancelStage, "error", err1)
+
 			state.Error = err1.Error()
-			state.Status = "FAILED"
+			state.Status = stateFailed
 			if err2 := state.Update(ddbClnt, false); err2 != nil {
-				slog.Error("failure during cancel flow", "error", err)
+				slog.Error(errorMsgCancelStage, "error", err2)
 				return err2
 			}
 
-			slog.Error("failure during cancel flow", "error", err)
 			return err1
 		}
 
-		// SIGN UP FLOW
+		// SIGN UP STAGE
 		// this is the initial sign up process
 	} else if strings.ToLower(msg.Body) == "pray" || mem.SetupStatus == "in-progress" {
 		state.Stage = "SIGN UP"
 		if err := state.Update(ddbClnt, false); err != nil {
-			slog.Error("failure during sign up flow", "error", err)
+			slog.Error(errorMsgSignUpStage, "error", err)
 			return err
 		}
 		if err1 := signUp(msg, mem, ddbClnt, smsClnt); err1 != nil {
+			slog.Error(errorMsgSignUpStage, "error", err1)
+
 			state.Error = err1.Error()
-			state.Status = "FAILED"
+			state.Status = stateFailed
 			if err2 := state.Update(ddbClnt, false); err2 != nil {
-				slog.Error("failure during sign up flow", "error", err)
+				slog.Error(errorMsgSignUpStage, "error", err2)
 				return err2
 			}
 
-			slog.Error("failure during sign up flow", "error", err)
 			return err1
 		}
 
-		// DROP MESSAGE FLOW
+		// DROP MESSAGE STAGE
 		// this will drop all messages if they do not meet any of the previous criteria. This serves
 		// as a catch all to drop any messages of non members
 	} else if mem.SetupStatus == "" {
 		state.Stage = "DROP MESSAGE"
 		if err := state.Update(ddbClnt, false); err != nil {
-			slog.Error("failure during drop message flow", "error", err)
+			slog.Error(errorMsgDropMessageStage, "error", err)
 			return err
 		}
 
 		slog.Warn("non registered user, dropping message", "member", mem.Phone, "msg", msg.Body)
 
-		// PRAYER CONFIRMATION FLOW
+		// PRAYER CONFIRMATION STAGE
 		// this is when intercessors pray for a prayer request and send back the confirmation that
 		// they prayed. This will let the prayer requestor know that their prayer was prayed for
 	} else if strings.ToLower(msg.Body) == "prayed" {
 		state.Stage = "COMPLETE PRAYER"
 		if err := state.Update(ddbClnt, false); err != nil {
-			slog.Error("failure during prayer confirmation flow", "error", err)
+			slog.Error(errorMsgPrayerConfirmationStage, "error", err)
 			return err
 		}
 		if err1 := completePrayer(mem, ddbClnt, smsClnt); err1 != nil {
+			slog.Error(errorMsgPrayerConfirmationStage, "error", err1)
+
 			state.Error = err1.Error()
-			state.Status = "FAILED"
+			state.Status = stateFailed
 			if err2 := state.Update(ddbClnt, false); err2 != nil {
-				slog.Error("failure during prayer confirmation flow", "error", err)
+				slog.Error(errorMsgPrayerConfirmationStage, "error", err2)
 				return err2
 			}
 
-			slog.Error("failure during prayer confirmation flow", "error", err)
 			return err1
 		}
 
-		// PRAYER REQUEST FLOW
+		// PRAYER REQUEST STAGE
 		// this is for members sending in prayer requests. It assigns prayers to intercessors
 	} else if mem.SetupStatus == "completed" {
 		state.Stage = "PRAYER REQUEST"
 		if err := state.Update(ddbClnt, false); err != nil {
-			slog.Error("failure during prayer request flow", "error", err)
+			slog.Error(errorMsgPrayerRequestStage, "error", err)
 			return err
 		}
 		if err1 := prayerRequest(msg, mem, ddbClnt, smsClnt); err1 != nil {
+			slog.Error(errorMsgPrayerRequestStage, "error", err1)
+
 			state.Error = err1.Error()
-			state.Status = "FAILED"
+			state.Status = stateFailed
 			if err2 := state.Update(ddbClnt, false); err2 != nil {
-				slog.Error("failure during prayer request flow", "error", err)
+				slog.Error(errorMsgPrayerRequestStage, "error", err2)
 				return err2
 			}
 
-			slog.Error("failure during prayer request flow", "error", err)
 			return err1
 		}
 	}
 
 	if err := state.Update(ddbClnt, true); err != nil {
-		slog.Error("failure during flow completion", "error", err)
+		slog.Error(errorMsgCompletionStage, "error", err)
 		return err
 	}
 

@@ -55,7 +55,7 @@ type TextSender interface {
 func GetSmsClient() (*pinpointsmsvoicev2.Client, error) {
 	cfg, err := utility.GetAwsConfig()
 	if err != nil {
-		return nil, fmt.Errorf("GetSmsClient: %w", err)
+		return nil, fmt.Errorf("failed to get sms client: %w", err)
 	}
 
 	smsClnt := pinpointsmsvoicev2.NewFromConfig(cfg)
