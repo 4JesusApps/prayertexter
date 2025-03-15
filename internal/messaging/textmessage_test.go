@@ -31,7 +31,8 @@ func TestSendText(t *testing.T) {
 	}
 
 	if *txtMock.SendTextInputs[0].OriginationIdentity != messaging.PrayerTexterPhone {
-		t.Errorf("expected phone number %v, got %v", messaging.PrayerTexterPhone, *txtMock.SendTextInputs[0].OriginationIdentity)
+		t.Errorf("expected phone number %v, got %v", messaging.PrayerTexterPhone,
+			*txtMock.SendTextInputs[0].OriginationIdentity)
 	}
 }
 

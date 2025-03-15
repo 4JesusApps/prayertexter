@@ -3,6 +3,7 @@ package object_test
 import (
 	"errors"
 	"reflect"
+	"strconv"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
@@ -23,8 +24,8 @@ func TestSendMessage(t *testing.T) {
 		Intercessor: false,
 		Name:        "John Doe",
 		Phone:       "+11234567890",
-		SetupStage:  99,
-		SetupStatus: "completed",
+		SetupStage:  object.MemberSignUpStepFinal,
+		SetupStatus: object.MemberSetupComplete,
 	}
 
 	txtMock := &mock.TextSender{}
@@ -58,8 +59,8 @@ func TestCheckIfActiveMember(t *testing.T) {
 				Item: map[string]types.AttributeValue{
 					"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
 					"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-					"SetupStage":  &types.AttributeValueMemberN{Value: "99"},
-					"SetupStatus": &types.AttributeValueMemberS{Value: "completed"},
+					"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
+					"SetupStatus": &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
 				},
 			},
 			Error: nil,

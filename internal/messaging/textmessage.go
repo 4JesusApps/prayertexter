@@ -14,20 +14,27 @@ import (
 
 const (
 	// sign up messages
-	MsgNameRequest             = "Reply your name, or 2 to stay anonymous"
-	MsgMemberTypeRequest       = "Reply 1 to send prayer request, or 2 to be added to the intercessors list (to pray for others). 2 will also allow you to send in prayer requests."
-	MsgPrayerInstructions      = "You are now signed up to send prayer requests! You can send them directly to this number at any time. You will be alerted when someone has prayed for your request."
-	MsgPrayerNumRequest        = "Reply with the number of maximum prayer texts you are willing to receive and pray for each week"
-	MsgIntercessorInstructions = "You are now signed up to receive prayer requests. Please try to pray for the requests ASAP. Once you are done praying, send 'prayed' back to this number for confirmation."
-	MsgWrongInput              = "Wrong input received during sign up process, please try again"
-	MsgSignUpConfirmation      = "You have opted in to PrayerTexter. Msg & data rates may apply."
-	MsgRemoveUser              = "You have been removed from PrayerTexter. To sign back up, text the word pray to this number."
+	MsgNameRequest       = "Reply your name, or 2 to stay anonymous"
+	MsgMemberTypeRequest = "Reply 1 to send prayer request, or 2 to be added to the intercessors list (to pray for " +
+		"others). 2 will also allow you to send in prayer requests."
+	MsgPrayerInstructions = "You are now signed up to send prayer requests! You can send them directly to this number" +
+		" at any time. You will be alerted when someone has prayed for your request."
+	MsgPrayerNumRequest = "Reply with the number of maximum prayer texts you are willing to receive and pray for " +
+		"each week"
+	MsgIntercessorInstructions = "You are now signed up to receive prayer requests. Please try to pray for the " +
+		"requests ASAP. Once you are done praying, send 'prayed' back to this number for confirmation."
+	MsgWrongInput         = "Wrong input received during sign up process, please try again"
+	MsgSignUpConfirmation = "You have opted in to PrayerTexter. Msg & data rates may apply."
+	MsgRemoveUser         = "You have been removed from PrayerTexter. To sign back up, text the word pray to this " +
+		"number."
 
 	// prayer request messages
-	MsgProfanityFound = "There was profanity found in your prayer request:\n\nPLACEHOLDER\n\nPlease try the request again without this word or words."
-	MsgPrayerIntro    = "Hello! Please pray for PLACEHOLDER:\n"
-	MsgPrayerQueued   = "We could not find any available intercessors. Your prayer has been added to the queue and will get sent out as soon as someone is available."
-	MsgPrayerSentOut  = "Your prayer request has been sent out!"
+	MsgProfanityFound = "There was profanity found in your prayer request:\n\nPLACEHOLDER\n\nPlease try the request " +
+		"again without this word or words."
+	MsgPrayerIntro  = "Hello! Please pray for PLACEHOLDER:\n"
+	MsgPrayerQueued = "We could not find any available intercessors. Your prayer has been added to the queue and " +
+		"will get sent out as soon as someone is available."
+	MsgPrayerSentOut = "Your prayer request has been sent out!"
 
 	// prayer completion messages
 	MsgNoActivePrayer     = "You have no more active prayers to mark as prayed"
@@ -35,7 +42,8 @@ const (
 	MsgPrayerConfirmation = "You're prayer request has been prayed for by PLACEHOLDER"
 
 	// other
-	MsgHelp           = "To receive support, please email info@4jesusministries.com or call/text (657) 217-1678. Thank you!"
+	MsgHelp = "To receive support, please email info@4jesusministries.com or call/text (657) 217-1678. " +
+		"Thank you!"
 	MsgPre            = "PrayerTexter: "
 	MsgPost           = "Reply HELP for help or STOP to cancel."
 	PrayerTexterPhone = "+12762908579"

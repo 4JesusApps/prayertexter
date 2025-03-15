@@ -2,6 +2,7 @@ package db_test
 
 import (
 	"reflect"
+	"strconv"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
@@ -25,8 +26,8 @@ var expectedDdbItems = []struct {
 				"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
 				"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
 				"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
-				"SetupStage":        &types.AttributeValueMemberN{Value: "99"},
-				"SetupStatus":       &types.AttributeValueMemberS{Value: "completed"},
+				"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
+				"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
 				"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "2025-02-16T23:54:01Z"},
 				"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 			},
@@ -56,8 +57,8 @@ var expectedDdbItems = []struct {
 						"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
 						"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
 						"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
-						"SetupStage":        &types.AttributeValueMemberN{Value: "99"},
-						"SetupStatus":       &types.AttributeValueMemberS{Value: "completed"},
+						"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
+						"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
 						"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "2025-02-13T23:54:01Z"},
 						"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 					},
@@ -70,8 +71,8 @@ var expectedDdbItems = []struct {
 						"Name":              &types.AttributeValueMemberS{Value: "John Doe"},
 						"Phone":             &types.AttributeValueMemberS{Value: "+11234567890"},
 						"PrayerCount":       &types.AttributeValueMemberN{Value: "0"},
-						"SetupStage":        &types.AttributeValueMemberN{Value: "99"},
-						"SetupStatus":       &types.AttributeValueMemberS{Value: "completed"},
+						"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
+						"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
 						"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: ""},
 						"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "0"},
 					},
@@ -131,8 +132,8 @@ var expectedObjects = []any{
 		Name:              "Intercessor1",
 		Phone:             "+11111111111",
 		PrayerCount:       1,
-		SetupStage:        99,
-		SetupStatus:       "completed",
+		SetupStage:        object.MemberSignUpStepFinal,
+		SetupStatus:       object.MemberSetupComplete,
 		WeeklyPrayerDate:  "2025-02-16T23:54:01Z",
 		WeeklyPrayerLimit: 5,
 	},
@@ -149,8 +150,8 @@ var expectedObjects = []any{
 			Name:              "Intercessor1",
 			Phone:             "+11111111111",
 			PrayerCount:       1,
-			SetupStage:        99,
-			SetupStatus:       "completed",
+			SetupStage:        object.MemberSignUpStepFinal,
+			SetupStatus:       object.MemberSetupComplete,
 			WeeklyPrayerDate:  "2025-02-13T23:54:01Z",
 			WeeklyPrayerLimit: 5,
 		},
@@ -161,8 +162,8 @@ var expectedObjects = []any{
 			Name:              "John Doe",
 			Phone:             "+11234567890",
 			PrayerCount:       0,
-			SetupStage:        99,
-			SetupStatus:       "completed",
+			SetupStage:        object.MemberSignUpStepFinal,
+			SetupStatus:       object.MemberSetupComplete,
 			WeeklyPrayerDate:  "",
 			WeeklyPrayerLimit: 0,
 		},
@@ -224,7 +225,8 @@ func testGetObject[T any](t *testing.T, ddbMock db.DDBConnecter, expectedObject 
 	}
 
 	if !reflect.DeepEqual(testedObject, expectedObject) {
-		t.Errorf("expected object %v of type %T, got %v of type %T", expectedObject, expectedObject, testedObject, testedObject)
+		t.Errorf("expected object %v of type %T, got %v of type %T",
+			expectedObject, expectedObject, testedObject, testedObject)
 	}
 }
 

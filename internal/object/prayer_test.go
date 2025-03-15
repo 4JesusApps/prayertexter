@@ -2,6 +2,7 @@ package object_test
 
 import (
 	"errors"
+	"strconv"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
@@ -42,8 +43,8 @@ func TestCheckIfActivePrayer(t *testing.T) {
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
 							"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: "99"},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: "completed"},
+							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
+							"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
 							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "2025-02-13T23:54:01Z"},
 							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 						},
@@ -56,8 +57,8 @@ func TestCheckIfActivePrayer(t *testing.T) {
 							"Name":              &types.AttributeValueMemberS{Value: "John Doe"},
 							"Phone":             &types.AttributeValueMemberS{Value: "+11234567890"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "0"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: "99"},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: "completed"},
+							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
+							"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
 							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: ""},
 							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "0"},
 						},

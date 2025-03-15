@@ -51,7 +51,8 @@ func TestGenRandPhones(t *testing.T) {
 	}
 	phones = i.GenRandPhones()
 	if len(phones) != object.NumIntercessorsPerPrayer-1 {
-		t.Errorf("expected phone list to be len %v, got len: %v phones: %v", object.NumIntercessorsPerPrayer-1, len(phones), phones)
+		t.Errorf("expected phone list to be len %v, got len: %v phones: %v", object.NumIntercessorsPerPrayer-1,
+			len(phones), phones)
 	}
 
 	if checkDuplicates(phones) {

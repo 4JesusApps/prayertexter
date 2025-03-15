@@ -22,6 +22,14 @@ type Member struct {
 const (
 	MemberAttribute = "Phone"
 	MemberTable     = "Members"
+
+	MemberSetupInProgress = "IN PROGRESS"
+	MemberSetupComplete   = "COMPLETE"
+
+	MemberSignUpStepOne   = 1
+	MemberSignUpStepTwo   = 2
+	MemberSignUpStepThree = 3
+	MemberSignUpStepFinal = 99
 )
 
 func (m *Member) Get(ddbClnt db.DDBConnecter) error {

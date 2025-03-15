@@ -26,6 +26,9 @@ const (
 	StateTrackerAttribute = "Key"
 	StateTrackerKey       = "StateTracker"
 	StateTrackerTable     = "General"
+
+	StateInProgress = "IN PROGRESS"
+	StateFailed     = "FAILED"
 )
 
 func (st *StateTracker) Get(ddbClnt db.DDBConnecter) error {

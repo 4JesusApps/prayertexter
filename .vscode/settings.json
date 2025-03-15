@@ -7,12 +7,14 @@
         "intercessorphones",
         "ldflags",
         "mshort",
+        "nolint",
         "pinpointsmsvoicev",
         "prayertexter",
         "prayyy",
         "prsn",
         "pryr",
         "sndr",
+        "sttrackr",
         "texter",
         "txtsvc"
     ]
