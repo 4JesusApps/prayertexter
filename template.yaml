@@ -58,15 +58,15 @@ Resources:
           KeyType: HASH
       StreamSpecification:
         StreamViewType: NEW_AND_OLD_IMAGES
-  PrayersQueue:
+  QueuedPrayers:
     Type: AWS::DynamoDB::Table
     Properties:
       AttributeDefinitions:
-        - AttributeName: RequestorPhone
+        - AttributeName: IntercessorPhone
           AttributeType: S
       BillingMode: PAY_PER_REQUEST
       KeySchema:
-        - AttributeName: RequestorPhone
+        - AttributeName: IntercessorPhone
           KeyType: HASH
       StreamSpecification:
         StreamViewType: NEW_AND_OLD_IMAGES
@@ -95,12 +95,12 @@ Resources:
         Variables:
           ACTIVE_PRAYERS_TABLE_NAME: !Ref ActivePrayers
           ACTIVE_PRAYERS_TABLE_ARN: !GetAtt ActivePrayers.Arn
-          ACTIVE_PRAYERS_TABLE_NAME: !Ref General
-          ACTIVE_PRAYERS_TABLE_ARN: !GetAtt General.Arn
+          GENERAL_TABLE_NAME: !Ref General
+          GENERAL_TABLE_ARN: !GetAtt General.Arn
           MEMBERS_TABLE_NAME: !Ref Members
           MEMBERS_TABLE_ARN: !GetAtt Members.Arn
-          ACTIVE_PRAYERS_TABLE_NAME: !Ref PrayersQueue
-          ACTIVE_PRAYERS_TABLE_ARN: !GetAtt PrayersQueue.Arn
+          QUEUED_PRAYERS_TABLE_NAME: !Ref QueuedPrayers
+          QUEUED_PRAYERS_TABLE_ARN: !GetAtt QueuedPrayers.Arn
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref ActivePrayers
@@ -109,7 +109,7 @@ Resources:
         - DynamoDBCrudPolicy:
             TableName: !Ref Members
         - DynamoDBCrudPolicy:
-            TableName: !Ref PrayersQueue
+            TableName: !Ref QueuedPrayers
   PrayerTexterLogGroup:
     Type: AWS::Logs::LogGroup
     DeletionPolicy: Retain

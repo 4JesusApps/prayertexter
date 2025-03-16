@@ -16,7 +16,7 @@ type Prayer struct {
 const (
 	PrayersAttribute   = "IntercessorPhone"
 	ActivePrayersTable = "ActivePrayers"
-	QueuedPrayersTable = "PrayersQueue"
+	QueuedPrayersTable = "QueuedPrayers"
 )
 
 func (p *Prayer) Get(ddbClnt db.DDBConnecter, queue bool) error {
