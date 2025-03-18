@@ -14,7 +14,7 @@ To run tests:
 1. go test ./...
 
 To run linting:
-1. bin/golangci-lint run ./...
+1. sudo docker run --rm -v $(pwd):/app -v ~/.cache/golangci-lint/:/root/.cache -w /app golangci/golangci-lint:latest golangci-lint run
 
 # sam local testing
 
