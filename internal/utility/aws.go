@@ -2,7 +2,6 @@ package utility
 
 import (
 	"context"
-	"fmt"
 	"os"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -11,11 +10,8 @@ import (
 
 func GetAwsConfig() (aws.Config, error) {
 	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion("us-west-1"))
-	if err != nil {
-		return cfg, fmt.Errorf("failed to get aws config: %w", err)
-	}
 
-	return cfg, nil
+	return cfg, WrapError(err, "failed to get aws config")
 }
 
 func IsAwsLocal() bool {

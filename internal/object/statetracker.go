@@ -1,8 +1,6 @@
 package object
 
 import (
-	"fmt"
-
 	"github.com/mshort55/prayertexter/internal/db"
 	"github.com/mshort55/prayertexter/internal/messaging"
 	"github.com/mshort55/prayertexter/internal/utility"
@@ -34,7 +32,7 @@ const (
 func (st *StateTracker) Get(ddbClnt db.DDBConnecter) error {
 	sttrackr, err := db.GetDdbObject[StateTracker](ddbClnt, StateTrackerAttribute, StateTrackerKey, StateTrackerTable)
 	if err != nil {
-		return fmt.Errorf("failed to get StateTracker: %w", err)
+		return err
 	}
 
 	// this is important so that the original Member object doesn't get reset to all empty struct
@@ -48,17 +46,14 @@ func (st *StateTracker) Get(ddbClnt db.DDBConnecter) error {
 
 func (st *StateTracker) Put(ddbClnt db.DDBConnecter) error {
 	st.Key = StateTrackerKey
-	if err := db.PutDdbObject(ddbClnt, string(StateTrackerTable), st); err != nil {
-		return fmt.Errorf("failed to put StateTracker: %w", err)
-	}
 
-	return nil
+	return db.PutDdbObject(ddbClnt, string(StateTrackerTable), st)
 }
 
 func (s *State) Update(ddbClnt db.DDBConnecter, remove bool) error {
 	st := StateTracker{}
 	if err := st.Get(ddbClnt); err != nil {
-		return fmt.Errorf("failed state update: %w", err)
+		return utility.WrapError(err, "failed state update")
 	}
 
 	states := &st.States
@@ -72,9 +67,7 @@ func (s *State) Update(ddbClnt db.DDBConnecter, remove bool) error {
 		st.States = append(st.States, *s)
 	}
 
-	if err := st.Put(ddbClnt); err != nil {
-		return fmt.Errorf("failed state update: %w", err)
-	}
+	err := st.Put(ddbClnt)
 
-	return nil
+	return utility.WrapError(err, "failed state update")
 }

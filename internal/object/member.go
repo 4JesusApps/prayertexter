@@ -1,9 +1,6 @@
 package object
 
 import (
-	"fmt"
-	"log/slog"
-
 	"github.com/mshort55/prayertexter/internal/db"
 	"github.com/mshort55/prayertexter/internal/messaging"
 	"github.com/mshort55/prayertexter/internal/utility"
@@ -45,7 +42,7 @@ func (m *Member) Get(ddbClnt db.DDBConnecter) error {
 		*m = *mem
 	}
 
-	return err
+	return nil
 }
 
 func (m *Member) Put(ddbClnt db.DDBConnecter) error {
@@ -62,12 +59,7 @@ func (m *Member) SendMessage(smsClnt messaging.TextSender, body string) error {
 		Phone: m.Phone,
 	}
 
-	if err := messaging.SendText(smsClnt, message); err != nil {
-		slog.Error("sendMessage failed", "recipient", m.Phone, "msg", body, "error", err)
-		return fmt.Errorf("failed to send text to Member: %w", err)
-	}
-
-	return nil
+	return messaging.SendText(smsClnt, message)
 }
 
 func IsMemberActive(ddbClnt db.DDBConnecter, phone string) (bool, error) {
