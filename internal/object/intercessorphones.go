@@ -1,7 +1,6 @@
 package object
 
 import (
-	"fmt"
 	"log/slog"
 	"math/rand/v2"
 	"slices"
@@ -24,8 +23,9 @@ const (
 func (i *IntercessorPhones) Get(ddbClnt db.DDBConnecter) error {
 	intr, err := db.GetDdbObject[IntercessorPhones](ddbClnt, IntercessorPhonesAttribute,
 		IntercessorPhonesKey, IntercessorPhonesTable)
+
 	if err != nil {
-		return fmt.Errorf("failed to get IntercessorPhones: %w", err)
+		return err
 	}
 
 	// this is important so that the original IntercessorPhones object doesn't get reset to all
@@ -39,11 +39,8 @@ func (i *IntercessorPhones) Get(ddbClnt db.DDBConnecter) error {
 
 func (i *IntercessorPhones) Put(ddbClnt db.DDBConnecter) error {
 	i.Key = IntercessorPhonesKey
-	if err := db.PutDdbObject(ddbClnt, IntercessorPhonesTable, i); err != nil {
-		return fmt.Errorf("failed to put IntercessorPhones: %w", err)
-	}
 
-	return nil
+	return db.PutDdbObject(ddbClnt, IntercessorPhonesTable, i)
 }
 
 func (i *IntercessorPhones) AddPhone(phone string) {

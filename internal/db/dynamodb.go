@@ -26,7 +26,7 @@ type DDBConnecter interface {
 func GetDdbClient() (*dynamodb.Client, error) {
 	cfg, err := utility.GetAwsConfig()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get dynamodb client: %w", err)
+		return nil, utility.WrapError(err, "failed to get dynamodb client")
 	}
 
 	var ddbClnt *dynamodb.Client
@@ -56,15 +56,13 @@ func getDdbItem(ddbClnt DDBConnecter, attr, key, table string) (*dynamodb.GetIte
 func GetDdbObject[T any](ddbClnt DDBConnecter, attr, key, table string) (*T, error) {
 	resp, err := getDdbItem(ddbClnt, attr, key, table)
 	if err != nil {
-		return nil, fmt.Errorf("getDdbItem: %w", err)
+		return nil, utility.WrapError(err, fmt.Sprintf("failed to get %T from table %s", *new(T), table))
 	}
 
 	var object T
-	if err := attributevalue.UnmarshalMap(resp.Item, &object); err != nil {
-		return nil, fmt.Errorf("get dynamodb object failed unmarshal: %w", err)
-	}
+	err = attributevalue.UnmarshalMap(resp.Item, &object)
 
-	return &object, nil
+	return &object, utility.WrapError(err, fmt.Sprintf("failed to unmarshal %T from table %s", *new(T), table))
 }
 
 func putDdbItem(ddbClnt DDBConnecter, table string, data map[string]types.AttributeValue) error {
@@ -79,11 +77,11 @@ func putDdbItem(ddbClnt DDBConnecter, table string, data map[string]types.Attrib
 func PutDdbObject[T any](ddbClnt DDBConnecter, table string, object *T) error {
 	item, err := attributevalue.MarshalMap(object)
 	if err != nil {
-		return fmt.Errorf("put dynamodb object failed marshal: %w", err)
+		return utility.WrapError(err, fmt.Sprintf("failed to marshal %T from table %s", *new(T), table))
 	}
 
 	if err := putDdbItem(ddbClnt, table, item); err != nil {
-		return fmt.Errorf("putDdbItem: %w", err)
+		return utility.WrapError(err, fmt.Sprintf("failed to put %T from table %s", *new(T), table))
 	}
 
 	return nil
@@ -97,5 +95,5 @@ func DelDdbItem(ddbClnt DDBConnecter, attr, key, table string) error {
 		},
 	})
 
-	return err
+	return utility.WrapError(err, fmt.Sprintf("failed to delete item from table %s", table))
 }

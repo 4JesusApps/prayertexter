@@ -6,6 +6,7 @@ import (
 
 	"github.com/mshort55/prayertexter/internal/db"
 	"github.com/mshort55/prayertexter/internal/messaging"
+	"github.com/mshort55/prayertexter/internal/utility"
 )
 
 type Member struct {
@@ -35,7 +36,7 @@ const (
 func (m *Member) Get(ddbClnt db.DDBConnecter) error {
 	mem, err := db.GetDdbObject[Member](ddbClnt, MemberAttribute, m.Phone, MemberTable)
 	if err != nil {
-		return fmt.Errorf("failed to get Member: %w", err)
+		return err
 	}
 
 	// this is important so that the original Member object doesn't get reset to all empty struct
@@ -44,23 +45,15 @@ func (m *Member) Get(ddbClnt db.DDBConnecter) error {
 		*m = *mem
 	}
 
-	return nil
+	return err
 }
 
 func (m *Member) Put(ddbClnt db.DDBConnecter) error {
-	if err := db.PutDdbObject(ddbClnt, MemberTable, m); err != nil {
-		return fmt.Errorf("failed to put Member: %w", err)
-	}
-
-	return nil
+	return db.PutDdbObject(ddbClnt, MemberTable, m)
 }
 
 func (m *Member) Delete(ddbClnt db.DDBConnecter) error {
-	if err := db.DelDdbItem(ddbClnt, MemberAttribute, m.Phone, MemberTable); err != nil {
-		return fmt.Errorf("failed to delete Member: %w", err)
-	}
-
-	return nil
+	return db.DelDdbItem(ddbClnt, MemberAttribute, m.Phone, MemberTable)
 }
 
 func (m *Member) SendMessage(smsClnt messaging.TextSender, body string) error {
@@ -80,8 +73,7 @@ func (m *Member) SendMessage(smsClnt messaging.TextSender, body string) error {
 func IsMemberActive(ddbClnt db.DDBConnecter, phone string) (bool, error) {
 	mem := Member{Phone: phone}
 	if err := mem.Get(ddbClnt); err != nil {
-		// returning false but it really should be nil due to error
-		return false, fmt.Errorf("failed to check if Member is active: %w", err)
+		return *new(bool), utility.WrapError(err, "failed to check if Member is active")
 	}
 
 	// empty string means get Member did not return an Member. Dynamodb get requests
