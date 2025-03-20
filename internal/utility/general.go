@@ -3,14 +3,13 @@ package utility
 import (
 	"crypto/rand"
 	"encoding/hex"
-	"fmt"
 )
 
 func GenerateID() (string, error) {
 	size := 16
 	bytes := make([]byte, size)
 	if _, err := rand.Read(bytes); err != nil {
-		return "", fmt.Errorf("generateID: %w", err)
+		return *new(string), WrapError(err, "failed generate ID")
 	}
 
 	return hex.EncodeToString(bytes), nil

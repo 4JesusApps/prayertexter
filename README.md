@@ -69,3 +69,4 @@ Good dynamodb commands:
 - retry mechanism for aws transient errors
 - refactor GetDdbClient, reduce unnecessary error output
 - improve slog context, add helper variables for debugging
+- unit test errors.go

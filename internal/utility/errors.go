@@ -5,8 +5,7 @@ import (
 	"log/slog"
 )
 
-// This logs an error, wraps, and returns it.
-// Use this for high level functions where you want to log the error.
+// Use this for high level functions where you want to log and wrap the error.
 func LogAndWrapError(err error, message string, attrs ...any) error {
 	if err == nil {
 		return nil
@@ -15,7 +14,6 @@ func LogAndWrapError(err error, message string, attrs ...any) error {
 	return fmt.Errorf("%s: %w", message, err)
 }
 
-// This just wraps and returns an error.
 // Use this for internal function where logging will happen at a higher level.
 func WrapError(err error, message string) error {
 	if err == nil {
@@ -24,7 +22,6 @@ func WrapError(err error, message string) error {
 	return fmt.Errorf("%s: %w", message, err)
 }
 
-// This just logs and returns an error.
 // Use this when you want to log but return original error without wrapping.
 func LogError(err error, message string, attrs ...any) error {
 	if err == nil {
