@@ -64,7 +64,7 @@ func GetPrayerTable(queue bool) string {
 func IsPrayerActive(ddbClnt db.DDBConnecter, phone string) (bool, error) {
 	pryr := Prayer{IntercessorPhone: phone}
 	if err := pryr.Get(ddbClnt, false); err != nil {
-		return *new(bool), utility.WrapError(err, "failed to check if Prayer is active")
+		return false, utility.WrapError(err, "failed to check if Prayer is active")
 	}
 
 	// empty string means get Prayer did not return an active Prayer. Dynamodb get requests

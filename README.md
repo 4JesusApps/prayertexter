@@ -56,17 +56,12 @@ Good dynamodb commands:
 - unit test state tracker in real flow to verify errors are saved
 - move 10-DLC number from sandbox to prod
 - remove unnecessary exports that are currently only used for tests (object db keys, attribute constants, etc)
-- implement way to send fake texts with sam local (currently now it tries to send real texts and fails on token error)
-- logging/error wrapping helper functions
 - config section to remove hard coded phone and possibly table names
 - dynamodb pagination for IntercessorPhones and StateTracker due to possible long length - is it needed?
 - keep all states and set up expiration on success states?
 - validate phone number format
 - implement dynamodb conditional updates for race conditions/concurrency safety (FindIntercessors, possibly others)
 - implement text/template for message content
-- fix code duplication in main stages MainFlow
-- RemovePhone to use utility function and possibly to improve utility function as well
 - retry mechanism for aws transient errors
-- refactor GetDdbClient, reduce unnecessary error output
-- improve slog context, add helper variables for debugging
 - unit test errors.go
+- rewrite smaller file unit tests to be more descriptive (use nested t.Run with descriptions) (this might also help with removing global variables)

@@ -65,7 +65,7 @@ func (m *Member) SendMessage(smsClnt messaging.TextSender, body string) error {
 func IsMemberActive(ddbClnt db.DDBConnecter, phone string) (bool, error) {
 	mem := Member{Phone: phone}
 	if err := mem.Get(ddbClnt); err != nil {
-		return *new(bool), utility.WrapError(err, "failed to check if Member is active")
+		return false, utility.WrapError(err, "failed to check if Member is active")
 	}
 
 	// empty string means get Member did not return an Member. Dynamodb get requests

@@ -53,23 +53,23 @@ func MainFlow(msg messaging.TextMessage, ddbClnt db.DDBConnecter, smsClnt messag
 	// This responds with contact info and is a requirement to get sent to to anyone regardless
 	// whether they are a member or not.
 	case strings.ToLower(msg.Body) == "help":
-        stageErr = executeStage(ddbClnt, helpStage, &state, func() error {
-            return mem.SendMessage(smsClnt, messaging.MsgHelp)
-        })
+		stageErr = executeStage(ddbClnt, helpStage, &state, func() error {
+			return mem.SendMessage(smsClnt, messaging.MsgHelp)
+		})
 
 	// MEMBER DELETE STAGE
 	// This removes member from prayertexter.
 	case strings.ToLower(msg.Body) == "cancel" || strings.ToLower(msg.Body) == "stop":
-        stageErr = executeStage(ddbClnt, memberDeleteStage, &state, func() error {
-            return memberDelete(mem, ddbClnt, smsClnt)
-        })
+		stageErr = executeStage(ddbClnt, memberDeleteStage, &state, func() error {
+			return memberDelete(mem, ddbClnt, smsClnt)
+		})
 
 	// SIGN UP STAGE
 	// This is the initial sign up process.
 	case strings.ToLower(msg.Body) == "pray" || mem.SetupStatus == object.MemberSetupInProgress:
-        stageErr = executeStage(ddbClnt, signUpStage, &state, func() error {
-            return signUp(msg, mem, ddbClnt, smsClnt)
-        })
+		stageErr = executeStage(ddbClnt, signUpStage, &state, func() error {
+			return signUp(msg, mem, ddbClnt, smsClnt)
+		})
 
 	// DROP MESSAGE STAGE
 	// This will drop all messages if they do not meet any of the previous criteria. This serves
@@ -77,36 +77,36 @@ func MainFlow(msg messaging.TextMessage, ddbClnt db.DDBConnecter, smsClnt messag
 	case mem.SetupStatus == "":
 		slog.Warn("non registered user dropping message", "phone", mem.Phone, "msg", msg.Body)
 		stageErr = executeStage(ddbClnt, dropMessageStage, &state, func() error {
-            return nil
-        })
+			return nil
+		})
 
 	// COMPLETE PRAYER STAGE
 	// This is when intercessors pray for a prayer request and send back the confirmation that
 	// they prayed. This will let the prayer requestor know that their prayer was prayed for.
 	case strings.ToLower(msg.Body) == "prayed":
-        stageErr = executeStage(ddbClnt, completePrayerStage, &state, func() error {
-            return completePrayer(mem, ddbClnt, smsClnt)
-        })
+		stageErr = executeStage(ddbClnt, completePrayerStage, &state, func() error {
+			return completePrayer(mem, ddbClnt, smsClnt)
+		})
 
 	// PRAYER REQUEST STAGE
 	// This is for members sending in prayer requests. It assigns prayers to intercessors.
 	case mem.SetupStatus == object.MemberSetupComplete:
-        stageErr = executeStage(ddbClnt, prayerRequestStage, &state, func() error {
-            return prayerRequest(msg, mem, ddbClnt, smsClnt)
-        })
+		stageErr = executeStage(ddbClnt, prayerRequestStage, &state, func() error {
+			return prayerRequest(msg, mem, ddbClnt, smsClnt)
+		})
 
 	// This should never happen and if it does then it is a bug.
 	default:
 		err := errors.New("unexpected text message input/member status")
-		return utility.LogError(err, "could not satisfy any required conditions", "phone", mem.Phone, "msg", msg.Body)
+		return utility.LogAndWrapError(err, "could not satisfy any required conditions", "phone", mem.Phone, "msg", msg.Body)
 	}
 
 	if stageErr != nil {
-        return stageErr
-    }
+		return stageErr
+	}
 
 	if err := state.Update(ddbClnt, true); err != nil {
-		return utility.LogError(err, stageErrPre+postStage, "phone", mem.Phone, "msg", msg.Body)
+		return utility.LogAndWrapError(err, stageErrPre+postStage, "phone", mem.Phone, "msg", msg.Body)
 	}
 
 	return nil
@@ -115,21 +115,19 @@ func MainFlow(msg messaging.TextMessage, ddbClnt db.DDBConnecter, smsClnt messag
 func executeStage(ddbClnt db.DDBConnecter, stageName string, state *object.State, stageFunc func() error) error {
 	state.Stage = stageName
 	if err := state.Update(ddbClnt, false); err != nil {
-		slog.Error(stageErrPre+stageName, "error", err)
-		return err
+		return utility.LogAndWrapError(err, stageErrPre+stageName, "phone", state.Message.Phone, "msg", state.Message.Body)
 	}
 
-	if err := stageFunc(); err != nil {
-		slog.Error(stageErrPre+stageName, "error", err)
-
-		state.Error = err.Error()
+	if stageErr := stageFunc(); stageErr != nil {
+		state.Error = stageErr.Error()
 		state.Status = object.StateFailed
 		if updateErr := state.Update(ddbClnt, false); updateErr != nil {
-			slog.Error(stageErrPre+stageName, "error", updateErr)
-			return updateErr
+			return utility.LogAndWrapError(updateErr, stageErrPre+stageName, "stage error", stageErr.Error(),
+				"phone", state.Message.Phone, "msg", state.Message.Body)
 		}
 
-		return err
+		return utility.LogAndWrapError(stageErr, stageErrPre+stageName, "phone", state.Message.Phone,
+			"msg", state.Message.Body)
 	}
 
 	return nil

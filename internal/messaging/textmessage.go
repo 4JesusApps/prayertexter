@@ -76,7 +76,7 @@ func SendText(smsClnt TextSender, msg TextMessage) error {
 
 	// This helps with unit testing and sam local testing so you can view the text message flow from the logs
 	if utility.IsAwsLocal() {
-		slog.Info("sent text message", "phone", msg.Phone, "body", msg.Body)
+		slog.Debug("sent text message", "phone", msg.Phone, "body", msg.Body)
 	}
 
 	input := &pinpointsmsvoicev2.SendTextMessageInput{
@@ -87,7 +87,7 @@ func SendText(smsClnt TextSender, msg TextMessage) error {
 	}
 
 	_, err := smsClnt.SendTextMessage(context.TODO(), input)
-		
+
 	return utility.WrapError(err, fmt.Sprintf("failed to send text message to %s", msg.Phone))
 }
 

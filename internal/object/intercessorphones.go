@@ -6,6 +6,7 @@ import (
 	"slices"
 
 	"github.com/mshort55/prayertexter/internal/db"
+	"github.com/mshort55/prayertexter/internal/utility"
 )
 
 type IntercessorPhones struct {
@@ -48,15 +49,7 @@ func (i *IntercessorPhones) AddPhone(phone string) {
 }
 
 func (i *IntercessorPhones) RemovePhone(phone string) {
-	var newPhones []string
-
-	for _, p := range i.Phones {
-		if p != phone {
-			newPhones = append(newPhones, p)
-		}
-	}
-
-	i.Phones = newPhones
+	utility.RemoveItem(&i.Phones, phone)
 }
 
 func (i *IntercessorPhones) GenRandPhones() []string {

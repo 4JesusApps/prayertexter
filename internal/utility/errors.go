@@ -21,12 +21,3 @@ func WrapError(err error, message string) error {
 	}
 	return fmt.Errorf("%s: %w", message, err)
 }
-
-// Use this when you want to log but return original error without wrapping.
-func LogError(err error, message string, attrs ...any) error {
-	if err == nil {
-		return nil
-	}
-	slog.Error(message, append(attrs, "error", err)...)
-	return err
-}
