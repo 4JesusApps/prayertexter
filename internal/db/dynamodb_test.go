@@ -127,7 +127,7 @@ func TestDynamoDBOperations(t *testing.T) {
 		},
 	}
 
-	var expectedObjects = []any{
+	expectedObjects := []any{
 		&object.Member{
 			Intercessor:       true,
 			Name:              "Intercessor1",
