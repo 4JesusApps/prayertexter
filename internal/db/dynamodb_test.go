@@ -198,7 +198,7 @@ func TestDynamoDBOperations(t *testing.T) {
 		},
 	}
 
-	t.Run("Get dynamodb object tests", func(t *testing.T) {
+	t.Run("Test GetDdbObject", func(t *testing.T) {
 		ddbMock := &mock.DDBConnecter{}
 		ddbMock.GetItemResults = expectedDdbItems
 
@@ -223,7 +223,7 @@ func TestDynamoDBOperations(t *testing.T) {
 		})
 	})
 
-	t.Run("Put dynamodb object tests", func(t *testing.T) {
+	t.Run("Test PutDdbObject", func(t *testing.T) {
 		ddbMock := &mock.DDBConnecter{}
 
 		t.Run("Put Member", func(t *testing.T) {
@@ -273,8 +273,8 @@ func testPutObject[T any](t *testing.T, ddbMock *mock.DDBConnecter, expectedObje
 
 	lastPutItem := ddbMock.PutItemInputs[len(ddbMock.PutItemInputs)-1].Item
 
-	expectedMap := make(map[string]interface{})
-	lastPutMap := make(map[string]interface{})
+	expectedMap := make(map[string]any)
+	lastPutMap := make(map[string]any)
 
 	if err := attributevalue.UnmarshalMap(expectedDdbItem.Output.Item, &expectedMap); err != nil {
 		t.Errorf("failed to unmarshal expectedDdbItem: %v", err)
