@@ -8,20 +8,27 @@ import (
 )
 
 func TestIntercessorPhones(t *testing.T) {
-	t.Run("Test AddPhone", func(t *testing.T) {
-		t.Run("adds new phone to slice", func(t *testing.T) {
-			i := genPhones()
-			newPhone := "+16666666666"
-			i.AddPhone(newPhone)
-			if !slices.Contains(i.Phones, newPhone) {
-				t.Errorf("expected slice to contain %v, got %v", newPhone, i.Phones)
-			}
-		})
+	i := object.IntercessorPhones{
+		Key: object.IntercessorPhonesKey,
+		Phones: []string{
+			"+11111111111",
+			"+12222222222",
+			"+13333333333",
+			"+14444444444",
+			"+15555555555",
+		},
+	}
+
+	t.Run("Test AddPhone: adds new phone to slice", func(t *testing.T) {
+		newPhone := "+16666666666"
+		i.AddPhone(newPhone)
+		if !slices.Contains(i.Phones, newPhone) {
+			t.Errorf("expected slice to contain %v, got %v", newPhone, i.Phones)
+		}
 	})
 
 	t.Run("Test RemovePhone", func(t *testing.T) {
 		t.Run("removes existing phone from slice", func(t *testing.T) {
-			i := genPhones()
 			removePhone := "+13333333333"
 			i.RemovePhone(removePhone)
 			if slices.Contains(i.Phones, removePhone) {
@@ -30,7 +37,6 @@ func TestIntercessorPhones(t *testing.T) {
 		})
 
 		t.Run("removes non existing phone; slice should not change", func(t *testing.T) {
-			i := genPhones()
 			initialPhones := make([]string, len(i.Phones))
 			copy(initialPhones, i.Phones)
 
@@ -46,7 +52,6 @@ func TestIntercessorPhones(t *testing.T) {
 	t.Run("Test GenRandPhones", func(t *testing.T) {
 		t.Run("returns correct number of phones (NumIntercessorsPerPrayer) when enough phones are in slice",
 			func(t *testing.T) {
-				i := genPhones()
 				phones := i.GenRandPhones()
 				if len(phones) != object.NumIntercessorsPerPrayer {
 					t.Errorf("expected number of phones to be %v, got %v",
@@ -59,7 +64,6 @@ func TestIntercessorPhones(t *testing.T) {
 			})
 
 		t.Run("returns fewer phones there are not enough to satisfy NumIntercessorsPerPrayer", func(t *testing.T) {
-			i := genPhones()
 			// This reduces phone list to less than NumIntercessorsPerPrayer
 			for len(i.Phones) > object.NumIntercessorsPerPrayer-1 {
 				i.Phones = i.Phones[:len(i.Phones)-1]
@@ -77,7 +81,6 @@ func TestIntercessorPhones(t *testing.T) {
 		})
 
 		t.Run("returns nil when no phones available", func(t *testing.T) {
-			i := genPhones()
 			i.Phones = []string{}
 			phones := i.GenRandPhones()
 			if phones != nil {
@@ -85,19 +88,6 @@ func TestIntercessorPhones(t *testing.T) {
 			}
 		})
 	})
-}
-
-func genPhones() object.IntercessorPhones {
-	return object.IntercessorPhones{
-		Key: object.IntercessorPhonesKey,
-		Phones: []string{
-			"+11111111111",
-			"+12222222222",
-			"+13333333333",
-			"+14444444444",
-			"+15555555555",
-		},
-	}
 }
 
 func checkDuplicates(slice []string) bool {

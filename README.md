@@ -6,10 +6,6 @@ prayertexter allows members to send in prayer requests to a specific phone numbe
 
 # unit tests
 
-You can add the following environmental variable to your linux session when running unit tests and it will log every text message response. This can be helpful when running unit tests to see all text messages sent out prior to some
-unexpected error, as it will generally give you a hint on what is going wrong right before the failure.
-1. export AWS_SAM_LOCAL=true
-
 To run tests:
 1. go test ./...
 
@@ -35,12 +31,12 @@ Create ddb tables and start local services:
 2. sudo sam local start-api --docker-network sam-backend
 
 Test: 
-1. curl http://127.0.0.1:3000/ -H 'Content-Type: application/json' -d '{"phone-number":"+17777777777", "body": "PLEASE PRAY FOR ME!"}'
+1. curl http://127.0.0.1:3000/ -H 'Content-Type: application/json' -d '{"phone-number":"+17777777777", "body": "pray"}'
 2. monitor sam local api logs to view text message response
 
 Good dynamodb commands:
 1. aws dynamodb list-tables --endpoint-url http://localhost:8000
-2. for table in ActivePrayers General Members PrayersQueue; do echo $table; aws dynamodb execute-statement --statement "select * from $table" --endpoint-url http://localhost:8000; echo; done
+2. for table in ActivePrayers General Members QueuedPrayers; do echo $table; aws dynamodb execute-statement --statement "select * from $table" --endpoint-url http://localhost:8000; echo; done
 
 # TODO
 
@@ -55,7 +51,6 @@ Good dynamodb commands:
 - rename state tracker to fault tracker???
 - unit test state tracker in real flow to verify errors are saved
 - move 10-DLC number from sandbox to prod
-- remove unnecessary exports that are currently only used for tests (object db keys, attribute constants, etc)
 - config section to remove hard coded phone and possibly table names
 - dynamodb pagination for IntercessorPhones and StateTracker due to possible long length - is it needed?
 - keep all states and set up expiration on success states?
@@ -63,5 +58,3 @@ Good dynamodb commands:
 - implement dynamodb conditional updates for race conditions/concurrency safety (FindIntercessors, possibly others)
 - implement text/template for message content
 - retry mechanism for aws transient errors
-- unit test errors.go
-- rewrite smaller file unit tests to be more descriptive (use nested t.Run with descriptions) (this might also help with removing global variables)

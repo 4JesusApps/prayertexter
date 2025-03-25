@@ -12,15 +12,18 @@ import (
 )
 
 func TestGetPrayerTable(t *testing.T) {
-	table := object.GetPrayerTable(true)
-	if table != object.QueuedPrayersTable {
-		t.Errorf("expected prayer table to be %v, got %v", object.QueuedPrayersTable, table)
-	}
-
-	table = object.GetPrayerTable(false)
-	if table != object.ActivePrayersTable {
-		t.Errorf("expected prayer table to be %v, got %v", object.ActivePrayersTable, table)
-	}
+	t.Run("should return queued prayers table", func(t *testing.T) {
+		table := object.GetPrayerTable(true)
+		if table != object.QueuedPrayersTable {
+			t.Errorf("expected prayer table to be %v, got %v", object.QueuedPrayersTable, table)
+		}
+	})
+	t.Run("should return active prayers table", func(t *testing.T) {
+		table := object.GetPrayerTable(false)
+		if table != object.ActivePrayersTable {
+			t.Errorf("expected prayer table to be %v, got %v", object.ActivePrayersTable, table)
+		}
+	})
 }
 
 func TestCheckIfActivePrayer(t *testing.T) {
@@ -76,22 +79,28 @@ func TestCheckIfActivePrayer(t *testing.T) {
 	ddbMock := &mock.DDBConnecter{}
 	ddbMock.GetItemResults = mockGetItemResults
 
-	isActive, err := object.IsPrayerActive(ddbMock, "+11111111111")
-	if err != nil {
-		t.Errorf("unexpected error %v", err)
-	} else if isActive {
-		t.Errorf("expected return of false (inactive prayer), got %v", isActive)
-	}
+	t.Run("Prayer is not active", func(t *testing.T) {
+		isActive, err := object.IsPrayerActive(ddbMock, "+11111111111")
+		if err != nil {
+			t.Errorf("unexpected error %v", err)
+		} else if isActive {
+			t.Errorf("expected return of false (inactive prayer), got %v", isActive)
+		}
+	})
 
-	isActive, err = object.IsPrayerActive(ddbMock, "+11111111111")
-	if err != nil {
-		t.Errorf("unexpected error %v", err)
-	} else if !isActive {
-		t.Errorf("expected return of true (active prayer), got %v", isActive)
-	}
-
-	_, err = object.IsPrayerActive(ddbMock, "+11111111111")
-	if err == nil {
-		t.Errorf("expected error, got %v", err)
-	}
+	t.Run("Prayer is active", func(t *testing.T) {
+		isActive, err := object.IsPrayerActive(ddbMock, "+11111111111")
+		if err != nil {
+			t.Errorf("unexpected error %v", err)
+		} else if !isActive {
+			t.Errorf("expected return of true (active prayer), got %v", isActive)
+		}
+	})
+	
+	t.Run("returns error on get Prayer dynamodb call", func(t *testing.T) {
+		_, err := object.IsPrayerActive(ddbMock, "+11111111111")
+		if err == nil {
+			t.Errorf("expected error, got %v", err)
+		}
+	})
 }

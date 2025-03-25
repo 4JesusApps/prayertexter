@@ -74,10 +74,7 @@ func TestUpdate(t *testing.T) {
 		},
 	}
 
-	ddbMock := &mock.DDBConnecter{}
-	ddbMock.GetItemResults = mockGetItemResults
-
-	state := object.State{
+	newState := object.State{
 		Error: "",
 		Message: messaging.TextMessage{
 			Body:  "sample text message 2",
@@ -89,25 +86,30 @@ func TestUpdate(t *testing.T) {
 		TimeStart: "2025-02-16T23:57:01Z",
 	}
 
-	//// test adding the new State to StateTracker
-	if err := state.Update(ddbMock, false); err != nil {
-		t.Errorf("unexpected error %v", err)
-	}
-	input := ddbMock.PutItemInputs[0]
-	testStateTracker(input, t, expectedStateTracker)
+	ddbMock := &mock.DDBConnecter{}
+	ddbMock.GetItemResults = mockGetItemResults
 
-	//// test removing the State from StateTracker
-	// this resets the GetItem mock so that it can re-use mockGetItemResults
-	ddbMock.GetItemCalls = 0
-	if err := state.Update(ddbMock, true); err != nil {
-		t.Errorf("unexpected error %v", err)
-	}
+	t.Run("add new State to StateTracker", func(t *testing.T) {
+		if err := newState.Update(ddbMock, false); err != nil {
+			t.Errorf("unexpected error %v", err)
+		}
+		input := ddbMock.PutItemInputs[0]
+		testStateTracker(input, t, expectedStateTracker)
+	})
 
-	// this removes the last State because remove is set to true, so it is expected to not be there
-	expectedStateTracker.States = expectedStateTracker.States[:1]
+	t.Run("removes new State to StateTracker", func(t *testing.T) {
+		// this resets the GetItem mock so that it can re-use mockGetItemResults
+		ddbMock.GetItemCalls = 0
+		if err := newState.Update(ddbMock, true); err != nil {
+			t.Errorf("unexpected error %v", err)
+		}
 
-	input = ddbMock.PutItemInputs[1]
-	testStateTracker(input, t, expectedStateTracker)
+		// this removes the last State because remove is set to true, so it is expected to not be there
+		expectedStateTracker.States = expectedStateTracker.States[:1]
+
+		input := ddbMock.PutItemInputs[1]
+		testStateTracker(input, t, expectedStateTracker)
+	})
 }
 
 func testStateTracker(input dynamodb.PutItemInput, t *testing.T, expectedStateTracker object.StateTracker) {

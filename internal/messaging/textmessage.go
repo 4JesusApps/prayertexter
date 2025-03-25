@@ -74,21 +74,23 @@ func GetSmsClient() (*pinpointsmsvoicev2.Client, error) {
 func SendText(smsClnt TextSender, msg TextMessage) error {
 	body := MsgPre + msg.Body + "\n\n" + MsgPost
 
-	// This helps with unit testing and sam local testing so you can view the text message flow from the logs
-	if utility.IsAwsLocal() {
-		slog.Debug("sent text message", "phone", msg.Phone, "body", msg.Body)
+	// This helps with SAM local testing. We don't want to actually send a SMS when doing SAM local tests (for now).
+	// However when unit testing, we can't skip this part since this is mocked and receives inputs.
+	if !utility.IsAwsLocal() {
+		input := &pinpointsmsvoicev2.SendTextMessageInput{
+			DestinationPhoneNumber: aws.String(msg.Phone),
+			MessageBody:            aws.String(body),
+			MessageType:            types.MessageTypeTransactional,
+			OriginationIdentity:    aws.String(PrayerTexterPhone),
+		}
+
+		_, err := smsClnt.SendTextMessage(context.TODO(), input)
+
+		return utility.WrapError(err, fmt.Sprintf("failed to send text message to %s", msg.Phone))
+	} else {
+		slog.Info("sent text message", "phone", msg.Phone, "body", body)
+		return nil
 	}
-
-	input := &pinpointsmsvoicev2.SendTextMessageInput{
-		DestinationPhoneNumber: aws.String(msg.Phone),
-		MessageBody:            aws.String(body),
-		MessageType:            types.MessageTypeTransactional,
-		OriginationIdentity:    aws.String(PrayerTexterPhone),
-	}
-
-	_, err := smsClnt.SendTextMessage(context.TODO(), input)
-
-	return utility.WrapError(err, fmt.Sprintf("failed to send text message to %s", msg.Phone))
 }
 
 func (t TextMessage) CheckProfanity() string {

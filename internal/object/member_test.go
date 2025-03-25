@@ -14,36 +14,38 @@ import (
 )
 
 func TestSendMessage(t *testing.T) {
-	txtBody := "test message"
-	expectedText := messaging.TextMessage{
-		Body:  messaging.MsgPre + txtBody + "\n\n" + messaging.MsgPost,
-		Phone: "+11234567890",
-	}
+	t.Run("send text and verify results", func(t *testing.T) {
+		txtBody := "test message"
+		expectedText := messaging.TextMessage{
+			Body:  messaging.MsgPre + txtBody + "\n\n" + messaging.MsgPost,
+			Phone: "+11234567890",
+		}
 
-	member := object.Member{
-		Intercessor: false,
-		Name:        "John Doe",
-		Phone:       "+11234567890",
-		SetupStage:  object.MemberSignUpStepFinal,
-		SetupStatus: object.MemberSetupComplete,
-	}
+		member := object.Member{
+			Intercessor: false,
+			Name:        "John Doe",
+			Phone:       "+11234567890",
+			SetupStage:  object.MemberSignUpStepFinal,
+			SetupStatus: object.MemberSetupComplete,
+		}
 
-	txtMock := &mock.TextSender{}
-	if err := member.SendMessage(txtMock, txtBody); err != nil {
-		t.Errorf("unexpected error %v", err)
-	}
+		txtMock := &mock.TextSender{}
+		if err := member.SendMessage(txtMock, txtBody); err != nil {
+			t.Errorf("unexpected error %v", err)
+		}
 
-	actualText := messaging.TextMessage{
-		Body:  *txtMock.SendTextInputs[0].MessageBody,
-		Phone: *txtMock.SendTextInputs[0].DestinationPhoneNumber,
-	}
+		actualText := messaging.TextMessage{
+			Body:  *txtMock.SendTextInputs[0].MessageBody,
+			Phone: *txtMock.SendTextInputs[0].DestinationPhoneNumber,
+		}
 
-	if !reflect.DeepEqual(expectedText, actualText) {
-		t.Errorf("expected TextMessage %v, got %v", expectedText, actualText)
-	}
+		if !reflect.DeepEqual(expectedText, actualText) {
+			t.Errorf("expected TextMessage %v, got %v", expectedText, actualText)
+		}
+	})
 }
 
-func TestCheckIfActiveMember(t *testing.T) {
+func TestIsMemberActive(t *testing.T) {
 	mockGetItemResults := []struct {
 		Output *dynamodb.GetItemOutput
 		Error  error
@@ -74,22 +76,27 @@ func TestCheckIfActiveMember(t *testing.T) {
 	ddbMock := &mock.DDBConnecter{}
 	ddbMock.GetItemResults = mockGetItemResults
 
-	isActive, err := object.IsMemberActive(ddbMock, "+11234567890")
-	if err != nil {
-		t.Errorf("unexpected error %v", err)
-	} else if isActive {
-		t.Errorf("expected return of false (inactive member), got %v", isActive)
-	}
+	t.Run("Member is not active", func(t *testing.T) {
+		isActive, err := object.IsMemberActive(ddbMock, "+11234567890")
+		if err != nil {
+			t.Errorf("unexpected error %v", err)
+		} else if isActive {
+			t.Errorf("expected return of false (inactive member), got %v", isActive)
+		}
+	})
 
-	isActive, err = object.IsMemberActive(ddbMock, "+11234567890")
-	if err != nil {
-		t.Errorf("unexpected error %v", err)
-	} else if !isActive {
-		t.Errorf("expected return of true (active member), got %v", isActive)
-	}
-
-	_, err = object.IsMemberActive(ddbMock, "+11234567890")
-	if err == nil {
-		t.Errorf("expected error, got %v", err)
-	}
+	t.Run("Member is active", func(t *testing.T) {
+		isActive, err := object.IsMemberActive(ddbMock, "+11234567890")
+		if err != nil {
+			t.Errorf("unexpected error %v", err)
+		} else if !isActive {
+			t.Errorf("expected return of true (active member), got %v", isActive)
+		}
+	})
+	t.Run("returns error on get Member dynamodb call", func(t *testing.T) {
+		_, err := object.IsMemberActive(ddbMock, "+11234567890")
+		if err == nil {
+			t.Errorf("expected error, got %v", err)
+		}
+	})
 }
