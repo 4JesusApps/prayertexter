@@ -4,12 +4,18 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"time"
 
 	goaway "github.com/TwiN/go-away"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/pinpointsmsvoicev2"
 	"github.com/aws/aws-sdk-go-v2/service/pinpointsmsvoicev2/types"
 	"github.com/mshort55/prayertexter/internal/utility"
+)
+
+const (
+	smsTimeout        = 60
+	PrayerTexterPhone = "+12762908579"
 )
 
 const (
@@ -44,9 +50,8 @@ const (
 	// Other
 	MsgHelp = "To receive support, please email info@4jesusministries.com or call/text (657) 217-1678. " +
 		"Thank you!"
-	MsgPre            = "PrayerTexter: "
-	MsgPost           = "Reply HELP for help or STOP to cancel."
-	PrayerTexterPhone = "+12762908579"
+	MsgPre  = "PrayerTexter: "
+	MsgPost = "Reply HELP for help or STOP to cancel."
 )
 
 type TextMessage struct {
@@ -77,6 +82,9 @@ func SendText(smsClnt TextSender, msg TextMessage) error {
 	// This helps with SAM local testing. We don't want to actually send a SMS when doing SAM local tests (for now).
 	// However when unit testing, we can't skip this part since this is mocked and receives inputs.
 	if !utility.IsAwsLocal() {
+		ctx, cancel := context.WithTimeout(context.Background(), smsTimeout*time.Second)
+		defer cancel()
+
 		input := &pinpointsmsvoicev2.SendTextMessageInput{
 			DestinationPhoneNumber: aws.String(msg.Phone),
 			MessageBody:            aws.String(body),
@@ -84,7 +92,7 @@ func SendText(smsClnt TextSender, msg TextMessage) error {
 			OriginationIdentity:    aws.String(PrayerTexterPhone),
 		}
 
-		_, err := smsClnt.SendTextMessage(context.TODO(), input)
+		_, err := smsClnt.SendTextMessage(ctx, input)
 
 		return utility.WrapError(err, fmt.Sprintf("failed to send text message to %s", msg.Phone))
 	} else {

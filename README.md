@@ -57,4 +57,5 @@ Good dynamodb commands:
 - validate phone number format
 - implement dynamodb conditional updates for race conditions/concurrency safety (FindIntercessors, possibly others)
 - implement text/template for message content
-- retry mechanism for aws transient errors
+- add tests for aws retry mechanism
+- add logging for aws retry operations

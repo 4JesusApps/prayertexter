@@ -3,12 +3,17 @@ package db
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/mshort55/prayertexter/internal/utility"
+)
+
+const (
+	ddbTimeout = 60
 )
 
 type DDBConnecter interface {
@@ -43,7 +48,10 @@ func GetDdbClient() (*dynamodb.Client, error) {
 }
 
 func getDdbItem(ddbClnt DDBConnecter, attr, key, table string) (*dynamodb.GetItemOutput, error) {
-	item, err := ddbClnt.GetItem(context.TODO(), &dynamodb.GetItemInput{
+	ctx, cancel := context.WithTimeout(context.Background(), ddbTimeout*time.Second)
+	defer cancel()
+
+	item, err := ddbClnt.GetItem(ctx, &dynamodb.GetItemInput{
 		TableName: &table,
 		Key: map[string]types.AttributeValue{
 			attr: &types.AttributeValueMemberS{Value: key},
@@ -66,7 +74,10 @@ func GetDdbObject[T any](ddbClnt DDBConnecter, attr, key, table string) (*T, err
 }
 
 func putDdbItem(ddbClnt DDBConnecter, table string, data map[string]types.AttributeValue) error {
-	_, err := ddbClnt.PutItem(context.TODO(), &dynamodb.PutItemInput{
+	ctx, cancel := context.WithTimeout(context.Background(), ddbTimeout*time.Second)
+	defer cancel()
+
+	_, err := ddbClnt.PutItem(ctx, &dynamodb.PutItemInput{
 		TableName: &table,
 		Item:      data,
 	})
@@ -88,7 +99,10 @@ func PutDdbObject[T any](ddbClnt DDBConnecter, table string, object *T) error {
 }
 
 func DelDdbItem(ddbClnt DDBConnecter, attr, key, table string) error {
-	_, err := ddbClnt.DeleteItem(context.TODO(), &dynamodb.DeleteItemInput{
+	ctx, cancel := context.WithTimeout(context.Background(), ddbTimeout*time.Second)
+	defer cancel()
+
+	_, err := ddbClnt.DeleteItem(ctx, &dynamodb.DeleteItemInput{
 		TableName: &table,
 		Key: map[string]types.AttributeValue{
 			attr: &types.AttributeValueMemberS{Value: key},
