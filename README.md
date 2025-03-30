@@ -43,19 +43,24 @@ Good dynamodb commands:
 - create reconciler that runs on interval periods which will check and fix inconsistencies
     - check prayer queue table and assign prayers if possible
     - some level of continue off of previous failures
-    - check that all phones on intercessor phones list are for active members (maybe, low priority, potential high ddb cost to run get on all intercessors)
+    - check that all phones on intercessor phones list are for active members (not sure if needed, low priority, potential high ddb cost to run get on all intercessors)
     - check all active prayers have active intercessors (this would only be needed to recover from inconsistent states; possible low priority)
+    - send out prayer reminder texts to intercessors after x number of hours with unprayed prayer requests
+        - also consider copying prayer to another intercessor if it has not been prayed for in x number of hours
 - long tests utilizing real ddb, lambda, sns, and sim phone numbers
     - implement simulator numbers with sns topics
     - implement secure way to save authentication
-- rename state tracker to fault tracker???
+- rename state tracker to fault tracker - is tracking error states the only thing necessary? is there any benefit to track completed requests?
 - unit test state tracker in real flow to verify errors are saved
 - move 10-DLC number from sandbox to prod
-- config section to remove hard coded phone and possibly table names
+- config section to remove hard coded phone, table names, retry information, and other hard coded configs
+    - allow for overwriting of defaults with environmental variables
 - dynamodb pagination for IntercessorPhones and StateTracker due to possible long length - is it needed?
-- keep all states and set up expiration on success states?
-- validate phone number format
+- validate phone number format - is there any benefit or is this overkill?
 - implement dynamodb conditional updates for race conditions/concurrency safety (FindIntercessors, possibly others)
+    - this may help with allowing for concurrent lambda functions to run
+- decide if/where to implement dynamodb strongly consistent writes (as opposed to default eventual consistency)
+    - this may help with allowing for concurrent lambda functions to run
 - implement text/template for message content
 - add tests for aws retry mechanism
 - add logging for aws retry operations
