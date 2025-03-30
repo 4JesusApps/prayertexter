@@ -28,8 +28,7 @@ type DDBConnecter struct {
 }
 
 func (m *DDBConnecter) GetItem(_ context.Context, input *dynamodb.GetItemInput, _ ...func(*dynamodb.Options)) (
-	*dynamodb.GetItemOutput, error) { //nolint:whitespace // line too long, needed new line
-
+	*dynamodb.GetItemOutput, error) {
 	m.GetItemCalls++
 	m.GetItemInputs = append(m.GetItemInputs, *input)
 
@@ -42,8 +41,7 @@ func (m *DDBConnecter) GetItem(_ context.Context, input *dynamodb.GetItemInput, 
 }
 
 func (m *DDBConnecter) PutItem(_ context.Context, input *dynamodb.PutItemInput, _ ...func(*dynamodb.Options)) (
-	*dynamodb.PutItemOutput, error) { //nolint:whitespace // line too long, needed new line
-
+	*dynamodb.PutItemOutput, error) {
 	m.PutItemCalls++
 	m.PutItemInputs = append(m.PutItemInputs, *input)
 
@@ -56,8 +54,7 @@ func (m *DDBConnecter) PutItem(_ context.Context, input *dynamodb.PutItemInput, 
 }
 
 func (m *DDBConnecter) DeleteItem(_ context.Context, input *dynamodb.DeleteItemInput, _ ...func(*dynamodb.Options)) (
-	*dynamodb.DeleteItemOutput, error) { //nolint:whitespace // line too long, needed new line
-
+	*dynamodb.DeleteItemOutput, error) {
 	m.DeleteItemCalls++
 	m.DeleteItemInputs = append(m.DeleteItemInputs, *input)
 

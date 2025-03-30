@@ -379,7 +379,7 @@ linters:
     #- tagliatelle # checks the struct tags
     #- tenv # [deprecated, replaced by usetesting] detects using os.Setenv instead of t.Setenv since Go1.17
     #- thelper # detects golang test helpers without t.Helper() call and checks the consistency of test helpers
-    #- unparam # reports unused function parameters
+    #- unparam # reports unused function parameters (removed bacause it was crashing linter)
     #- wsl # [too strict and mostly code is not more readable] whitespace linter forces you to use empty lines
 
 

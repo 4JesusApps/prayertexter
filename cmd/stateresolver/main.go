@@ -14,8 +14,10 @@ import (
 //lint:ignore U1000 - var used in Makefile
 var version string // do not remove or modify
 
-func handler(_ context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+//nolint:revive // IGNORING UNUSED CTX AND REQ VARIABLES FOR NOW; REMOVE ONCE THIS FUNCTION IS IMPLEMENTED
+func handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	// place holder for future code
+	// don't forget to remove the above nolint when this is implemented
 
 	return events.APIGatewayProxyResponse{StatusCode: http.StatusOK, Body: "Success"}, nil
 }

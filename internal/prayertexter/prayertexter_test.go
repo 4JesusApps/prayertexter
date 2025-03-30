@@ -199,39 +199,9 @@ func testDeleteItem(inputs []dynamodb.DeleteItemInput, t *testing.T, test TestCa
 
 		switch *input.TableName {
 		case object.MemberTable:
-			if *input.TableName != test.expectedDeleteItems[index].table {
-				t.Errorf("expected Member table %v, got %v",
-					test.expectedDeleteItems[index].table, *input.TableName)
-			}
-
-			mem := object.Member{}
-			if err := attributevalue.UnmarshalMap(input.Key, &mem); err != nil {
-				t.Fatalf("failed to unmarshal to Member: %v", err)
-			}
-
-			if mem.Phone != test.expectedDeleteItems[index].key {
-				t.Errorf("expected Member phone %v for delete key, got %v",
-					test.expectedDeleteItems[index].key, mem.Phone)
-			}
-
-			index++
+			testDeleteMember(input, &index, t, test)
 		case object.ActivePrayersTable:
-			if *input.TableName != test.expectedDeleteItems[index].table {
-				t.Errorf("expected Prayer table %v, got %v",
-					test.expectedDeleteItems[index].table, *input.TableName)
-			}
-
-			pryr := object.Prayer{}
-			if err := attributevalue.UnmarshalMap(input.Key, &pryr); err != nil {
-				t.Fatalf("failed to unmarshal to Prayer: %v", err)
-			}
-
-			if pryr.IntercessorPhone != test.expectedDeleteItems[index].key {
-				t.Errorf("expected Prayer phone %v for delete key, got %v",
-					test.expectedDeleteItems[index].key, pryr.IntercessorPhone)
-			}
-
-			index++
+			testDeletePrayer(input, &index, t, test)
 		default:
 			t.Errorf("unexpected table name, got %v", *input.TableName)
 		}
@@ -240,6 +210,44 @@ func testDeleteItem(inputs []dynamodb.DeleteItemInput, t *testing.T, test TestCa
 	if index < len(test.expectedDeleteItems) {
 		t.Errorf("there are more expected delete items than delete item inputs")
 	}
+}
+
+func testDeleteMember(input dynamodb.DeleteItemInput, index *int, t *testing.T, test TestCase) {
+	if *input.TableName != test.expectedDeleteItems[*index].table {
+		t.Errorf("expected Member table %v, got %v",
+			test.expectedDeleteItems[*index].table, *input.TableName)
+	}
+
+	mem := object.Member{}
+	if err := attributevalue.UnmarshalMap(input.Key, &mem); err != nil {
+		t.Fatalf("failed to unmarshal to Member: %v", err)
+	}
+
+	if mem.Phone != test.expectedDeleteItems[*index].key {
+		t.Errorf("expected Member phone %v for delete key, got %v",
+			test.expectedDeleteItems[*index].key, mem.Phone)
+	}
+
+	*index++
+}
+
+func testDeletePrayer(input dynamodb.DeleteItemInput, index *int, t *testing.T, test TestCase) {
+	if *input.TableName != test.expectedDeleteItems[*index].table {
+		t.Errorf("expected Prayer table %v, got %v",
+			test.expectedDeleteItems[*index].table, *input.TableName)
+	}
+
+	pryr := object.Prayer{}
+	if err := attributevalue.UnmarshalMap(input.Key, &pryr); err != nil {
+		t.Fatalf("failed to unmarshal to Prayer: %v", err)
+	}
+
+	if pryr.IntercessorPhone != test.expectedDeleteItems[*index].key {
+		t.Errorf("expected Prayer phone %v for delete key, got %v",
+			test.expectedDeleteItems[*index].key, pryr.IntercessorPhone)
+	}
+
+	*index++
 }
 
 func testTxtMessage(txtMock *mock.TextSender, t *testing.T, test TestCase) {

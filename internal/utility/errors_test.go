@@ -32,7 +32,6 @@ func TestErrorOperations(t *testing.T) {
 		t.Run("nil err as parameter should also return nil and not log anything", func(t *testing.T) {
 			testErrAndLog(t, origErr, expectedErrString, newErrorMsg, true)
 		})
-
 	})
 }
 
@@ -43,7 +42,6 @@ func testErr(t *testing.T, origErr error, expectedErrString, newErrorMsg string,
 		if newErr != nil {
 			t.Errorf("expected nil error, got %v", newErr.Error())
 		}
-
 	} else {
 		newErr := utility.WrapError(origErr, newErrorMsg)
 
@@ -60,25 +58,33 @@ func testErrAndLog(t *testing.T, origErr error, expectedErrString, newErrorMsg s
 	expectedLog := `level=ERROR msg="wrapped new error message" testattr1=1 testattr2=2 error="original error"`
 
 	if nilErr {
-		newErr := utility.LogAndWrapError(nil, newErrorMsg, "testattr1", "1", "testattr2", "2")
-
-		if newErr != nil {
-			t.Errorf("expected nil error, got %v", newErr.Error())
-		}
-
-		if buff.Len() != 0 {
-			t.Errorf("expected no logging, got %v", buff.String())
-		}
-
+		testNilErrorAndLog(t, newErrorMsg, &buff)
 	} else {
-		newErr := utility.LogAndWrapError(origErr, newErrorMsg, "testattr1", "1", "testattr2", "2")
+		testActualErrorAndLog(t, origErr, newErrorMsg, expectedErrString, expectedLog, &buff)
+	}
+}
 
-		if newErr.Error() != expectedErrString {
-			t.Errorf("expected error string %v, got %v", expectedErrString, newErr.Error())
-		}
+func testNilErrorAndLog(t *testing.T, newErrorMsg string, buff *bytes.Buffer) {
+	newErr := utility.LogAndWrapError(nil, newErrorMsg, "testattr1", "1", "testattr2", "2")
 
-		if !strings.Contains(buff.String(), expectedLog) {
-			t.Errorf("expected string %v to contain substring %v", buff.String(), expectedLog)
-		}
+	if newErr != nil {
+		t.Errorf("expected nil error, got %v", newErr.Error())
+	}
+
+	if buff.Len() != 0 {
+		t.Errorf("expected no logging, got %v", buff.String())
+	}
+}
+
+func testActualErrorAndLog(t *testing.T, origErr error, newErrorMsg, expectedErrString, expectedLog string,
+	buff *bytes.Buffer) {
+	newErr := utility.LogAndWrapError(origErr, newErrorMsg, "testattr1", "1", "testattr2", "2")
+
+	if newErr.Error() != expectedErrString {
+		t.Errorf("expected error string %v, got %v", expectedErrString, newErr.Error())
+	}
+
+	if !strings.Contains(buff.String(), expectedLog) {
+		t.Errorf("expected string %v to contain substring %v", buff.String(), expectedLog)
 	}
 }

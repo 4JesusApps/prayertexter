@@ -64,3 +64,5 @@ Good dynamodb commands:
 - implement text/template for message content
 - add tests for aws retry mechanism
 - add logging for aws retry operations
+- pass down lambda handler context to lower aws service functions so that context can be re-used
+    - this will follow go best practices and allow for better aws debugging (xray tracing)

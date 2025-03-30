@@ -19,7 +19,7 @@ const (
 )
 
 const (
-	// Sign up messages
+	// Sign up messages.
 	MsgNameRequest       = "Reply your name, or 2 to stay anonymous"
 	MsgMemberTypeRequest = "Reply 1 to send prayer request, or 2 to be added to the intercessors list (to pray for " +
 		"others). 2 will also allow you to send in prayer requests."
@@ -34,7 +34,7 @@ const (
 	MsgRemoveUser         = "You have been removed from PrayerTexter. To sign back up, text the word pray to this " +
 		"number."
 
-	// Prayer request messages
+	// Prayer request messages.
 	MsgProfanityFound = "There was profanity found in your prayer request:\n\nPLACEHOLDER\n\nPlease try the request " +
 		"again without this word or words."
 	MsgPrayerIntro  = "Hello! Please pray for PLACEHOLDER:\n"
@@ -42,12 +42,12 @@ const (
 		"will get sent out as soon as someone is available."
 	MsgPrayerSentOut = "Your prayer request has been sent out!"
 
-	// Prayer completion messages
+	// Prayer completion messages.
 	MsgNoActivePrayer     = "You have no more active prayers to mark as prayed"
 	MsgPrayerThankYou     = "Thank you for praying!"
 	MsgPrayerConfirmation = "You're prayer request has been prayed for by PLACEHOLDER"
 
-	// Other
+	// Other.
 	MsgHelp = "To receive support, please email info@4jesusministries.com or call/text (657) 217-1678. " +
 		"Thank you!"
 	MsgPre  = "PrayerTexter: "
@@ -95,10 +95,10 @@ func SendText(smsClnt TextSender, msg TextMessage) error {
 		_, err := smsClnt.SendTextMessage(ctx, input)
 
 		return utility.WrapError(err, fmt.Sprintf("failed to send text message to %s", msg.Phone))
-	} else {
-		slog.Info("sent text message", "phone", msg.Phone, "body", body)
-		return nil
 	}
+
+	slog.Info("sent text message", "phone", msg.Phone, "body", body)
+	return nil
 }
 
 func (t TextMessage) CheckProfanity() string {

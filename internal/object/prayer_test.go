@@ -96,7 +96,7 @@ func TestCheckIfActivePrayer(t *testing.T) {
 			t.Errorf("expected return of true (active prayer), got %v", isActive)
 		}
 	})
-	
+
 	t.Run("returns error on get Prayer dynamodb call", func(t *testing.T) {
 		_, err := object.IsPrayerActive(ddbMock, "+11111111111")
 		if err == nil {
