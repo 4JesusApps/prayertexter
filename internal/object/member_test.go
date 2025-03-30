@@ -51,8 +51,8 @@ func TestIsMemberActive(t *testing.T) {
 		Error  error
 	}{
 		{
-			// This is an empty ddb response, meaning that the key does not exist in ddb
-			// we are simulating the member not active with this empty response
+			// This is an empty ddb response. This simulating the member not active with this empty response, because
+			// dynamodb will return empty data if the key is not present in the database.
 			Output: &dynamodb.GetItemOutput{},
 			Error:  nil,
 		},

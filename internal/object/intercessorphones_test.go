@@ -79,7 +79,7 @@ func testGenRandPhones(t *testing.T, i *object.IntercessorPhones) {
 		})
 
 	t.Run("returns fewer phones there are not enough to satisfy NumIntercessorsPerPrayer", func(t *testing.T) {
-		// This reduces phone list to less than NumIntercessorsPerPrayer
+		// This reduces phone list to less than NumIntercessorsPerPrayer.
 		for len(i.Phones) > object.NumIntercessorsPerPrayer-1 {
 			i.Phones = i.Phones[:len(i.Phones)-1]
 		}

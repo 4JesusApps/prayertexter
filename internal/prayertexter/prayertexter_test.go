@@ -100,7 +100,7 @@ func testMembers(inputs []dynamodb.PutItemInput, t *testing.T, test TestCase) {
 			t.Errorf("failed to unmarshal PutItemInput into Member: %v", err)
 		}
 
-		// replace date to make mocking easier
+		// Replaces date to make mocking easier.
 		if actualMem.WeeklyPrayerDate != "" {
 			actualMem.WeeklyPrayerDate = "dummy date/time"
 		}
@@ -119,8 +119,8 @@ func testMembers(inputs []dynamodb.PutItemInput, t *testing.T, test TestCase) {
 }
 
 func testPrayers(inputs []dynamodb.PutItemInput, t *testing.T, test TestCase, queue bool) {
-	// need to be careful here not to do unit tests with prayers from both the active prayer
-	// table and queued prayers table because it will probably break this mock
+	// We need to be careful here that inputs (Prayers) are not mixed with active and queued prayers, because this test
+	// function cannot handle that.
 	index := 0
 	expectedTable := object.GetPrayerTable(queue)
 
@@ -138,7 +138,7 @@ func testPrayers(inputs []dynamodb.PutItemInput, t *testing.T, test TestCase, qu
 			t.Errorf("failed to unmarshal PutItemInput into Prayer: %v", err)
 		}
 
-		// replace date and random ID to make mocking easier
+		// Replaces date and random ID to make mocking easier.
 		if !queue {
 			actualPryr.Intercessor.WeeklyPrayerDate = "dummy date/time"
 		} else if queue {
@@ -258,8 +258,8 @@ func testTxtMessage(txtMock *mock.TextSender, t *testing.T, test TestCase) {
 			t.Errorf("there are more text message inputs than expected texts")
 		}
 
-		// Some text messages use PLACEHOLDER and replace that with the txt recipients name
-		// Therefor to make testing easier, the message body is replaced by the msg constant
+		// Some text messages use PLACEHOLDER and replace that with the txt recipients name. Therefor to make testing
+		// easier, the message body is replaced by the msg constant.
 		switch {
 		case strings.Contains(*input.MessageBody, "Hello! Please pray for"):
 			input.MessageBody = aws.String(messaging.MsgPrayerIntro)
@@ -274,8 +274,8 @@ func testTxtMessage(txtMock *mock.TextSender, t *testing.T, test TestCase) {
 			Phone: *input.DestinationPhoneNumber,
 		}
 
-		// This part makes mocking messages less painful. We do not need to worry about new lines,
-		// pre, or post messages. They are removed when messages are tested.
+		// This part makes mocking messages less painful. We do not need to worry about new lines, pre, or post
+		// messages. They are removed when messages are tested.
 		for _, t := range []*messaging.TextMessage{&receivedText, &test.expectedTexts[index]} {
 			for _, str := range []string{"\n", messaging.MsgPre, messaging.MsgPost} {
 				t.Body = strings.ReplaceAll(t.Body, str, "")
@@ -363,7 +363,7 @@ func TestMainFlowSignUp(t *testing.T) {
 				Error  error
 			}{
 				{
-					// StateTracker empty get response. It would over complicate to test this here
+					// StateTracker empty get response. It would over complicate to test this here.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -390,7 +390,7 @@ func TestMainFlowSignUp(t *testing.T) {
 				Error  error
 			}{
 				{
-					// StateTracker empty get response. It would over complicate to test this here
+					// StateTracker empty get response. It would over complicate to test this here.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -439,7 +439,7 @@ func TestMainFlowSignUp(t *testing.T) {
 				Error  error
 			}{
 				{
-					// StateTracker empty get response. It would over complicate to test this here
+					// StateTracker empty get response. It would over complicate to test this here.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -488,7 +488,7 @@ func TestMainFlowSignUp(t *testing.T) {
 				Error  error
 			}{
 				{
-					// StateTracker empty get response. It would over complicate to test this here
+					// StateTracker empty get response. It would over complicate to test this here.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -539,7 +539,7 @@ func TestMainFlowSignUp(t *testing.T) {
 				Error  error
 			}{
 				{
-					// StateTracker empty get response. It would over complicate to test this here
+					// StateTracker empty get response. It would over complicate to test this here.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -591,7 +591,7 @@ func TestMainFlowSignUp(t *testing.T) {
 				Error  error
 			}{
 				{
-					// StateTracker empty get response. It would over complicate to test this here
+					// StateTracker empty get response. It would over complicate to test this here.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -608,7 +608,7 @@ func TestMainFlowSignUp(t *testing.T) {
 					Error: nil,
 				},
 				{
-					// StateTracker empty get response. It would over complicate to test this here
+					// StateTracker empty get response. It would over complicate to test this here.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -674,7 +674,7 @@ func TestMainFlowSignUp(t *testing.T) {
 				Error  error
 			}{
 				{
-					// StateTracker empty get response. It would over complicate to test this here
+					// StateTracker empty get response. It would over complicate to test this here.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -691,7 +691,7 @@ func TestMainFlowSignUp(t *testing.T) {
 					Error: nil,
 				},
 				{
-					// StateTracker empty get response. It would over complicate to test this here
+					// StateTracker empty get response. It would over complicate to test this here.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -738,13 +738,13 @@ func TestMainFlowSignUp(t *testing.T) {
 			setMocks(ddbMock, txtMock, test)
 
 			if test.expectedError {
-				// handles failures for error mocks
+				// Handles failures for error mocks.
 				if err := prayertexter.MainFlow(test.initialMessage, ddbMock, txtMock); err == nil {
 					t.Fatalf("expected error, got nil")
 				}
 				testNumMethodCalls(ddbMock, txtMock, t, test)
 			} else {
-				// handles success test cases
+				// Handles success test cases.
 				if err := prayertexter.MainFlow(test.initialMessage, ddbMock, txtMock); err != nil {
 					t.Fatalf("unexpected error starting MainFlow: %v", err)
 				}
@@ -760,8 +760,6 @@ func TestMainFlowSignUp(t *testing.T) {
 
 func TestMainFlowSignUpWrongInputs(t *testing.T) {
 	testCases := []TestCase{
-		// these test cases should do 1 get Member only because return nil on signUpWrongInput
-		// 1 get Member call only shows that they took the correct flow
 		{
 			description: "pray misspelled - returns non registered user and exits",
 
@@ -786,7 +784,7 @@ func TestMainFlowSignUpWrongInputs(t *testing.T) {
 				Error  error
 			}{
 				{
-					// StateTracker empty get response. It would over complicate to test this here
+					// StateTracker empty get response. It would over complicate to test this here.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -827,7 +825,7 @@ func TestMainFlowSignUpWrongInputs(t *testing.T) {
 				Error  error
 			}{
 				{
-					// StateTracker empty get response. It would over complicate to test this here
+					// StateTracker empty get response. It would over complicate to test this here.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -890,7 +888,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 				Error  error
 			}{
 				{
-					// StateTracker empty get response. It would over complicate to test this here
+					// StateTracker empty get response. It would over complicate to test this here.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -942,7 +940,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 				Error  error
 			}{
 				{
-					// StateTracker empty get response. It would over complicate to test this here
+					// StateTracker empty get response. It would over complicate to test this here.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -961,7 +959,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 					Error: nil,
 				},
 				{
-					// StateTracker empty get response. It would over complicate to test this here
+					// StateTracker empty get response. It would over complicate to test this here.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -1026,7 +1024,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 				Error  error
 			}{
 				{
-					// StateTracker empty get response. It would over complicate to test this here
+					// StateTracker empty get response. It would over complicate to test this here.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -1046,7 +1044,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 					Error: nil,
 				},
 				{
-					// StateTracker empty get response. It would over complicate to test this here
+					// StateTracker empty get response. It would over complicate to test this here.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -1189,7 +1187,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 				Error  error
 			}{
 				{
-					// StateTracker empty get response. It would over complicate to test this here
+					// StateTracker empty get response. It would over complicate to test this here.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -1230,13 +1228,13 @@ func TestMainFlowMemberDelete(t *testing.T) {
 			setMocks(ddbMock, txtMock, test)
 
 			if test.expectedError {
-				// handles failures for error mocks
+				// Handles failures for error mocks.
 				if err := prayertexter.MainFlow(test.initialMessage, ddbMock, txtMock); err == nil {
 					t.Fatalf("expected error, got nil")
 				}
 				testNumMethodCalls(ddbMock, txtMock, t, test)
 			} else {
-				// handles success test cases
+				// Handles success test cases.
 				if err := prayertexter.MainFlow(test.initialMessage, ddbMock, txtMock); err != nil {
 					t.Fatalf("unexpected error starting MainFlow: %v", err)
 				}
@@ -1266,7 +1264,7 @@ func TestMainFlowHelp(t *testing.T) {
 				Error  error
 			}{
 				{
-					// StateTracker empty get response. It would over complicate to test this here
+					// StateTracker empty get response. It would over complicate to test this here.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -1307,7 +1305,7 @@ func TestMainFlowHelp(t *testing.T) {
 				Error  error
 			}{
 				{
-					// StateTracker empty get response. It would over complicate to test this here
+					// StateTracker empty get response. It would over complicate to test this here.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -1371,7 +1369,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				Error  error
 			}{
 				{
-					// StateTracker empty get response. It would over complicate to test this here
+					// StateTracker empty get response. It would over complicate to test this here.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -1387,7 +1385,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 					Error: nil,
 				},
 				{
-					// StateTracker empty get response. It would over complicate to test this here
+					// StateTracker empty get response. It would over complicate to test this here.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -1419,7 +1417,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 					Error: nil,
 				},
 				{
-					// Prayer empty get response because there are no active prayers for this intercessor
+					// Prayer empty get response because there are no active prayers for this intercessor.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -1439,7 +1437,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 					Error: nil,
 				},
 				{
-					// Prayer empty get response because there are no active prayers for this intercessor
+					// Prayer empty get response because there are no active prayers for this intercessor.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -1543,7 +1541,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				Error  error
 			}{
 				{
-					// StateTracker empty get response. It would over complicate to test this here
+					// StateTracker empty get response. It would over complicate to test this here.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -1584,7 +1582,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				Error  error
 			}{
 				{
-					// StateTracker empty get response. It would over complicate to test this here
+					// StateTracker empty get response. It would over complicate to test this here.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -1600,7 +1598,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 					Error: nil,
 				},
 				{
-					// StateTracker empty get response. It would over complicate to test this here
+					// StateTracker empty get response. It would over complicate to test this here.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -1632,7 +1630,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 					Error: nil,
 				},
 				{
-					// Prayer empty get response because there are no active prayers for this intercessor
+					// Prayer empty get response because there are no active prayers for this intercessor.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -1652,7 +1650,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 					Error: nil,
 				},
 				{
-					// Prayer empty get response because there are no active prayers for this intercessor
+					// Prayer empty get response because there are no active prayers for this intercessor.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -1689,7 +1687,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				Error  error
 			}{
 				{
-					// StateTracker empty get response. It would over complicate to test this here
+					// StateTracker empty get response. It would over complicate to test this here.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -1705,7 +1703,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 					Error: nil,
 				},
 				{
-					// StateTracker empty get response. It would over complicate to test this here
+					// StateTracker empty get response. It would over complicate to test this here.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -1737,7 +1735,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 					Error: nil,
 				},
 				{
-					// object.Prayer empty get response because there are no active prayers for this intercessor
+					// Prayer empty get response because there are no active prayers for this intercessor.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -1757,7 +1755,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 					Error: nil,
 				},
 				{
-					// Prayer empty get response because there are no active prayers for this intercessor
+					// Prayer empty get response because there are no active prayers for this intercessor.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -1858,7 +1856,7 @@ func TestFindIntercessors(t *testing.T) {
 					Error: nil,
 				},
 				{
-					// Prayer empty get response because there are no active prayers for this intercessor
+					// Prayer empty get response because there are no active prayers for this intercessor.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -1879,7 +1877,7 @@ func TestFindIntercessors(t *testing.T) {
 					Error: nil,
 				},
 				{
-					// Prayer empty get response because there are no active prayers for this intercessor
+					// Prayer empty get response because there are no active prayers for this intercessor.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -1900,7 +1898,7 @@ func TestFindIntercessors(t *testing.T) {
 					Error: nil,
 				},
 				{
-					// Prayer empty get response because there are no active prayers for this intercessor
+					// Prayer empty get response because there are no active prayers for this intercessor.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -1921,7 +1919,7 @@ func TestFindIntercessors(t *testing.T) {
 					Error: nil,
 				},
 				{
-					// Prayer empty get response because there are no active prayers for this intercessor
+					// Prayer empty get response because there are no active prayers for this intercessor.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -1941,7 +1939,7 @@ func TestFindIntercessors(t *testing.T) {
 					Error: nil,
 				},
 				{
-					// Prayer empty get response because there are no active prayers for this intercessor
+					// Prayer empty get response because there are no active prayers for this intercessor.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -2009,7 +2007,7 @@ func TestFindIntercessors(t *testing.T) {
 					Error: nil,
 				},
 				{
-					// Prayer empty get response because there are no active prayers for this intercessor
+					// Prayer empty get response because there are no active prayers for this intercessor.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -2029,7 +2027,7 @@ func TestFindIntercessors(t *testing.T) {
 					Error: nil,
 				},
 				{
-					// Prayer empty get response because there are no active prayers for this intercessor
+					// Prayer empty get response because there are no active prayers for this intercessor.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -2049,7 +2047,7 @@ func TestFindIntercessors(t *testing.T) {
 					Error: nil,
 				},
 				{
-					// Prayer empty get response because there are no active prayers for this intercessor
+					// Prayer empty get response because there are no active prayers for this intercessor.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -2074,8 +2072,8 @@ func TestFindIntercessors(t *testing.T) {
 		{
 			description: "This should return a single intercessor because the other intercessor (888-888-8888) gets" +
 				"removed. In a real situation, this would be because they are the ones who sent in the prayer request.",
-			// FindIntercessors has a parameter for skipping a phone number.
-			// We are using 888-888-8888 for this, which is set permanently in the main testing logic for this section
+			// FindIntercessors has a parameter for skipping a phone number. We are using 888-888-8888 for this, which
+			// is set permanently in the main testing logic for this section.
 
 			mockGetItemResults: []struct {
 				Output *dynamodb.GetItemOutput
@@ -2109,7 +2107,7 @@ func TestFindIntercessors(t *testing.T) {
 					Error: nil,
 				},
 				{
-					// Prayer empty get response because there are no active prayers for this intercessor
+					// Prayer empty get response because there are no active prayers for this intercessor.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -2166,7 +2164,7 @@ func TestFindIntercessors(t *testing.T) {
 					Error: nil,
 				},
 				{
-					// Prayer empty get response because there are no active prayers for this intercessor
+					// Prayer empty get response because there are no active prayers for this intercessor.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -2186,7 +2184,7 @@ func TestFindIntercessors(t *testing.T) {
 					Error: nil,
 				},
 				{
-					// Prayer empty get response because there are no active prayers for this intercessor
+					// Prayer empty get response because there are no active prayers for this intercessor.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -2278,7 +2276,7 @@ func TestFindIntercessors(t *testing.T) {
 					Error: nil,
 				},
 				{
-					// Prayer empty get response because there are no active prayers for this intercessor
+					// Prayer empty get response because there are no active prayers for this intercessor.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -2355,13 +2353,13 @@ func TestFindIntercessors(t *testing.T) {
 			setMocks(ddbMock, txtMock, test)
 
 			if test.expectedError {
-				// handles failures for error mocks
+				// Handles failures for error mocks.
 				if _, err := prayertexter.FindIntercessors(ddbMock, "+18888888888"); err == nil {
 					t.Fatalf("expected error, got nil")
 				}
 				testNumMethodCalls(ddbMock, txtMock, t, test)
 			} else {
-				// handles success test cases
+				// Handles success test cases.
 				_, err := prayertexter.FindIntercessors(ddbMock, "+18888888888")
 				if err != nil {
 					t.Fatalf("unexpected error starting FindIntercessors: %v", err)
@@ -2389,7 +2387,7 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 				Error  error
 			}{
 				{
-					// StateTracker empty get response. It would over complicate to test this here
+					// StateTracker empty get response. It would over complicate to test this here.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -2409,7 +2407,7 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 					Error: nil,
 				},
 				{
-					// StateTracker empty get response. It would over complicate to test this here
+					// StateTracker empty get response. It would over complicate to test this here.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -2497,7 +2495,7 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 				Error  error
 			}{
 				{
-					// StateTracker empty get response. It would over complicate to test this here
+					// StateTracker empty get response. It would over complicate to test this here.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -2517,7 +2515,7 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 					Error: nil,
 				},
 				{
-					// StateTracker empty get response. It would over complicate to test this here
+					// StateTracker empty get response. It would over complicate to test this here.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -2588,7 +2586,7 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 				Error  error
 			}{
 				{
-					// StateTracker empty get response. It would over complicate to test this here
+					// StateTracker empty get response. It would over complicate to test this here.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -2633,7 +2631,7 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 				Error  error
 			}{
 				{
-					// StateTracker empty get response. It would over complicate to test this here
+					// StateTracker empty get response. It would over complicate to test this here.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -2653,7 +2651,7 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 					Error: nil,
 				},
 				{
-					// StateTracker empty get response. It would over complicate to test this here
+					// StateTracker empty get response. It would over complicate to test this here.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -2725,13 +2723,13 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 			setMocks(ddbMock, txtMock, test)
 
 			if test.expectedError {
-				// handles failures for error mocks
+				// Handles failures for error mocks
 				if err := prayertexter.MainFlow(test.initialMessage, ddbMock, txtMock); err == nil {
 					t.Fatalf("expected error, got nil")
 				}
 				testNumMethodCalls(ddbMock, txtMock, t, test)
 			} else {
-				// handles success test cases
+				// Handles success test cases
 				if err := prayertexter.MainFlow(test.initialMessage, ddbMock, txtMock); err != nil {
 					t.Fatalf("unexpected error starting MainFlow: %v", err)
 				}

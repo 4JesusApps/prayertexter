@@ -50,30 +50,30 @@ func MainFlow(msg messaging.TextMessage, ddbClnt db.DDBConnecter, smsClnt messag
 
 	switch {
 	// HELP STAGE
-	// This responds with contact info and is a requirement to get sent to to anyone regardless
-	// whether they are a member or not.
+	// Responds with contact info and is a requirement to get sent to to anyone regardless whether they are a member or
+	// not.
 	case strings.ToLower(msg.Body) == "help":
 		stageErr = executeStage(ddbClnt, helpStage, &state, func() error {
 			return mem.SendMessage(smsClnt, messaging.MsgHelp)
 		})
 
 	// MEMBER DELETE STAGE
-	// This removes member from prayertexter.
+	// Removes member from prayertexter.
 	case strings.ToLower(msg.Body) == "cancel" || strings.ToLower(msg.Body) == "stop":
 		stageErr = executeStage(ddbClnt, memberDeleteStage, &state, func() error {
 			return memberDelete(mem, ddbClnt, smsClnt)
 		})
 
 	// SIGN UP STAGE
-	// This is the initial sign up process.
+	// Initial member sign up process.
 	case strings.ToLower(msg.Body) == "pray" || mem.SetupStatus == object.MemberSetupInProgress:
 		stageErr = executeStage(ddbClnt, signUpStage, &state, func() error {
 			return signUp(msg, mem, ddbClnt, smsClnt)
 		})
 
 	// DROP MESSAGE STAGE
-	// This will drop all messages if they do not meet any of the previous criteria. This serves
-	// as a catch all to drop any messages of non members.
+	// Drops all messages if they do not meet any of the previous criteria. This serves as a catch all to drop any
+	// messages of non members.
 	case mem.SetupStatus == "":
 		slog.Warn("non registered user dropping message", "phone", mem.Phone, "msg", msg.Body)
 		stageErr = executeStage(ddbClnt, dropMessageStage, &state, func() error {
@@ -81,15 +81,15 @@ func MainFlow(msg messaging.TextMessage, ddbClnt db.DDBConnecter, smsClnt messag
 		})
 
 	// COMPLETE PRAYER STAGE
-	// This is when intercessors pray for a prayer request and send back the confirmation that
-	// they prayed. This will let the prayer requestor know that their prayer was prayed for.
+	// Intercessors confirm that they prayed for a prayer, a confirmations is sent out to the prayer requestor, and the
+	// prayer is marked as completed.
 	case strings.ToLower(msg.Body) == "prayed":
 		stageErr = executeStage(ddbClnt, completePrayerStage, &state, func() error {
 			return completePrayer(mem, ddbClnt, smsClnt)
 		})
 
 	// PRAYER REQUEST STAGE
-	// This is for members sending in prayer requests. It assigns prayers to intercessors.
+	// Assigns a prayer request to intercessors.
 	case mem.SetupStatus == object.MemberSetupComplete:
 		stageErr = executeStage(ddbClnt, prayerRequestStage, &state, func() error {
 			return prayerRequest(msg, mem, ddbClnt, smsClnt)
@@ -160,7 +160,7 @@ func signUp(msg messaging.TextMessage, mem object.Member, ddbClnt db.DDBConnecte
 			return utility.WrapError(err, "failed sign up final intercessor message")
 		}
 	default:
-		if err := signUpWrongInput(mem, smsClnt); err != nil {
+		if err := signUpWrongInput(mem, msg, smsClnt); err != nil {
 			return utility.WrapError(err, "failed sign up wrong input")
 		}
 	}
@@ -175,11 +175,7 @@ func signUpStageOne(mem object.Member, ddbClnt db.DDBConnecter, smsClnt messagin
 		return err
 	}
 
-	if err := mem.SendMessage(smsClnt, messaging.MsgNameRequest); err != nil {
-		return err
-	}
-
-	return nil
+	return mem.SendMessage(smsClnt, messaging.MsgNameRequest)
 }
 
 func signUpStageTwoA(mem object.Member, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender,
@@ -190,11 +186,7 @@ func signUpStageTwoA(mem object.Member, ddbClnt db.DDBConnecter, smsClnt messagi
 		return err
 	}
 
-	if err := mem.SendMessage(smsClnt, messaging.MsgMemberTypeRequest); err != nil {
-		return err
-	}
-
-	return nil
+	return mem.SendMessage(smsClnt, messaging.MsgMemberTypeRequest)
 }
 
 func signUpStageTwoB(mem object.Member, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender) error {
@@ -204,11 +196,7 @@ func signUpStageTwoB(mem object.Member, ddbClnt db.DDBConnecter, smsClnt messagi
 		return err
 	}
 
-	if err := mem.SendMessage(smsClnt, messaging.MsgMemberTypeRequest); err != nil {
-		return err
-	}
-
-	return nil
+	return mem.SendMessage(smsClnt, messaging.MsgMemberTypeRequest)
 }
 
 func signUpFinalPrayerMessage(mem object.Member, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender) error {
@@ -220,11 +208,8 @@ func signUpFinalPrayerMessage(mem object.Member, ddbClnt db.DDBConnecter, smsCln
 	}
 
 	body := messaging.MsgPrayerInstructions + "\n\n" + messaging.MsgSignUpConfirmation
-	if err := mem.SendMessage(smsClnt, body); err != nil {
-		return err
-	}
 
-	return nil
+	return mem.SendMessage(smsClnt, body)
 }
 
 func signUpStageThree(mem object.Member, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender) error {
@@ -234,18 +219,14 @@ func signUpStageThree(mem object.Member, ddbClnt db.DDBConnecter, smsClnt messag
 		return err
 	}
 
-	if err := mem.SendMessage(smsClnt, messaging.MsgPrayerNumRequest); err != nil {
-		return err
-	}
-
-	return nil
+	return mem.SendMessage(smsClnt, messaging.MsgPrayerNumRequest)
 }
 
 func signUpFinalIntercessorMessage(mem object.Member, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender,
 	msg messaging.TextMessage) error {
 	num, err := strconv.Atoi(msg.Body)
 	if err != nil {
-		return signUpWrongInput(mem, smsClnt)
+		return signUpWrongInput(mem, msg, smsClnt)
 	}
 
 	phones := object.IntercessorPhones{}
@@ -268,21 +249,14 @@ func signUpFinalIntercessorMessage(mem object.Member, ddbClnt db.DDBConnecter, s
 
 	body := messaging.MsgPrayerInstructions + "\n\n" + messaging.MsgIntercessorInstructions + "\n\n" +
 		messaging.MsgSignUpConfirmation
-	if err := mem.SendMessage(smsClnt, body); err != nil {
-		return err
-	}
 
-	return nil
+	return mem.SendMessage(smsClnt, body)
 }
 
-func signUpWrongInput(mem object.Member, smsClnt messaging.TextSender) error {
-	slog.Warn("wrong input received during sign up", "member", mem.Phone)
+func signUpWrongInput(mem object.Member, msg messaging.TextMessage, smsClnt messaging.TextSender) error {
+	slog.Warn("wrong input received during sign up", "member", mem.Phone, "msg", msg)
 
-	if err := mem.SendMessage(smsClnt, messaging.MsgWrongInput); err != nil {
-		return err
-	}
-
-	return nil
+	return mem.SendMessage(smsClnt, messaging.MsgWrongInput)
 }
 
 func memberDelete(mem object.Member, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender) error {
@@ -290,46 +264,55 @@ func memberDelete(mem object.Member, ddbClnt db.DDBConnecter, smsClnt messaging.
 		return err
 	}
 	if mem.Intercessor {
-		phones := object.IntercessorPhones{}
-		if err := phones.Get(ddbClnt); err != nil {
+		if err := removeIntercessor(mem, ddbClnt); err != nil {
 			return err
-		}
-		phones.RemovePhone(mem.Phone)
-		if err := phones.Put(ddbClnt); err != nil {
-			return err
-		}
-
-		// if object.Member has an active Prayer, then we need to move it to the prayer queue
-		// so that the Prayer can get sent to someone else
-		isActive, err := object.IsPrayerActive(ddbClnt, mem.Phone)
-		if err != nil {
-			return err
-		} else if isActive {
-			pryr := object.Prayer{IntercessorPhone: mem.Phone}
-			if err := pryr.Get(ddbClnt, false); err != nil {
-				return err
-			}
-
-			if err := pryr.Delete(ddbClnt, false); err != nil {
-				return err
-			}
-
-			// random ID is generated here since queued Prayers do not have an intercessor assigned
-			// to them
-			id, err := utility.GenerateID()
-			if err != nil {
-				return err
-			}
-			pryr.IntercessorPhone, pryr.Intercessor = id, object.Member{}
-
-			if err := pryr.Put(ddbClnt, true); err != nil {
-				return err
-			}
 		}
 	}
 
-	if err := mem.SendMessage(smsClnt, messaging.MsgRemoveUser); err != nil {
+	return mem.SendMessage(smsClnt, messaging.MsgRemoveUser)
+}
+
+func removeIntercessor(mem object.Member, ddbClnt db.DDBConnecter) error {
+	phones := object.IntercessorPhones{}
+	if err := phones.Get(ddbClnt); err != nil {
 		return err
+	}
+	phones.RemovePhone(mem.Phone)
+	if err := phones.Put(ddbClnt); err != nil {
+		return err
+	}
+
+	// Moves an active prayer from the intercessor being removed to the Prayer queue. This is done to ensure that the
+	// prayer eventually gets assigned to another intercessor.
+	return moveActivePrayer(mem, ddbClnt)
+}
+
+func moveActivePrayer(mem object.Member, ddbClnt db.DDBConnecter) error {
+	isActive, err := object.IsPrayerActive(ddbClnt, mem.Phone)
+	if err != nil {
+		return err
+	}
+
+	if isActive {
+		pryr := object.Prayer{IntercessorPhone: mem.Phone}
+		if err := pryr.Get(ddbClnt, false); err != nil {
+			return err
+		}
+
+		if err := pryr.Delete(ddbClnt, false); err != nil {
+			return err
+		}
+
+		// A random ID is generated since queued Prayers do not have an intercessor assigned to them. We use the ID in
+		// place if the intercessors phone number until there is an available intercessor, at which time the ID will get
+		// changed to the available intercessors phone number.
+		id, err := utility.GenerateID()
+		if err != nil {
+			return err
+		}
+		pryr.IntercessorPhone, pryr.Intercessor = id, object.Member{}
+
+		return pryr.Put(ddbClnt, true)
 	}
 
 	return nil
@@ -374,100 +357,113 @@ func prayerRequest(msg messaging.TextMessage, mem object.Member, ddbClnt db.DDBC
 		}
 	}
 
-	if err := mem.SendMessage(smsClnt, messaging.MsgPrayerSentOut); err != nil {
-		return err
-	}
-
-	return nil
+	return mem.SendMessage(smsClnt, messaging.MsgPrayerSentOut)
 }
 
 func FindIntercessors(ddbClnt db.DDBConnecter, skipPhone string) ([]object.Member, error) {
-	var intercessors []object.Member
-
-	allPhones := object.IntercessorPhones{}
-	if err := allPhones.Get(ddbClnt); err != nil {
+	allPhones, err := getAndPreparePhones(ddbClnt, skipPhone)
+	if err != nil {
 		return nil, err
 	}
 
-	// this will remove the member's (prayer requestor) phone number from the intercessor phone
-	// list so they don't get assigned to pray for their own prayer request
-	utility.RemoveItem(&allPhones.Phones, skipPhone)
-
+	var intercessors []object.Member
 	for len(intercessors) < object.NumIntercessorsPerPrayer {
 		randPhones := allPhones.GenRandPhones()
 		if randPhones == nil {
-			// this means that there are no more available intercessors for a prayer request
-			if len(intercessors) != 0 {
-				// this means that we found at least one intercessor, yet it is under the desired
-				// number set for each prayer request. we will return the intercessor/s because
-				// it's better than none
+			// There are no more intercessors to process/check from IntercessorPhones
+			if len(intercessors) > 0 {
+				// There is at least one intercessor that has been found. This will be returned even though it is less
+				// than desired because returning less is better than returning none.
 				return intercessors, nil
-			} else if len(intercessors) == 0 {
-				// this means that we cannot find a single intercessor for a prayer request
-				return nil, nil
 			}
+
+			// There are not any intercessors available at all.
+			return nil, nil
 		}
 
 		for _, phn := range randPhones {
-			intr := object.Member{Phone: phn}
-			if err := intr.Get(ddbClnt); err != nil {
-				return nil, err
-			}
-
-			isActive, err := object.IsPrayerActive(ddbClnt, intr.Phone)
+			intr, err := processIntercessor(ddbClnt, phn)
 			if err != nil {
 				return nil, err
 			}
-			if isActive {
-				// this means that intercessor already has 1 active prayer and cannot be used for
-				// another 1. there is a limitation of 1 active prayer at a time per intercessor
-				allPhones.RemovePhone(intr.Phone)
+			if intr == nil {
+				allPhones.RemovePhone(phn)
 				continue
 			}
-
-			if intr.PrayerCount < intr.WeeklyPrayerLimit {
-				intr.PrayerCount++
-				intercessors = append(intercessors, intr)
-				allPhones.RemovePhone(intr.Phone)
-				if err := intr.Put(ddbClnt); err != nil {
-					return nil, err
-				}
-			} else if intr.PrayerCount >= intr.WeeklyPrayerLimit {
-				currentTime := time.Now()
-				previousTime, err := time.Parse(time.RFC3339, intr.WeeklyPrayerDate)
-				if err != nil {
-					return nil, utility.WrapError(err, "failed to parse time")
-				}
-
-				diff := currentTime.Sub(previousTime).Hours()
-				// reset prayer counter if time between now and weekly prayer date is greater than
-				// 7 days and select intercessor
-				hoursInDay := 24.0
-				daysInWeek := 7.0
-
-				if (diff / hoursInDay) > daysInWeek {
-					intr.PrayerCount = 1
-					intr.WeeklyPrayerDate = time.Now().Format(time.RFC3339)
-					intercessors = append(intercessors, intr)
-					allPhones.RemovePhone(intr.Phone)
-					if err := intr.Put(ddbClnt); err != nil {
-						return nil, err
-					}
-				} else if (diff / hoursInDay) < daysInWeek {
-					allPhones.RemovePhone(intr.Phone)
-				}
-			}
+			intercessors = append(intercessors, *intr)
+			allPhones.RemovePhone(phn)
 		}
 	}
 
 	return intercessors, nil
 }
 
+func getAndPreparePhones(ddbClnt db.DDBConnecter, skipPhone string) (object.IntercessorPhones, error) {
+	allPhones := object.IntercessorPhones{}
+	if err := allPhones.Get(ddbClnt); err != nil {
+		return allPhones, err
+	}
+
+	// Removes the prayer requestors phone number from IntercessorPhones so that they do not get assigned to pray for
+	// their own prayer request. This could happen if the prayer requester is also an intercessor.
+	utility.RemoveItem(&allPhones.Phones, skipPhone)
+
+	return allPhones, nil
+}
+
+func processIntercessor(ddbClnt db.DDBConnecter, phone string) (*object.Member, error) {
+	intr := object.Member{Phone: phone}
+	if err := intr.Get(ddbClnt); err != nil {
+		return nil, err
+	}
+
+	isActive, err := object.IsPrayerActive(ddbClnt, intr.Phone)
+	if err != nil {
+		return nil, err
+	}
+	if isActive {
+		// This intercessor already has 1 active prayer and is therefor unavailable. Each intercessor can only have a
+		// maximum of 1 active prayer request at any given time.
+		return nil, nil
+	}
+
+	if intr.PrayerCount < intr.WeeklyPrayerLimit {
+		intr.PrayerCount++
+	} else {
+		if canResetPrayerCount(intr) {
+			// Reset intercessor's weekly prayer count
+			intr.PrayerCount = 1
+			intr.WeeklyPrayerDate = time.Now().Format(time.RFC3339)
+		} else {
+			return nil, nil
+		}
+	}
+
+	if err := intr.Put(ddbClnt); err != nil {
+		return nil, err
+	}
+	return &intr, nil
+}
+
+func canResetPrayerCount(intr object.Member) bool {
+	weekDays := 7
+	dayHours := 24
+
+	currentTime := time.Now()
+	previousTime, err := time.Parse(time.RFC3339, intr.WeeklyPrayerDate)
+	if err != nil {
+		return false
+	}
+	diffDays := currentTime.Sub(previousTime).Hours() / float64(dayHours)
+	return diffDays > float64(weekDays)
+}
+
 func queuePrayer(msg messaging.TextMessage, mem object.Member, ddbClnt db.DDBConnecter,
 	smsClnt messaging.TextSender) error {
 	pryr := object.Prayer{}
-	// random ID is generated here since queued Prayers do not have an intercessor assigned
-	// to them
+	// A random ID is generated since queued Prayers do not have an intercessor assigned to them. We use the ID in place
+	// if the intercessors phone number until there is an available intercessor, at which time the ID will get changed
+	// to the available intercessors phone number.
 	id, err := utility.GenerateID()
 	if err != nil {
 		return err
@@ -479,11 +475,7 @@ func queuePrayer(msg messaging.TextMessage, mem object.Member, ddbClnt db.DDBCon
 		return err
 	}
 
-	if err := mem.SendMessage(smsClnt, messaging.MsgPrayerQueued); err != nil {
-		return err
-	}
-
-	return nil
+	return mem.SendMessage(smsClnt, messaging.MsgPrayerQueued)
 }
 
 func completePrayer(mem object.Member, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender) error {
@@ -493,7 +485,8 @@ func completePrayer(mem object.Member, ddbClnt db.DDBConnecter, smsClnt messagin
 	}
 
 	if pryr.Request == "" {
-		// this means that the get prayer did not return an active prayer
+		// Get Dynamodb calls return empty data if the key does not exist in the table. Therefor if prayer request is
+		// empty here, it means that it did not exist in the database
 		if err := mem.SendMessage(smsClnt, messaging.MsgNoActivePrayer); err != nil {
 			return err
 		}
@@ -519,9 +512,5 @@ func completePrayer(mem object.Member, ddbClnt db.DDBConnecter, smsClnt messagin
 		slog.Warn("Skip sending message, member is not active", "recipient", pryr.Requestor.Phone, "body", msg)
 	}
 
-	if err := pryr.Delete(ddbClnt, false); err != nil {
-		return err
-	}
-
-	return nil
+	return pryr.Delete(ddbClnt, false)
 }

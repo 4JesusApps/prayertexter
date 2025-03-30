@@ -250,7 +250,7 @@ func TestDynamoDBOperations(t *testing.T) {
 }
 
 func testGetObject[T any](t *testing.T, ddbMock db.DDBConnecter, expectedObject *T) {
-	// using test test test here because get ddb function is mocked so parameters are irrelevant
+	// The parameters test test test are used here because mocking makes using real parameters unnecessary.
 	testedObject, err := db.GetDdbObject[T](ddbMock, "test", "test", "test")
 	if err != nil {
 		t.Errorf("getDdbObject failed for type %T: %v", expectedObject, err)
@@ -266,7 +266,7 @@ func testPutObject[T any](t *testing.T, ddbMock *mock.DDBConnecter, expectedObje
 	Output *dynamodb.GetItemOutput
 	Error  error
 }) {
-	// using test here because put ddb function is mocked so this parameter is irrelevant
+	// The parameter test is used here because mocking makes using real parameters unnecessary.
 	err := db.PutDdbObject(ddbMock, "test", expectedObject)
 	if err != nil {
 		t.Errorf("putDdbObject failed for type %T: %v", expectedObject, err)

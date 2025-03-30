@@ -29,8 +29,8 @@ func (i *IntercessorPhones) Get(ddbClnt db.DDBConnecter) error {
 		return err
 	}
 
-	// this is important so that the original IntercessorPhones object doesn't get reset to all
-	// empty struct values if the IntercessorPhones does not exist in ddb
+	// This is important so that the original IntercessorPhones object doesn't get reset to all empty struct values if
+	// the IntercessorPhones does not exist in dynamodb.
 	if intr.Key != "" {
 		*i = *intr
 	}
@@ -60,8 +60,8 @@ func (i *IntercessorPhones) GenRandPhones() []string {
 		return nil
 	}
 
-	// this is needed so it can return some/one phones even if it is less than the set # of
-	// intercessors for each prayer
+	// This is needed so it can return some/one phones even if it is less than the set # of intercessors for each
+	// prayer.
 	if len(i.Phones) <= NumIntercessorsPerPrayer {
 		selectedPhones = append(selectedPhones, i.Phones...)
 		return selectedPhones

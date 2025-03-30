@@ -21,7 +21,7 @@ func (m *TextSender) SendTextMessage(_ context.Context,
 	m.SendTextCalls++
 	m.SendTextInputs = append(m.SendTextInputs, params)
 
-	// Default result if no results are configured to avoid index out of bounds
+	// Default result if no results are configured to avoid index out of bounds.
 	if len(m.SendTextResults) <= m.SendTextCalls-1 {
 		return &pinpointsmsvoicev2.SendTextMessageOutput{}, nil
 	}

@@ -36,8 +36,8 @@ func (m *Member) Get(ddbClnt db.DDBConnecter) error {
 		return err
 	}
 
-	// this is important so that the original Member object doesn't get reset to all empty struct
-	// values if the Member does not exist in ddb
+	// This is important so that the original Member object doesn't get reset to all empty struct values if the Member
+	// does not exist in dynamodb.
 	if mem.Phone != "" {
 		*m = *mem
 	}
@@ -68,8 +68,8 @@ func IsMemberActive(ddbClnt db.DDBConnecter, phone string) (bool, error) {
 		return false, utility.WrapError(err, "failed to check if Member is active")
 	}
 
-	// empty string means get Member did not return an Member. Dynamodb get requests
-	// return empty data if the key does not exist inside the database
+	// Empty string means get Member did not return an Member. Dynamodb get requests return empty data if the key does
+	// not exist inside the database.
 	if mem.SetupStatus == "" {
 		return false, nil
 	}

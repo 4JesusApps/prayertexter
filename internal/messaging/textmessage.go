@@ -102,7 +102,7 @@ func SendText(smsClnt TextSender, msg TextMessage) error {
 }
 
 func (t TextMessage) CheckProfanity() string {
-	// We need to remove some words from the profanity filter because it is too sensitive
+	// We need to remove some words from the profanity filter because it is too sensitive.
 	removedWords := []string{"jerk"}
 	profanities := &goaway.DefaultProfanities
 
