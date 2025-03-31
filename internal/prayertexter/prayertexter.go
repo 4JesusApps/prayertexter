@@ -330,14 +330,13 @@ func prayerRequest(msg messaging.TextMessage, mem object.Member, ddbClnt db.DDBC
 	}
 
 	intercessors, err := FindIntercessors(ddbClnt, mem.Phone)
-	if err != nil {
-		return utility.WrapError(err, "failed to find intercessor")
-	} else if intercessors == nil {
+	if err != nil && errors.Is(err, utility.ErrNoAvailableIntercessors) {
 		if err := queuePrayer(msg, mem, ddbClnt, smsClnt); err != nil {
 			return utility.WrapError(err, "failed to queue prayer")
 		}
-
 		return nil
+	} else if err != nil {
+		return utility.WrapError(err, "failed to find intercessor")
 	}
 
 	for _, intr := range intercessors {
@@ -378,18 +377,18 @@ func FindIntercessors(ddbClnt db.DDBConnecter, skipPhone string) ([]object.Membe
 			}
 
 			// There are not any intercessors available at all.
-			return nil, nil
+			return nil, utility.ErrNoAvailableIntercessors
 		}
 
 		for _, phn := range randPhones {
 			intr, err := processIntercessor(ddbClnt, phn)
-			if err != nil {
-				return nil, err
-			}
-			if intr == nil {
+			if err != nil && errors.Is(err, utility.ErrIntercessorUnavailable) {
 				allPhones.RemovePhone(phn)
 				continue
+			} else if err != nil {
+				return nil, err
 			}
+
 			intercessors = append(intercessors, *intr)
 			allPhones.RemovePhone(phn)
 		}
@@ -424,7 +423,7 @@ func processIntercessor(ddbClnt db.DDBConnecter, phone string) (*object.Member, 
 	if isActive {
 		// This intercessor already has 1 active prayer and is therefor unavailable. Each intercessor can only have a
 		// maximum of 1 active prayer request at any given time.
-		return nil, nil
+		return nil, utility.ErrIntercessorUnavailable
 	}
 
 	if intr.PrayerCount < intr.WeeklyPrayerLimit {
@@ -435,7 +434,7 @@ func processIntercessor(ddbClnt db.DDBConnecter, phone string) (*object.Member, 
 			intr.PrayerCount = 1
 			intr.WeeklyPrayerDate = time.Now().Format(time.RFC3339)
 		} else {
-			return nil, nil
+			return nil, utility.ErrIntercessorUnavailable
 		}
 	}
 

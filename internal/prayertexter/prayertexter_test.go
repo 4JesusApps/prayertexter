@@ -16,6 +16,7 @@ import (
 	"github.com/mshort55/prayertexter/internal/mock"
 	"github.com/mshort55/prayertexter/internal/object"
 	"github.com/mshort55/prayertexter/internal/prayertexter"
+	"github.com/mshort55/prayertexter/internal/utility"
 )
 
 type TestCase struct {
@@ -2130,7 +2131,8 @@ func TestFindIntercessors(t *testing.T) {
 			expectedPutItemCalls: 1,
 		},
 		{
-			description: "This should return nil because all intercessors are maxed out on prayer requests",
+			description: "This should return the error NoAvailableIntercessors because all intercessors are maxed " +
+				"out on prayer requests",
 
 			mockGetItemResults: []struct {
 				Output *dynamodb.GetItemOutput
@@ -2361,7 +2363,10 @@ func TestFindIntercessors(t *testing.T) {
 			} else {
 				// Handles success test cases.
 				_, err := prayertexter.FindIntercessors(ddbMock, "+18888888888")
-				if err != nil {
+				if err != nil && !errors.Is(err, utility.ErrNoAvailableIntercessors) {
+					// NoAvailableIntercessors is an expected errors that can occur with FindIntercessors. This
+					// error should be handled accordingly by the caller. Since this is expected, it is included
+					// here in the success test cases instead of the error cases.
 					t.Fatalf("unexpected error starting FindIntercessors: %v", err)
 				}
 
