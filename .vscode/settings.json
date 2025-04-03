@@ -9,6 +9,7 @@
         "intercessorphones",
         "ldflags",
         "localdev",
+        "mapstructure",
         "mshort",
         "nolint",
         "pinpointsmsvoicev",
