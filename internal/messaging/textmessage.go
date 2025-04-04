@@ -11,14 +11,16 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/pinpointsmsvoicev2"
 	"github.com/aws/aws-sdk-go-v2/service/pinpointsmsvoicev2/types"
 	"github.com/mshort55/prayertexter/internal/utility"
+	"github.com/spf13/viper"
 )
 
 const (
-	smsTimeout        = 60
-	PrayerTexterPhone = "+12762908579"
-)
+	DefaultPhone    = "+12762908579"
+	phoneConfigPath = "conf.aws.sms.phone"
 
-const (
+	DefaultTimeout    = 60
+	timeoutConfigPath = "conf.aws.sms.timeout"
+
 	// Sign up messages.
 	MsgNameRequest       = "Reply your name, or 2 to stay anonymous"
 	MsgMemberTypeRequest = "Reply 1 to send prayer request, or 2 to be added to the intercessors list (to pray for " +
@@ -82,14 +84,17 @@ func SendText(smsClnt TextSender, msg TextMessage) error {
 	// This helps with SAM local testing. We don't want to actually send a SMS when doing SAM local tests (for now).
 	// However when unit testing, we can't skip this part since this is mocked and receives inputs.
 	if !utility.IsAwsLocal() {
-		ctx, cancel := context.WithTimeout(context.Background(), smsTimeout*time.Second)
+		timeout := viper.GetInt(timeoutConfigPath)
+		ctx, cancel := context.WithTimeout(context.Background(),
+			time.Duration(timeout)*time.Second)
 		defer cancel()
 
+		phone := viper.GetString(phoneConfigPath)
 		input := &pinpointsmsvoicev2.SendTextMessageInput{
 			DestinationPhoneNumber: aws.String(msg.Phone),
 			MessageBody:            aws.String(body),
 			MessageType:            types.MessageTypeTransactional,
-			OriginationIdentity:    aws.String(PrayerTexterPhone),
+			OriginationIdentity:    aws.String(phone),
 		}
 
 		_, err := smsClnt.SendTextMessage(ctx, input)

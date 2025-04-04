@@ -113,8 +113,8 @@ func TestUpdate(t *testing.T) {
 }
 
 func testStateTracker(input dynamodb.PutItemInput, t *testing.T, expectedStateTracker object.StateTracker) {
-	if *input.TableName != object.StateTrackerTable {
-		t.Errorf("expected table %v, got %v", object.StateTrackerTable, *input.TableName)
+	if *input.TableName != object.DefaultStateTrackerTable {
+		t.Errorf("expected table %v, got %v", object.DefaultStateTrackerTable, *input.TableName)
 	}
 
 	actualStateTracker := object.StateTracker{}

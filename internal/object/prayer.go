@@ -3,6 +3,7 @@ package object
 import (
 	"github.com/mshort55/prayertexter/internal/db"
 	"github.com/mshort55/prayertexter/internal/utility"
+	"github.com/spf13/viper"
 )
 
 type Prayer struct {
@@ -13,9 +14,16 @@ type Prayer struct {
 }
 
 const (
-	PrayersAttribute   = "IntercessorPhone"
-	ActivePrayersTable = "ActivePrayers"
-	QueuedPrayersTable = "QueuedPrayers"
+	DefaultActivePrayersTable    = "ActivePrayers"
+	activePrayersTableConfigPath = "conf.aws.db.prayer.activetable"
+
+	DefaultQueuedPrayersTable    = "QueuedPrayers"
+	queuedPrayersTableConfigPath = "conf.aws.db.prayer.queuetable"
+
+	DefaultIntercessorsPerPrayer    = 2
+	IntercessorsPerPrayerConfigPath = "conf.intercessorsperprayer"
+
+	PrayersAttribute = "IntercessorPhone"
 )
 
 func (p *Prayer) Get(ddbClnt db.DDBConnecter, queue bool) error {
@@ -50,14 +58,14 @@ func (p *Prayer) Delete(ddbClnt db.DDBConnecter, queue bool) error {
 }
 
 func GetPrayerTable(queue bool) string {
-	var table string
-	if queue {
-		table = QueuedPrayersTable
-	} else {
-		table = ActivePrayersTable
-	}
+	queuedPrayersTable := viper.GetString(queuedPrayersTableConfigPath)
+	activePrayersTable := viper.GetString(activePrayersTableConfigPath)
 
-	return table
+	if queue {
+		return queuedPrayersTable
+	} else {
+		return activePrayersTable
+	}
 }
 
 func IsPrayerActive(ddbClnt db.DDBConnecter, phone string) (bool, error) {

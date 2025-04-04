@@ -3,11 +3,13 @@ package messaging_test
 import (
 	"testing"
 
+	"github.com/mshort55/prayertexter/internal/config"
 	"github.com/mshort55/prayertexter/internal/messaging"
 	"github.com/mshort55/prayertexter/internal/mock"
 )
 
 func TestSendText(t *testing.T) {
+	config.InitConfig()
 	t.Run("send sms and verify inputs are correct", func(t *testing.T) {
 		msg := messaging.TextMessage{
 			Body:  "test text message",
@@ -30,8 +32,8 @@ func TestSendText(t *testing.T) {
 			t.Errorf("expected txt %v, got %v", msg, receivedText)
 		}
 
-		if *txtMock.SendTextInputs[0].OriginationIdentity != messaging.PrayerTexterPhone {
-			t.Errorf("expected phone number %v, got %v", messaging.PrayerTexterPhone,
+		if *txtMock.SendTextInputs[0].OriginationIdentity != messaging.DefaultPhone {
+			t.Errorf("expected phone number %v, got %v", messaging.DefaultPhone,
 				*txtMock.SendTextInputs[0].OriginationIdentity)
 		}
 	})

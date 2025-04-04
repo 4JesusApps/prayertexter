@@ -8,21 +8,28 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/spf13/viper"
 )
 
 const (
-	awsSvcRetryAttempts = 5
-	awsSvcMaxBackoff    = 10
+	DefaultAwsSvcRetryAttempts    = 5
+	awsSvcRetryAttemptsConfigPath = "conf.aws.retry"
+
+	DefaultAwsSvcMaxBackoff    = 10
+	awsSvcMaxBackoffConfigPath = "conf.aws.backoff"
 )
 
 func GetAwsConfig() (aws.Config, error) {
+	maxRetry := viper.GetInt(awsSvcRetryAttemptsConfigPath)
+	maxBackoff := viper.GetInt(awsSvcMaxBackoffConfigPath)
+
 	cfg, err := config.LoadDefaultConfig(
 		context.TODO(),
 		config.WithRegion("us-west-1"),
 		config.WithRetryer(func() aws.Retryer {
 			return retry.NewStandard(func(o *retry.StandardOptions) {
-				o.MaxAttempts = awsSvcRetryAttempts
-				o.MaxBackoff = awsSvcMaxBackoff * time.Second
+				o.MaxAttempts = maxRetry
+				o.MaxBackoff = time.Duration(maxBackoff) * time.Second
 			})
 		}))
 

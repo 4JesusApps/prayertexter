@@ -4,6 +4,7 @@ import (
 	"github.com/mshort55/prayertexter/internal/db"
 	"github.com/mshort55/prayertexter/internal/messaging"
 	"github.com/mshort55/prayertexter/internal/utility"
+	"github.com/spf13/viper"
 )
 
 type Member struct {
@@ -18,8 +19,10 @@ type Member struct {
 }
 
 const (
-	MemberAttribute = "Phone"
-	MemberTable     = "Members"
+	DefaultMemberTable    = "Members"
+	memberTableConfigPath = "conf.aws.db.member.table"
+	
+	MemberAttribute       = "Phone"
 
 	MemberSetupInProgress = "IN PROGRESS"
 	MemberSetupComplete   = "COMPLETE"
@@ -31,7 +34,8 @@ const (
 )
 
 func (m *Member) Get(ddbClnt db.DDBConnecter) error {
-	mem, err := db.GetDdbObject[Member](ddbClnt, MemberAttribute, m.Phone, MemberTable)
+	table := viper.GetString(memberTableConfigPath)
+	mem, err := db.GetDdbObject[Member](ddbClnt, MemberAttribute, m.Phone, table)
 	if err != nil {
 		return err
 	}
@@ -46,11 +50,13 @@ func (m *Member) Get(ddbClnt db.DDBConnecter) error {
 }
 
 func (m *Member) Put(ddbClnt db.DDBConnecter) error {
-	return db.PutDdbObject(ddbClnt, MemberTable, m)
+	table := viper.GetString(memberTableConfigPath)
+	return db.PutDdbObject(ddbClnt, table, m)
 }
 
 func (m *Member) Delete(ddbClnt db.DDBConnecter) error {
-	return db.DelDdbItem(ddbClnt, MemberAttribute, m.Phone, MemberTable)
+	table := viper.GetString(memberTableConfigPath)
+	return db.DelDdbItem(ddbClnt, MemberAttribute, m.Phone, table)
 }
 
 func (m *Member) SendMessage(smsClnt messaging.TextSender, body string) error {

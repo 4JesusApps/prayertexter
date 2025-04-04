@@ -4,6 +4,7 @@ import (
 	"github.com/mshort55/prayertexter/internal/db"
 	"github.com/mshort55/prayertexter/internal/messaging"
 	"github.com/mshort55/prayertexter/internal/utility"
+	"github.com/spf13/viper"
 )
 
 type StateTracker struct {
@@ -21,16 +22,19 @@ type State struct {
 }
 
 const (
+	DefaultStateTrackerTable    = "General"
+	stateTrackerTableConfigPath = "conf.aws.db.statetracker.table"
+
 	StateTrackerAttribute = "Key"
 	StateTrackerKey       = "StateTracker"
-	StateTrackerTable     = "General"
 
 	StateInProgress = "IN PROGRESS"
 	StateFailed     = "FAILED"
 )
 
 func (st *StateTracker) Get(ddbClnt db.DDBConnecter) error {
-	sttrackr, err := db.GetDdbObject[StateTracker](ddbClnt, StateTrackerAttribute, StateTrackerKey, StateTrackerTable)
+	table := viper.GetString(stateTrackerTableConfigPath)
+	sttrackr, err := db.GetDdbObject[StateTracker](ddbClnt, StateTrackerAttribute, StateTrackerKey, table)
 	if err != nil {
 		return err
 	}
@@ -45,9 +49,10 @@ func (st *StateTracker) Get(ddbClnt db.DDBConnecter) error {
 }
 
 func (st *StateTracker) Put(ddbClnt db.DDBConnecter) error {
+	table := viper.GetString(stateTrackerTableConfigPath)
 	st.Key = StateTrackerKey
 
-	return db.PutDdbObject(ddbClnt, string(StateTrackerTable), st)
+	return db.PutDdbObject(ddbClnt, string(table), st)
 }
 
 func (s *State) Update(ddbClnt db.DDBConnecter, remove bool) error {

@@ -4,6 +4,7 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/mshort55/prayertexter/internal/config"
 	"github.com/mshort55/prayertexter/internal/object"
 )
 
@@ -65,12 +66,13 @@ func testRemovePhone(t *testing.T, i *object.IntercessorPhones) {
 }
 
 func testGenRandPhones(t *testing.T, i *object.IntercessorPhones) {
+	config.InitConfig()
 	t.Run("returns correct number of phones (NumIntercessorsPerPrayer) when enough phones are in slice",
 		func(t *testing.T) {
 			phones := i.GenRandPhones()
-			if len(phones) != object.NumIntercessorsPerPrayer {
+			if len(phones) != object.DefaultIntercessorsPerPrayer {
 				t.Errorf("expected number of phones to be %v, got %v",
-					object.NumIntercessorsPerPrayer, len(phones))
+					object.DefaultIntercessorsPerPrayer, len(phones))
 			}
 
 			if checkDuplicates(phones) {
@@ -80,14 +82,14 @@ func testGenRandPhones(t *testing.T, i *object.IntercessorPhones) {
 
 	t.Run("returns fewer phones there are not enough to satisfy NumIntercessorsPerPrayer", func(t *testing.T) {
 		// This reduces phone list to less than NumIntercessorsPerPrayer.
-		for len(i.Phones) > object.NumIntercessorsPerPrayer-1 {
+		for len(i.Phones) > object.DefaultIntercessorsPerPrayer-1 {
 			i.Phones = i.Phones[:len(i.Phones)-1]
 		}
 
 		phones := i.GenRandPhones()
-		if len(phones) != object.NumIntercessorsPerPrayer-1 {
+		if len(phones) != object.DefaultIntercessorsPerPrayer-1 {
 			t.Errorf("expected phone list to be len %v, got len: %v phones: %v",
-				object.NumIntercessorsPerPrayer-1, len(phones), phones)
+				object.DefaultIntercessorsPerPrayer-1, len(phones), phones)
 		}
 
 		if checkDuplicates(phones) {

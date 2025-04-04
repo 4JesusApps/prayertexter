@@ -7,6 +7,7 @@ import (
 
 	"github.com/mshort55/prayertexter/internal/db"
 	"github.com/mshort55/prayertexter/internal/utility"
+	"github.com/spf13/viper"
 )
 
 type IntercessorPhones struct {
@@ -15,15 +16,16 @@ type IntercessorPhones struct {
 }
 
 const (
+	DefaultIntercessorPhonesTable    = "General"
+	intercessorPhonesTableConfigPath = "conf.aws.db.intercessorphones.table"
+
 	IntercessorPhonesAttribute = "Key"
 	IntercessorPhonesKey       = "IntercessorPhones"
-	IntercessorPhonesTable     = "General"
-	NumIntercessorsPerPrayer   = 2
 )
 
 func (i *IntercessorPhones) Get(ddbClnt db.DDBConnecter) error {
-	intr, err := db.GetDdbObject[IntercessorPhones](ddbClnt, IntercessorPhonesAttribute,
-		IntercessorPhonesKey, IntercessorPhonesTable)
+	table := viper.GetString(intercessorPhonesTableConfigPath)
+	intr, err := db.GetDdbObject[IntercessorPhones](ddbClnt, IntercessorPhonesAttribute, IntercessorPhonesKey, table)
 
 	if err != nil {
 		return err
@@ -39,9 +41,10 @@ func (i *IntercessorPhones) Get(ddbClnt db.DDBConnecter) error {
 }
 
 func (i *IntercessorPhones) Put(ddbClnt db.DDBConnecter) error {
+	table := viper.GetString(intercessorPhonesTableConfigPath)
 	i.Key = IntercessorPhonesKey
 
-	return db.PutDdbObject(ddbClnt, IntercessorPhonesTable, i)
+	return db.PutDdbObject(ddbClnt, table, i)
 }
 
 func (i *IntercessorPhones) AddPhone(phone string) {
@@ -60,15 +63,17 @@ func (i *IntercessorPhones) GenRandPhones() []string {
 		return nil
 	}
 
+	intercessorsPerPrayer := viper.GetInt(IntercessorsPerPrayerConfigPath)
+
 	// This is needed so it can return some/one phones even if it is less than the set # of intercessors for each
 	// prayer.
-	if len(i.Phones) <= NumIntercessorsPerPrayer {
+	if len(i.Phones) <= intercessorsPerPrayer {
 		selectedPhones = append(selectedPhones, i.Phones...)
 		return selectedPhones
 	}
 
-	for len(selectedPhones) < NumIntercessorsPerPrayer {
-		phone := i.Phones[rand.IntN(len(i.Phones))] // #nosec G404 - false positive
+	for len(selectedPhones) < intercessorsPerPrayer {
+		phone := i.Phones[rand.IntN(len(i.Phones))] // # - false positive
 		if slices.Contains(selectedPhones, phone) {
 			continue
 		}

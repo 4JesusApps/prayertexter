@@ -10,10 +10,12 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/mshort55/prayertexter/internal/utility"
+	"github.com/spf13/viper"
 )
 
 const (
-	ddbTimeout = 60
+	DefaultTimeout          = 60
+	timeoutConfigPath = "conf.aws.db.timeout"
 )
 
 type DDBConnecter interface {
@@ -48,7 +50,8 @@ func GetDdbClient() (*dynamodb.Client, error) {
 }
 
 func getDdbItem(ddbClnt DDBConnecter, attr, key, table string) (*dynamodb.GetItemOutput, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), ddbTimeout*time.Second)
+	timeout := viper.GetInt(timeoutConfigPath)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
 	defer cancel()
 
 	item, err := ddbClnt.GetItem(ctx, &dynamodb.GetItemInput{
@@ -74,7 +77,8 @@ func GetDdbObject[T any](ddbClnt DDBConnecter, attr, key, table string) (*T, err
 }
 
 func putDdbItem(ddbClnt DDBConnecter, table string, data map[string]types.AttributeValue) error {
-	ctx, cancel := context.WithTimeout(context.Background(), ddbTimeout*time.Second)
+	timeout := viper.GetInt(timeoutConfigPath)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
 	defer cancel()
 
 	_, err := ddbClnt.PutItem(ctx, &dynamodb.PutItemInput{
@@ -99,7 +103,8 @@ func PutDdbObject[T any](ddbClnt DDBConnecter, table string, object *T) error {
 }
 
 func DelDdbItem(ddbClnt DDBConnecter, attr, key, table string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), ddbTimeout*time.Second)
+	timeout := viper.GetInt(timeoutConfigPath)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
 	defer cancel()
 
 	_, err := ddbClnt.DeleteItem(ctx, &dynamodb.DeleteItemInput{

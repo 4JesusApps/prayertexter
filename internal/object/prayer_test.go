@@ -7,21 +7,23 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/mshort55/prayertexter/internal/config"
 	"github.com/mshort55/prayertexter/internal/mock"
 	"github.com/mshort55/prayertexter/internal/object"
 )
 
 func TestGetPrayerTable(t *testing.T) {
+	config.InitConfig()
 	t.Run("should return queued prayers table", func(t *testing.T) {
 		table := object.GetPrayerTable(true)
-		if table != object.QueuedPrayersTable {
-			t.Errorf("expected prayer table to be %v, got %v", object.QueuedPrayersTable, table)
+		if table != object.DefaultQueuedPrayersTable {
+			t.Errorf("expected prayer table to be %v, got %v", object.DefaultQueuedPrayersTable, table)
 		}
 	})
 	t.Run("should return active prayers table", func(t *testing.T) {
 		table := object.GetPrayerTable(false)
-		if table != object.ActivePrayersTable {
-			t.Errorf("expected prayer table to be %v, got %v", object.ActivePrayersTable, table)
+		if table != object.DefaultActivePrayersTable {
+			t.Errorf("expected prayer table to be %v, got %v", object.DefaultActivePrayersTable, table)
 		}
 	})
 }

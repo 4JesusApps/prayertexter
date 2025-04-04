@@ -88,7 +88,7 @@ func testMembers(inputs []dynamodb.PutItemInput, t *testing.T, test TestCase) {
 	index := 0
 
 	for _, input := range inputs {
-		if *input.TableName != object.MemberTable {
+		if *input.TableName != object.DefaultMemberTable {
 			continue
 		}
 
@@ -163,7 +163,7 @@ func testPhones(inputs []dynamodb.PutItemInput, t *testing.T, test TestCase) {
 	index := 0
 
 	for _, input := range inputs {
-		if *input.TableName != object.IntercessorPhonesTable {
+		if *input.TableName != object.DefaultIntercessorPhonesTable {
 			continue
 		} else if val, ok := input.Item[object.IntercessorPhonesAttribute]; !ok {
 			continue
@@ -199,9 +199,9 @@ func testDeleteItem(inputs []dynamodb.DeleteItemInput, t *testing.T, test TestCa
 		}
 
 		switch *input.TableName {
-		case object.MemberTable:
+		case object.DefaultMemberTable:
 			testDeleteMember(input, &index, t, test)
-		case object.ActivePrayersTable:
+		case object.DefaultActivePrayersTable:
 			testDeletePrayer(input, &index, t, test)
 		default:
 			t.Errorf("unexpected table name, got %v", *input.TableName)
@@ -912,7 +912,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 			}{
 				{
 					key:   "+11234567890",
-					table: object.MemberTable,
+					table: object.DefaultMemberTable,
 				},
 			},
 
@@ -995,7 +995,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 			}{
 				{
 					key:   "+14444444444",
-					table: object.MemberTable,
+					table: object.DefaultMemberTable,
 				},
 			},
 
@@ -1155,11 +1155,11 @@ func TestMainFlowMemberDelete(t *testing.T) {
 			}{
 				{
 					key:   "+14444444444",
-					table: object.MemberTable,
+					table: object.DefaultMemberTable,
 				},
 				{
 					key:   "+14444444444",
-					table: object.ActivePrayersTable,
+					table: object.DefaultActivePrayersTable,
 				},
 			},
 
@@ -2466,7 +2466,7 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 			}{
 				{
 					key:   "+11111111111",
-					table: object.ActivePrayersTable,
+					table: object.DefaultActivePrayersTable,
 				},
 			},
 
@@ -2562,7 +2562,7 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 			}{
 				{
 					key:   "+11111111111",
-					table: object.ActivePrayersTable,
+					table: object.DefaultActivePrayersTable,
 				},
 			},
 

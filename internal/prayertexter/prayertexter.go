@@ -7,43 +7,45 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mshort55/prayertexter/internal/config"
 	"github.com/mshort55/prayertexter/internal/db"
 	"github.com/mshort55/prayertexter/internal/messaging"
 	"github.com/mshort55/prayertexter/internal/object"
 	"github.com/mshort55/prayertexter/internal/utility"
+	"github.com/spf13/viper"
 )
 
 const (
-	stageErrPre = "failure during stage "
+	preStage            = "PRE"
+	helpStage           = "HELP"
+	memberDeleteStage   = "MEMBER DELETE"
+	signUpStage         = "SIGN UP"
+	dropMessageStage    = "DROP MESSAGE"
+	completePrayerStage = "COMPLETE PRAYER"
+	prayerRequestStage  = "PRAYER REQUEST"
+	postStage           = "POST"
+
+	stageErrPrefix = "failure during stage "
 )
 
 func MainFlow(msg messaging.TextMessage, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender) error {
-	const (
-		preStage            = "PRE"
-		helpStage           = "HELP"
-		memberDeleteStage   = "MEMBER DELETE"
-		signUpStage         = "SIGN UP"
-		dropMessageStage    = "DROP MESSAGE"
-		completePrayerStage = "COMPLETE PRAYER"
-		prayerRequestStage  = "PRAYER REQUEST"
-		postStage           = "POST"
-	)
+	config.InitConfig()
 
 	currTime := time.Now().Format(time.RFC3339)
 	id, err := utility.GenerateID()
 	if err != nil {
-		return utility.LogAndWrapError(err, stageErrPre+preStage, "phone", msg.Phone, "msg", msg.Body)
+		return utility.LogAndWrapError(err, stageErrPrefix+preStage, "phone", msg.Phone, "msg", msg.Body)
 	}
 
 	state := object.State{}
 	state.Status, state.TimeStart, state.ID, state.Message = object.StateInProgress, currTime, id, msg
 	if err := state.Update(ddbClnt, false); err != nil {
-		return utility.LogAndWrapError(err, stageErrPre+preStage, "phone", msg.Phone, "msg", msg.Body)
+		return utility.LogAndWrapError(err, stageErrPrefix+preStage, "phone", msg.Phone, "msg", msg.Body)
 	}
 
 	mem := object.Member{Phone: msg.Phone}
 	if err := mem.Get(ddbClnt); err != nil {
-		return utility.LogAndWrapError(err, stageErrPre+preStage, "phone", msg.Phone, "msg", msg.Body)
+		return utility.LogAndWrapError(err, stageErrPrefix+preStage, "phone", msg.Phone, "msg", msg.Body)
 	}
 
 	var stageErr error
@@ -106,7 +108,7 @@ func MainFlow(msg messaging.TextMessage, ddbClnt db.DDBConnecter, smsClnt messag
 	}
 
 	if err := state.Update(ddbClnt, true); err != nil {
-		return utility.LogAndWrapError(err, stageErrPre+postStage, "phone", mem.Phone, "msg", msg.Body)
+		return utility.LogAndWrapError(err, stageErrPrefix+postStage, "phone", mem.Phone, "msg", msg.Body)
 	}
 
 	return nil
@@ -115,18 +117,18 @@ func MainFlow(msg messaging.TextMessage, ddbClnt db.DDBConnecter, smsClnt messag
 func executeStage(ddbClnt db.DDBConnecter, stageName string, state *object.State, stageFunc func() error) error {
 	state.Stage = stageName
 	if err := state.Update(ddbClnt, false); err != nil {
-		return utility.LogAndWrapError(err, stageErrPre+stageName, "phone", state.Message.Phone, "msg", state.Message.Body)
+		return utility.LogAndWrapError(err, stageErrPrefix+stageName, "phone", state.Message.Phone, "msg", state.Message.Body)
 	}
 
 	if stageErr := stageFunc(); stageErr != nil {
 		state.Error = stageErr.Error()
 		state.Status = object.StateFailed
 		if updateErr := state.Update(ddbClnt, false); updateErr != nil {
-			return utility.LogAndWrapError(updateErr, stageErrPre+stageName, "stage error", stageErr.Error(),
+			return utility.LogAndWrapError(updateErr, stageErrPrefix+stageName, "stage error", stageErr.Error(),
 				"phone", state.Message.Phone, "msg", state.Message.Body)
 		}
 
-		return utility.LogAndWrapError(stageErr, stageErrPre+stageName, "phone", state.Message.Phone,
+		return utility.LogAndWrapError(stageErr, stageErrPrefix+stageName, "phone", state.Message.Phone,
 			"msg", state.Message.Body)
 	}
 
@@ -366,7 +368,9 @@ func FindIntercessors(ddbClnt db.DDBConnecter, skipPhone string) ([]object.Membe
 	}
 
 	var intercessors []object.Member
-	for len(intercessors) < object.NumIntercessorsPerPrayer {
+	intercessorsPerPrayer := viper.GetInt(object.IntercessorsPerPrayerConfigPath)
+
+	for len(intercessors) < intercessorsPerPrayer {
 		randPhones := allPhones.GenRandPhones()
 		if randPhones == nil {
 			// There are no more intercessors to process/check from IntercessorPhones
