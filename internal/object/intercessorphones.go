@@ -5,8 +5,8 @@ import (
 	"math/rand/v2"
 	"slices"
 
-	"github.com/mshort55/prayertexter/internal/db"
-	"github.com/mshort55/prayertexter/internal/utility"
+	"github.com/4JesusApps/prayertexter/internal/db"
+	"github.com/4JesusApps/prayertexter/internal/utility"
 	"github.com/spf13/viper"
 )
 

@@ -1,4 +1,4 @@
-module github.com/mshort55/prayertexter
+module github.com/4JesusApps/prayertexter
 
 go 1.23.2
 

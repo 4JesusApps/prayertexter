@@ -9,10 +9,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
-	"github.com/mshort55/prayertexter/internal/db"
-	"github.com/mshort55/prayertexter/internal/messaging"
-	"github.com/mshort55/prayertexter/internal/mock"
-	"github.com/mshort55/prayertexter/internal/object"
+	"github.com/4JesusApps/prayertexter/internal/db"
+	"github.com/4JesusApps/prayertexter/internal/messaging"
+	"github.com/4JesusApps/prayertexter/internal/mock"
+	"github.com/4JesusApps/prayertexter/internal/object"
 )
 
 func TestDynamoDBOperations(t *testing.T) {

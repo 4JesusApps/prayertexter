@@ -53,8 +53,6 @@ Good dynamodb commands:
 - rename state tracker to fault tracker - is tracking error states the only thing necessary? is there any benefit to track completed requests?
 - unit test state tracker in real flow to verify errors are saved
 - move 10-DLC number from sandbox to prod
-- config section to remove hard coded phone, table names, retry information, and other hard coded configs
-    - allow for overwriting of defaults with environmental variables
 - dynamodb pagination for IntercessorPhones and StateTracker due to possible long length - is it needed?
 - validate phone number format - is there any benefit or is this overkill?
 - implement dynamodb conditional updates for race conditions/concurrency safety (FindIntercessors, possibly others)
@@ -67,3 +65,4 @@ Good dynamodb commands:
 - pass down lambda handler context to lower aws service functions so that context can be re-used
     - this will follow go best practices and allow for better aws debugging (xray tracing)
 - save all initial sign up text messages for 10-DLC number requirements
+- unit tests for config

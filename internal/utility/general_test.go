@@ -4,9 +4,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/mshort55/prayertexter/internal/messaging"
-	"github.com/mshort55/prayertexter/internal/object"
-	"github.com/mshort55/prayertexter/internal/utility"
+	"github.com/4JesusApps/prayertexter/internal/messaging"
+	"github.com/4JesusApps/prayertexter/internal/object"
+	"github.com/4JesusApps/prayertexter/internal/utility"
 )
 
 func TestGenerateID(t *testing.T) {
