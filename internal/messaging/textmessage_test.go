@@ -3,9 +3,9 @@ package messaging_test
 import (
 	"testing"
 
-	"github.com/mshort55/prayertexter/internal/config"
-	"github.com/mshort55/prayertexter/internal/messaging"
-	"github.com/mshort55/prayertexter/internal/mock"
+	"github.com/4JesusApps/prayertexter/internal/config"
+	"github.com/4JesusApps/prayertexter/internal/messaging"
+	"github.com/4JesusApps/prayertexter/internal/mock"
 )
 
 func TestSendText(t *testing.T) {

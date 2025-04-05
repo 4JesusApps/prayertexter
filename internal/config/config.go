@@ -3,10 +3,10 @@ package config
 import (
 	"strings"
 
-	"github.com/mshort55/prayertexter/internal/db"
-	"github.com/mshort55/prayertexter/internal/messaging"
-	"github.com/mshort55/prayertexter/internal/object"
-	"github.com/mshort55/prayertexter/internal/utility"
+	"github.com/4JesusApps/prayertexter/internal/db"
+	"github.com/4JesusApps/prayertexter/internal/messaging"
+	"github.com/4JesusApps/prayertexter/internal/object"
+	"github.com/4JesusApps/prayertexter/internal/utility"
 	"github.com/spf13/viper"
 )
 

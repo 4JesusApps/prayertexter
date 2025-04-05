@@ -10,7 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/pinpointsmsvoicev2"
 	"github.com/aws/aws-sdk-go-v2/service/pinpointsmsvoicev2/types"
-	"github.com/mshort55/prayertexter/internal/utility"
+	"github.com/4JesusApps/prayertexter/internal/utility"
 	"github.com/spf13/viper"
 )
 

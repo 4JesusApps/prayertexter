@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mshort55/prayertexter/internal/utility"
+	"github.com/4JesusApps/prayertexter/internal/utility"
 )
 
 func TestErrorOperations(t *testing.T) {

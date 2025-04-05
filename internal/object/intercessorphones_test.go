@@ -4,8 +4,8 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/mshort55/prayertexter/internal/config"
-	"github.com/mshort55/prayertexter/internal/object"
+	"github.com/4JesusApps/prayertexter/internal/config"
+	"github.com/4JesusApps/prayertexter/internal/object"
 )
 
 func TestIntercessorPhones(t *testing.T) {

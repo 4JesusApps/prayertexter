@@ -8,9 +8,9 @@ import (
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/mshort55/prayertexter/internal/db"
-	"github.com/mshort55/prayertexter/internal/messaging"
-	"github.com/mshort55/prayertexter/internal/prayertexter"
+	"github.com/4JesusApps/prayertexter/internal/db"
+	"github.com/4JesusApps/prayertexter/internal/messaging"
+	"github.com/4JesusApps/prayertexter/internal/prayertexter"
 )
 
 // MUST BE SET by go build -ldflags "-X main.version=999"
