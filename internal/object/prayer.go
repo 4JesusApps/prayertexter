@@ -15,10 +15,10 @@ type Prayer struct {
 
 const (
 	DefaultActivePrayersTable    = "ActivePrayers"
-	activePrayersTableConfigPath = "conf.aws.db.prayer.activetable"
+	ActivePrayersTableConfigPath = "conf.aws.db.prayer.activetable"
 
 	DefaultQueuedPrayersTable    = "QueuedPrayers"
-	queuedPrayersTableConfigPath = "conf.aws.db.prayer.queuetable"
+	QueuedPrayersTableConfigPath = "conf.aws.db.prayer.queuetable"
 
 	DefaultIntercessorsPerPrayer    = 2
 	IntercessorsPerPrayerConfigPath = "conf.intercessorsperprayer"
@@ -58,8 +58,8 @@ func (p *Prayer) Delete(ddbClnt db.DDBConnecter, queue bool) error {
 }
 
 func GetPrayerTable(queue bool) string {
-	queuedPrayersTable := viper.GetString(queuedPrayersTableConfigPath)
-	activePrayersTable := viper.GetString(activePrayersTableConfigPath)
+	queuedPrayersTable := viper.GetString(QueuedPrayersTableConfigPath)
+	activePrayersTable := viper.GetString(ActivePrayersTableConfigPath)
 
 	if queue {
 		return queuedPrayersTable

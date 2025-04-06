@@ -47,7 +47,7 @@ Good dynamodb commands:
     - check all active prayers have active intercessors (this would only be needed to recover from inconsistent states; possible low priority)
     - send out prayer reminder texts to intercessors after x number of hours with unprayed prayer requests
         - also consider copying prayer to another intercessor if it has not been prayed for in x number of hours
-- long tests utilizing real ddb, lambda, sns, and sim phone numbers
+- tests utilizing real ddb, lambda, sns, and sim phone numbers
     - implement simulator numbers with sns topics
     - implement secure way to save authentication
 - rename state tracker to fault tracker - is tracking error states the only thing necessary? is there any benefit to track completed requests?
@@ -65,7 +65,6 @@ Good dynamodb commands:
 - pass down lambda handler context to lower aws service functions so that context can be re-used
     - this will follow go best practices and allow for better aws debugging (xray tracing)
 - save all initial sign up text messages for 10-DLC number requirements
-- unit tests for config
 - web frontend for sign up process
     - possibly could add other features eventually
     - minimum required feature is to be able to complete entire sign up flow in a web form and submit to be added to prayer texter app

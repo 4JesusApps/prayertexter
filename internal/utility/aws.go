@@ -13,15 +13,15 @@ import (
 
 const (
 	DefaultAwsSvcRetryAttempts    = 5
-	awsSvcRetryAttemptsConfigPath = "conf.aws.retry"
+	AwsSvcRetryAttemptsConfigPath = "conf.aws.retry"
 
 	DefaultAwsSvcMaxBackoff    = 10
-	awsSvcMaxBackoffConfigPath = "conf.aws.backoff"
+	AwsSvcMaxBackoffConfigPath = "conf.aws.backoff"
 )
 
 func GetAwsConfig() (aws.Config, error) {
-	maxRetry := viper.GetInt(awsSvcRetryAttemptsConfigPath)
-	maxBackoff := viper.GetInt(awsSvcMaxBackoffConfigPath)
+	maxRetry := viper.GetInt(AwsSvcRetryAttemptsConfigPath)
+	maxBackoff := viper.GetInt(AwsSvcMaxBackoffConfigPath)
 
 	cfg, err := config.LoadDefaultConfig(
 		context.TODO(),

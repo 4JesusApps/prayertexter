@@ -23,7 +23,7 @@ type State struct {
 
 const (
 	DefaultStateTrackerTable    = "General"
-	stateTrackerTableConfigPath = "conf.aws.db.statetracker.table"
+	StateTrackerTableConfigPath = "conf.aws.db.statetracker.table"
 
 	StateTrackerAttribute = "Key"
 	StateTrackerKey       = "StateTracker"
@@ -33,7 +33,7 @@ const (
 )
 
 func (st *StateTracker) Get(ddbClnt db.DDBConnecter) error {
-	table := viper.GetString(stateTrackerTableConfigPath)
+	table := viper.GetString(StateTrackerTableConfigPath)
 	sttrackr, err := db.GetDdbObject[StateTracker](ddbClnt, StateTrackerAttribute, StateTrackerKey, table)
 	if err != nil {
 		return err
@@ -49,7 +49,7 @@ func (st *StateTracker) Get(ddbClnt db.DDBConnecter) error {
 }
 
 func (st *StateTracker) Put(ddbClnt db.DDBConnecter) error {
-	table := viper.GetString(stateTrackerTableConfigPath)
+	table := viper.GetString(StateTrackerTableConfigPath)
 	st.Key = StateTrackerKey
 
 	return db.PutDdbObject(ddbClnt, string(table), st)
