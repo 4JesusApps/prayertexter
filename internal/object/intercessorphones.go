@@ -17,14 +17,14 @@ type IntercessorPhones struct {
 
 const (
 	DefaultIntercessorPhonesTable    = "General"
-	intercessorPhonesTableConfigPath = "conf.aws.db.intercessorphones.table"
+	IntercessorPhonesTableConfigPath = "conf.aws.db.intercessorphones.table"
 
 	IntercessorPhonesAttribute = "Key"
 	IntercessorPhonesKey       = "IntercessorPhones"
 )
 
 func (i *IntercessorPhones) Get(ddbClnt db.DDBConnecter) error {
-	table := viper.GetString(intercessorPhonesTableConfigPath)
+	table := viper.GetString(IntercessorPhonesTableConfigPath)
 	intr, err := db.GetDdbObject[IntercessorPhones](ddbClnt, IntercessorPhonesAttribute, IntercessorPhonesKey, table)
 
 	if err != nil {
@@ -41,7 +41,7 @@ func (i *IntercessorPhones) Get(ddbClnt db.DDBConnecter) error {
 }
 
 func (i *IntercessorPhones) Put(ddbClnt db.DDBConnecter) error {
-	table := viper.GetString(intercessorPhonesTableConfigPath)
+	table := viper.GetString(IntercessorPhonesTableConfigPath)
 	i.Key = IntercessorPhonesKey
 
 	return db.PutDdbObject(ddbClnt, table, i)

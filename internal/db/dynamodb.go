@@ -15,7 +15,7 @@ import (
 
 const (
 	DefaultTimeout          = 60
-	timeoutConfigPath = "conf.aws.db.timeout"
+	TimeoutConfigPath = "conf.aws.db.timeout"
 )
 
 type DDBConnecter interface {
@@ -50,7 +50,7 @@ func GetDdbClient() (*dynamodb.Client, error) {
 }
 
 func getDdbItem(ddbClnt DDBConnecter, attr, key, table string) (*dynamodb.GetItemOutput, error) {
-	timeout := viper.GetInt(timeoutConfigPath)
+	timeout := viper.GetInt(TimeoutConfigPath)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
 	defer cancel()
 
@@ -77,7 +77,7 @@ func GetDdbObject[T any](ddbClnt DDBConnecter, attr, key, table string) (*T, err
 }
 
 func putDdbItem(ddbClnt DDBConnecter, table string, data map[string]types.AttributeValue) error {
-	timeout := viper.GetInt(timeoutConfigPath)
+	timeout := viper.GetInt(TimeoutConfigPath)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
 	defer cancel()
 
@@ -103,7 +103,7 @@ func PutDdbObject[T any](ddbClnt DDBConnecter, table string, object *T) error {
 }
 
 func DelDdbItem(ddbClnt DDBConnecter, attr, key, table string) error {
-	timeout := viper.GetInt(timeoutConfigPath)
+	timeout := viper.GetInt(TimeoutConfigPath)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
 	defer cancel()
 

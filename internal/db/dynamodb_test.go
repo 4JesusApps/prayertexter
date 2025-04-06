@@ -199,25 +199,21 @@ func TestDynamoDBOperations(t *testing.T) {
 		},
 	}
 
-	testedObjectTypes := []string{"Member", "IntercessorPhones", "Prayer", "StateTracker"}
-
-	t.Run("Test GetDdbObject", func(t *testing.T) {
+	t.Run("GetDdbObject", func(t *testing.T) {
 		ddbMock := &mock.DDBConnecter{}
 		ddbMock.GetItemResults = expectedDdbItems
 
-		for index, objectType := range testedObjectTypes {
-			t.Run(fmt.Sprintf("Get %s", objectType), func(t *testing.T) {
-				obj := expectedObjects[index]
-
-				switch objectType {
-				case "Member":
-					testGetObject(t, ddbMock, obj.(*object.Member))
-				case "IntercessorPhones":
-					testGetObject(t, ddbMock, obj.(*object.IntercessorPhones))
-				case "Prayer":
-					testGetObject(t, ddbMock, obj.(*object.Prayer))
-				case "StateTracker":
-					testGetObject(t, ddbMock, obj.(*object.StateTracker))
+		for _, obj := range expectedObjects {
+			t.Run(fmt.Sprintf("Get %T", obj), func(t *testing.T) {
+				switch o := obj.(type) {
+				case *object.Member:
+					testGetObject(t, ddbMock, o)
+				case *object.IntercessorPhones:
+					testGetObject(t, ddbMock, o)
+				case *object.Prayer:
+					testGetObject(t, ddbMock, o)
+				case *object.StateTracker:
+					testGetObject(t, ddbMock, o)
 				default:
 					t.Errorf("unexpected object type %T", obj)
 				}
@@ -225,22 +221,20 @@ func TestDynamoDBOperations(t *testing.T) {
 		}
 	})
 
-	t.Run("Test PutDdbObject", func(t *testing.T) {
+	t.Run("PutDdbObject", func(t *testing.T) {
 		ddbMock := &mock.DDBConnecter{}
 
-		for index, objectType := range testedObjectTypes {
-			t.Run(fmt.Sprintf("Put %s", objectType), func(t *testing.T) {
-				obj := expectedObjects[index]
-
-				switch objectType {
-				case "Member":
-					testPutObject(t, ddbMock, obj.(*object.Member), expectedDdbItems[index])
-				case "IntercessorPhones":
-					testPutObject(t, ddbMock, obj.(*object.IntercessorPhones), expectedDdbItems[index])
-				case "Prayer":
-					testPutObject(t, ddbMock, obj.(*object.Prayer), expectedDdbItems[index])
-				case "StateTracker":
-					testPutObject(t, ddbMock, obj.(*object.StateTracker), expectedDdbItems[index])
+		for index, obj := range expectedObjects {
+			t.Run(fmt.Sprintf("Put %T", obj), func(t *testing.T) {
+				switch o := obj.(type) {
+				case *object.Member:
+					testPutObject(t, ddbMock, o, expectedDdbItems[index])
+				case *object.IntercessorPhones:
+					testPutObject(t, ddbMock, o, expectedDdbItems[index])
+				case *object.Prayer:
+					testPutObject(t, ddbMock, o, expectedDdbItems[index])
+				case *object.StateTracker:
+					testPutObject(t, ddbMock, o, expectedDdbItems[index])
 				default:
 					t.Errorf("unexpected object type %T", obj)
 				}

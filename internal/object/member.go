@@ -20,7 +20,7 @@ type Member struct {
 
 const (
 	DefaultMemberTable    = "Members"
-	memberTableConfigPath = "conf.aws.db.member.table"
+	MemberTableConfigPath = "conf.aws.db.member.table"
 	
 	MemberAttribute       = "Phone"
 
@@ -34,7 +34,7 @@ const (
 )
 
 func (m *Member) Get(ddbClnt db.DDBConnecter) error {
-	table := viper.GetString(memberTableConfigPath)
+	table := viper.GetString(MemberTableConfigPath)
 	mem, err := db.GetDdbObject[Member](ddbClnt, MemberAttribute, m.Phone, table)
 	if err != nil {
 		return err
@@ -50,12 +50,12 @@ func (m *Member) Get(ddbClnt db.DDBConnecter) error {
 }
 
 func (m *Member) Put(ddbClnt db.DDBConnecter) error {
-	table := viper.GetString(memberTableConfigPath)
+	table := viper.GetString(MemberTableConfigPath)
 	return db.PutDdbObject(ddbClnt, table, m)
 }
 
 func (m *Member) Delete(ddbClnt db.DDBConnecter) error {
-	table := viper.GetString(memberTableConfigPath)
+	table := viper.GetString(MemberTableConfigPath)
 	return db.DelDdbItem(ddbClnt, MemberAttribute, m.Phone, table)
 }
 

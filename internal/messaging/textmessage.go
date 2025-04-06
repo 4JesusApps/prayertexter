@@ -16,10 +16,10 @@ import (
 
 const (
 	DefaultPhone    = "+12762908579"
-	phoneConfigPath = "conf.aws.sms.phone"
+	PhoneConfigPath = "conf.aws.sms.phone"
 
 	DefaultTimeout    = 60
-	timeoutConfigPath = "conf.aws.sms.timeout"
+	TimeoutConfigPath = "conf.aws.sms.timeout"
 
 	// Sign up messages.
 	MsgNameRequest       = "Reply your name, or 2 to stay anonymous"
@@ -84,12 +84,12 @@ func SendText(smsClnt TextSender, msg TextMessage) error {
 	// This helps with SAM local testing. We don't want to actually send a SMS when doing SAM local tests (for now).
 	// However when unit testing, we can't skip this part since this is mocked and receives inputs.
 	if !utility.IsAwsLocal() {
-		timeout := viper.GetInt(timeoutConfigPath)
+		timeout := viper.GetInt(TimeoutConfigPath)
 		ctx, cancel := context.WithTimeout(context.Background(),
 			time.Duration(timeout)*time.Second)
 		defer cancel()
 
-		phone := viper.GetString(phoneConfigPath)
+		phone := viper.GetString(PhoneConfigPath)
 		input := &pinpointsmsvoicev2.SendTextMessageInput{
 			DestinationPhoneNumber: aws.String(msg.Phone),
 			MessageBody:            aws.String(body),
