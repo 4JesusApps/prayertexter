@@ -66,3 +66,6 @@ Good dynamodb commands:
     - this will follow go best practices and allow for better aws debugging (xray tracing)
 - save all initial sign up text messages for 10-DLC number requirements
 - unit tests for config
+- web frontend for sign up process
+    - possibly could add other features eventually
+    - minimum required feature is to be able to complete entire sign up flow in a web form and submit to be added to prayer texter app
