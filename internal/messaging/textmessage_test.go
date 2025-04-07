@@ -1,6 +1,7 @@
 package messaging_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/4JesusApps/prayertexter/internal/config"
@@ -16,8 +17,9 @@ func TestSendText(t *testing.T) {
 			Phone: "+11234567890",
 		}
 		txtMock := &mock.TextSender{}
+		ctx := context.Background()
 
-		if err := messaging.SendText(txtMock, msg); err != nil {
+		if err := messaging.SendText(ctx, txtMock, msg); err != nil {
 			t.Errorf("unexpected error, %v", err)
 		}
 

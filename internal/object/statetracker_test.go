@@ -1,15 +1,16 @@
 package object_test
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
-	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/4JesusApps/prayertexter/internal/messaging"
 	"github.com/4JesusApps/prayertexter/internal/mock"
 	"github.com/4JesusApps/prayertexter/internal/object"
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
 func TestUpdate(t *testing.T) {
@@ -88,9 +89,10 @@ func TestUpdate(t *testing.T) {
 
 	ddbMock := &mock.DDBConnecter{}
 	ddbMock.GetItemResults = mockGetItemResults
+	ctx := context.Background()
 
 	t.Run("add new State to StateTracker", func(t *testing.T) {
-		if err := newState.Update(ddbMock, false); err != nil {
+		if err := newState.Update(ctx, ddbMock, false); err != nil {
 			t.Errorf("unexpected error %v", err)
 		}
 		input := ddbMock.PutItemInputs[0]
@@ -100,7 +102,7 @@ func TestUpdate(t *testing.T) {
 	t.Run("removes new State to StateTracker", func(t *testing.T) {
 		// this resets the GetItem mock so that it can re-use mockGetItemResults
 		ddbMock.GetItemCalls = 0
-		if err := newState.Update(ddbMock, true); err != nil {
+		if err := newState.Update(ctx, ddbMock, true); err != nil {
 			t.Errorf("unexpected error %v", err)
 		}
 

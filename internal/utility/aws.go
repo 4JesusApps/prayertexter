@@ -19,13 +19,11 @@ const (
 	AwsSvcMaxBackoffConfigPath = "conf.aws.backoff"
 )
 
-func GetAwsConfig() (aws.Config, error) {
+func GetAwsConfig(ctx context.Context) (aws.Config, error) {
 	maxRetry := viper.GetInt(AwsSvcRetryAttemptsConfigPath)
 	maxBackoff := viper.GetInt(AwsSvcMaxBackoffConfigPath)
 
-	cfg, err := config.LoadDefaultConfig(
-		context.TODO(),
-		config.WithRegion("us-west-1"),
+	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion("us-west-1"),
 		config.WithRetryer(func() aws.Retryer {
 			return retry.NewStandard(func(o *retry.StandardOptions) {
 				o.MaxAttempts = maxRetry

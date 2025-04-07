@@ -1,6 +1,7 @@
 package prayertexter
 
 import (
+	"context"
 	"errors"
 	"log/slog"
 	"strconv"
@@ -28,7 +29,8 @@ const (
 	stageErrPrefix = "failure during stage "
 )
 
-func MainFlow(msg messaging.TextMessage, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender) error {
+func MainFlow(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender,
+	msg messaging.TextMessage) error {
 	config.InitConfig()
 
 	currTime := time.Now().Format(time.RFC3339)
@@ -39,12 +41,12 @@ func MainFlow(msg messaging.TextMessage, ddbClnt db.DDBConnecter, smsClnt messag
 
 	state := object.State{}
 	state.Status, state.TimeStart, state.ID, state.Message = object.StateInProgress, currTime, id, msg
-	if err := state.Update(ddbClnt, false); err != nil {
+	if err := state.Update(ctx, ddbClnt, false); err != nil {
 		return utility.LogAndWrapError(err, stageErrPrefix+preStage, "phone", msg.Phone, "msg", msg.Body)
 	}
 
 	mem := object.Member{Phone: msg.Phone}
-	if err := mem.Get(ddbClnt); err != nil {
+	if err := mem.Get(ctx, ddbClnt); err != nil {
 		return utility.LogAndWrapError(err, stageErrPrefix+preStage, "phone", msg.Phone, "msg", msg.Body)
 	}
 
@@ -55,22 +57,22 @@ func MainFlow(msg messaging.TextMessage, ddbClnt db.DDBConnecter, smsClnt messag
 	// Responds with contact info and is a requirement to get sent to to anyone regardless whether they are a member or
 	// not.
 	case strings.ToLower(msg.Body) == "help":
-		stageErr = executeStage(ddbClnt, helpStage, &state, func() error {
-			return mem.SendMessage(smsClnt, messaging.MsgHelp)
+		stageErr = executeStage(ctx, ddbClnt, helpStage, &state, func() error {
+			return mem.SendMessage(ctx, smsClnt, messaging.MsgHelp)
 		})
 
 	// MEMBER DELETE STAGE
 	// Removes member from prayertexter.
 	case strings.ToLower(msg.Body) == "cancel" || strings.ToLower(msg.Body) == "stop":
-		stageErr = executeStage(ddbClnt, memberDeleteStage, &state, func() error {
-			return memberDelete(mem, ddbClnt, smsClnt)
+		stageErr = executeStage(ctx, ddbClnt, memberDeleteStage, &state, func() error {
+			return memberDelete(ctx, ddbClnt, smsClnt, mem)
 		})
 
 	// SIGN UP STAGE
 	// Initial member sign up process.
 	case strings.ToLower(msg.Body) == "pray" || mem.SetupStatus == object.MemberSetupInProgress:
-		stageErr = executeStage(ddbClnt, signUpStage, &state, func() error {
-			return signUp(msg, mem, ddbClnt, smsClnt)
+		stageErr = executeStage(ctx, ddbClnt, signUpStage, &state, func() error {
+			return signUp(ctx, ddbClnt, smsClnt, msg, mem)
 		})
 
 	// DROP MESSAGE STAGE
@@ -78,7 +80,7 @@ func MainFlow(msg messaging.TextMessage, ddbClnt db.DDBConnecter, smsClnt messag
 	// messages of non members.
 	case mem.SetupStatus == "":
 		slog.Warn("non registered user dropping message", "phone", mem.Phone, "msg", msg.Body)
-		stageErr = executeStage(ddbClnt, dropMessageStage, &state, func() error {
+		stageErr = executeStage(ctx, ddbClnt, dropMessageStage, &state, func() error {
 			return nil
 		})
 
@@ -86,44 +88,47 @@ func MainFlow(msg messaging.TextMessage, ddbClnt db.DDBConnecter, smsClnt messag
 	// Intercessors confirm that they prayed for a prayer, a confirmations is sent out to the prayer requestor, and the
 	// prayer is marked as completed.
 	case strings.ToLower(msg.Body) == "prayed":
-		stageErr = executeStage(ddbClnt, completePrayerStage, &state, func() error {
-			return completePrayer(mem, ddbClnt, smsClnt)
+		stageErr = executeStage(ctx, ddbClnt, completePrayerStage, &state, func() error {
+			return completePrayer(ctx, ddbClnt, smsClnt, mem)
 		})
 
 	// PRAYER REQUEST STAGE
 	// Assigns a prayer request to intercessors.
 	case mem.SetupStatus == object.MemberSetupComplete:
-		stageErr = executeStage(ddbClnt, prayerRequestStage, &state, func() error {
-			return prayerRequest(msg, mem, ddbClnt, smsClnt)
+		stageErr = executeStage(ctx, ddbClnt, prayerRequestStage, &state, func() error {
+			return prayerRequest(ctx, ddbClnt, smsClnt, msg, mem)
 		})
 
 	// This should never happen and if it does then it is a bug.
 	default:
 		err := errors.New("unexpected text message input/member status")
-		return utility.LogAndWrapError(err, "could not satisfy any required conditions", "phone", mem.Phone, "msg", msg.Body)
+		return utility.LogAndWrapError(err, "could not satisfy any required conditions", "phone", mem.Phone, "msg",
+			msg.Body)
 	}
 
 	if stageErr != nil {
 		return stageErr
 	}
 
-	if err := state.Update(ddbClnt, true); err != nil {
+	if err := state.Update(ctx, ddbClnt, true); err != nil {
 		return utility.LogAndWrapError(err, stageErrPrefix+postStage, "phone", mem.Phone, "msg", msg.Body)
 	}
 
 	return nil
 }
 
-func executeStage(ddbClnt db.DDBConnecter, stageName string, state *object.State, stageFunc func() error) error {
+func executeStage(ctx context.Context, ddbClnt db.DDBConnecter, stageName string, state *object.State,
+	stageFunc func() error) error {
 	state.Stage = stageName
-	if err := state.Update(ddbClnt, false); err != nil {
-		return utility.LogAndWrapError(err, stageErrPrefix+stageName, "phone", state.Message.Phone, "msg", state.Message.Body)
+	if err := state.Update(ctx, ddbClnt, false); err != nil {
+		return utility.LogAndWrapError(err, stageErrPrefix+stageName, "phone", state.Message.Phone, "msg",
+			state.Message.Body)
 	}
 
 	if stageErr := stageFunc(); stageErr != nil {
 		state.Error = stageErr.Error()
 		state.Status = object.StateFailed
-		if updateErr := state.Update(ddbClnt, false); updateErr != nil {
+		if updateErr := state.Update(ctx, ddbClnt, false); updateErr != nil {
 			return utility.LogAndWrapError(updateErr, stageErrPrefix+stageName, "stage error", stageErr.Error(),
 				"phone", state.Message.Phone, "msg", state.Message.Body)
 		}
@@ -135,34 +140,35 @@ func executeStage(ddbClnt db.DDBConnecter, stageName string, state *object.State
 	return nil
 }
 
-func signUp(msg messaging.TextMessage, mem object.Member, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender) error {
+func signUp(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender, msg messaging.TextMessage,
+	mem object.Member) error {
 	switch {
 	case strings.ToLower(msg.Body) == "pray":
-		if err := signUpStageOne(mem, ddbClnt, smsClnt); err != nil {
+		if err := signUpStageOne(ctx, ddbClnt, smsClnt, mem); err != nil {
 			return utility.WrapError(err, "failed sign up stage 1")
 		}
 	case msg.Body != "2" && mem.SetupStage == object.MemberSignUpStepOne:
-		if err := signUpStageTwoA(mem, ddbClnt, smsClnt, msg); err != nil {
+		if err := signUpStageTwoA(ctx, ddbClnt, smsClnt, mem, msg); err != nil {
 			return utility.WrapError(err, "failed sign up stage 2A")
 		}
 	case msg.Body == "2" && mem.SetupStage == object.MemberSignUpStepOne:
-		if err := signUpStageTwoB(mem, ddbClnt, smsClnt); err != nil {
+		if err := signUpStageTwoB(ctx, ddbClnt, smsClnt, mem); err != nil {
 			return utility.WrapError(err, "failed sign up stage 2B")
 		}
 	case msg.Body == "1" && mem.SetupStage == object.MemberSignUpStepTwo:
-		if err := signUpFinalPrayerMessage(mem, ddbClnt, smsClnt); err != nil {
+		if err := signUpFinalPrayerMessage(ctx, ddbClnt, smsClnt, mem); err != nil {
 			return utility.WrapError(err, "failed sign up final prayer message")
 		}
 	case msg.Body == "2" && mem.SetupStage == object.MemberSignUpStepTwo:
-		if err := signUpStageThree(mem, ddbClnt, smsClnt); err != nil {
+		if err := signUpStageThree(ctx, ddbClnt, smsClnt, mem); err != nil {
 			return utility.WrapError(err, "failed sign up stage 3")
 		}
 	case mem.SetupStage == object.MemberSignUpStepThree:
-		if err := signUpFinalIntercessorMessage(mem, ddbClnt, smsClnt, msg); err != nil {
+		if err := signUpFinalIntercessorMessage(ctx, ddbClnt, smsClnt, mem, msg); err != nil {
 			return utility.WrapError(err, "failed sign up final intercessor message")
 		}
 	default:
-		if err := signUpWrongInput(mem, msg, smsClnt); err != nil {
+		if err := signUpWrongInput(ctx, smsClnt, mem, msg); err != nil {
 			return utility.WrapError(err, "failed sign up wrong input")
 		}
 	}
@@ -170,74 +176,79 @@ func signUp(msg messaging.TextMessage, mem object.Member, ddbClnt db.DDBConnecte
 	return nil
 }
 
-func signUpStageOne(mem object.Member, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender) error {
+func signUpStageOne(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender,
+	mem object.Member) error {
 	mem.SetupStatus = object.MemberSetupInProgress
 	mem.SetupStage = object.MemberSignUpStepOne
-	if err := mem.Put(ddbClnt); err != nil {
+	if err := mem.Put(ctx, ddbClnt); err != nil {
 		return err
 	}
 
-	return mem.SendMessage(smsClnt, messaging.MsgNameRequest)
+	return mem.SendMessage(ctx, smsClnt, messaging.MsgNameRequest)
 }
 
-func signUpStageTwoA(mem object.Member, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender,
+func signUpStageTwoA(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender, mem object.Member,
 	msg messaging.TextMessage) error {
 	mem.SetupStage = object.MemberSignUpStepTwo
 	mem.Name = msg.Body
-	if err := mem.Put(ddbClnt); err != nil {
+	if err := mem.Put(ctx, ddbClnt); err != nil {
 		return err
 	}
 
-	return mem.SendMessage(smsClnt, messaging.MsgMemberTypeRequest)
+	return mem.SendMessage(ctx, smsClnt, messaging.MsgMemberTypeRequest)
 }
 
-func signUpStageTwoB(mem object.Member, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender) error {
+func signUpStageTwoB(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender,
+	mem object.Member) error {
 	mem.SetupStage = object.MemberSignUpStepTwo
 	mem.Name = "Anonymous"
-	if err := mem.Put(ddbClnt); err != nil {
+	if err := mem.Put(ctx, ddbClnt); err != nil {
 		return err
 	}
 
-	return mem.SendMessage(smsClnt, messaging.MsgMemberTypeRequest)
+	return mem.SendMessage(ctx, smsClnt, messaging.MsgMemberTypeRequest)
 }
 
-func signUpFinalPrayerMessage(mem object.Member, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender) error {
+func signUpFinalPrayerMessage(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender,
+	mem object.Member) error {
 	mem.SetupStatus = object.MemberSetupComplete
 	mem.SetupStage = object.MemberSignUpStepFinal
 	mem.Intercessor = false
-	if err := mem.Put(ddbClnt); err != nil {
+	if err := mem.Put(ctx, ddbClnt); err != nil {
 		return err
 	}
 
 	body := messaging.MsgPrayerInstructions + "\n\n" + messaging.MsgSignUpConfirmation
 
-	return mem.SendMessage(smsClnt, body)
+	return mem.SendMessage(ctx, smsClnt, body)
 }
 
-func signUpStageThree(mem object.Member, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender) error {
+func signUpStageThree(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender,
+	mem object.Member) error {
 	mem.SetupStage = object.MemberSignUpStepThree
 	mem.Intercessor = true
-	if err := mem.Put(ddbClnt); err != nil {
+	if err := mem.Put(ctx, ddbClnt); err != nil {
 		return err
 	}
 
-	return mem.SendMessage(smsClnt, messaging.MsgPrayerNumRequest)
+	return mem.SendMessage(ctx, smsClnt, messaging.MsgPrayerNumRequest)
 }
 
-func signUpFinalIntercessorMessage(mem object.Member, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender,
+func signUpFinalIntercessorMessage(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender,
+	mem object.Member,
 	msg messaging.TextMessage) error {
 	num, err := strconv.Atoi(msg.Body)
 	if err != nil {
-		return signUpWrongInput(mem, msg, smsClnt)
+		return signUpWrongInput(ctx, smsClnt, mem, msg)
 	}
 
 	phones := object.IntercessorPhones{}
-	if err := phones.Get(ddbClnt); err != nil {
+	if err := phones.Get(ctx, ddbClnt); err != nil {
 		return err
 	}
 
 	phones.AddPhone(mem.Phone)
-	if err := phones.Put(ddbClnt); err != nil {
+	if err := phones.Put(ctx, ddbClnt); err != nil {
 		return err
 	}
 
@@ -245,63 +256,64 @@ func signUpFinalIntercessorMessage(mem object.Member, ddbClnt db.DDBConnecter, s
 	mem.SetupStage = object.MemberSignUpStepFinal
 	mem.WeeklyPrayerLimit = num
 	mem.WeeklyPrayerDate = time.Now().Format(time.RFC3339)
-	if err := mem.Put(ddbClnt); err != nil {
+	if err := mem.Put(ctx, ddbClnt); err != nil {
 		return err
 	}
 
 	body := messaging.MsgPrayerInstructions + "\n\n" + messaging.MsgIntercessorInstructions + "\n\n" +
 		messaging.MsgSignUpConfirmation
 
-	return mem.SendMessage(smsClnt, body)
+	return mem.SendMessage(ctx, smsClnt, body)
 }
 
-func signUpWrongInput(mem object.Member, msg messaging.TextMessage, smsClnt messaging.TextSender) error {
+func signUpWrongInput(ctx context.Context, smsClnt messaging.TextSender, mem object.Member,
+	msg messaging.TextMessage) error {
 	slog.Warn("wrong input received during sign up", "member", mem.Phone, "msg", msg)
 
-	return mem.SendMessage(smsClnt, messaging.MsgWrongInput)
+	return mem.SendMessage(ctx, smsClnt, messaging.MsgWrongInput)
 }
 
-func memberDelete(mem object.Member, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender) error {
-	if err := mem.Delete(ddbClnt); err != nil {
+func memberDelete(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender, mem object.Member) error {
+	if err := mem.Delete(ctx, ddbClnt); err != nil {
 		return err
 	}
 	if mem.Intercessor {
-		if err := removeIntercessor(mem, ddbClnt); err != nil {
+		if err := removeIntercessor(ctx, ddbClnt, mem); err != nil {
 			return err
 		}
 	}
 
-	return mem.SendMessage(smsClnt, messaging.MsgRemoveUser)
+	return mem.SendMessage(ctx, smsClnt, messaging.MsgRemoveUser)
 }
 
-func removeIntercessor(mem object.Member, ddbClnt db.DDBConnecter) error {
+func removeIntercessor(ctx context.Context, ddbClnt db.DDBConnecter, mem object.Member) error {
 	phones := object.IntercessorPhones{}
-	if err := phones.Get(ddbClnt); err != nil {
+	if err := phones.Get(ctx, ddbClnt); err != nil {
 		return err
 	}
 	phones.RemovePhone(mem.Phone)
-	if err := phones.Put(ddbClnt); err != nil {
+	if err := phones.Put(ctx, ddbClnt); err != nil {
 		return err
 	}
 
 	// Moves an active prayer from the intercessor being removed to the Prayer queue. This is done to ensure that the
 	// prayer eventually gets assigned to another intercessor.
-	return moveActivePrayer(mem, ddbClnt)
+	return moveActivePrayer(ctx, ddbClnt, mem)
 }
 
-func moveActivePrayer(mem object.Member, ddbClnt db.DDBConnecter) error {
-	isActive, err := object.IsPrayerActive(ddbClnt, mem.Phone)
+func moveActivePrayer(ctx context.Context, ddbClnt db.DDBConnecter, mem object.Member) error {
+	isActive, err := object.IsPrayerActive(ctx, ddbClnt, mem.Phone)
 	if err != nil {
 		return err
 	}
 
 	if isActive {
 		pryr := object.Prayer{IntercessorPhone: mem.Phone}
-		if err := pryr.Get(ddbClnt, false); err != nil {
+		if err := pryr.Get(ctx, ddbClnt, false); err != nil {
 			return err
 		}
 
-		if err := pryr.Delete(ddbClnt, false); err != nil {
+		if err := pryr.Delete(ctx, ddbClnt, false); err != nil {
 			return err
 		}
 
@@ -314,26 +326,26 @@ func moveActivePrayer(mem object.Member, ddbClnt db.DDBConnecter) error {
 		}
 		pryr.IntercessorPhone, pryr.Intercessor = id, object.Member{}
 
-		return pryr.Put(ddbClnt, true)
+		return pryr.Put(ctx, ddbClnt, true)
 	}
 
 	return nil
 }
 
-func prayerRequest(msg messaging.TextMessage, mem object.Member, ddbClnt db.DDBConnecter,
-	smsClnt messaging.TextSender) error {
+func prayerRequest(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender,
+	msg messaging.TextMessage, mem object.Member) error {
 	profanity := msg.CheckProfanity()
 	if profanity != "" {
 		msg := strings.Replace(messaging.MsgProfanityFound, "PLACEHOLDER", profanity, 1)
-		if err := mem.SendMessage(smsClnt, msg); err != nil {
+		if err := mem.SendMessage(ctx, smsClnt, msg); err != nil {
 			return err
 		}
 		return nil
 	}
 
-	intercessors, err := FindIntercessors(ddbClnt, mem.Phone)
+	intercessors, err := FindIntercessors(ctx, ddbClnt, mem.Phone)
 	if err != nil && errors.Is(err, utility.ErrNoAvailableIntercessors) {
-		if err := queuePrayer(msg, mem, ddbClnt, smsClnt); err != nil {
+		if err := queuePrayer(ctx, ddbClnt, smsClnt, msg, mem); err != nil {
 			return utility.WrapError(err, "failed to queue prayer")
 		}
 		return nil
@@ -348,21 +360,21 @@ func prayerRequest(msg messaging.TextMessage, mem object.Member, ddbClnt db.DDBC
 			Request:          msg.Body,
 			Requestor:        mem,
 		}
-		if err := pryr.Put(ddbClnt, false); err != nil {
+		if err := pryr.Put(ctx, ddbClnt, false); err != nil {
 			return err
 		}
 
 		msg := strings.Replace(messaging.MsgPrayerIntro, "PLACEHOLDER", mem.Name, 1)
-		if err := intr.SendMessage(smsClnt, msg+pryr.Request); err != nil {
+		if err := intr.SendMessage(ctx, smsClnt, msg+pryr.Request); err != nil {
 			return err
 		}
 	}
 
-	return mem.SendMessage(smsClnt, messaging.MsgPrayerSentOut)
+	return mem.SendMessage(ctx, smsClnt, messaging.MsgPrayerSentOut)
 }
 
-func FindIntercessors(ddbClnt db.DDBConnecter, skipPhone string) ([]object.Member, error) {
-	allPhones, err := getAndPreparePhones(ddbClnt, skipPhone)
+func FindIntercessors(ctx context.Context, ddbClnt db.DDBConnecter, skipPhone string) ([]object.Member, error) {
+	allPhones, err := getAndPreparePhones(ctx, ddbClnt, skipPhone)
 	if err != nil {
 		return nil, err
 	}
@@ -385,7 +397,7 @@ func FindIntercessors(ddbClnt db.DDBConnecter, skipPhone string) ([]object.Membe
 		}
 
 		for _, phn := range randPhones {
-			intr, err := processIntercessor(ddbClnt, phn)
+			intr, err := processIntercessor(ctx, ddbClnt, phn)
 			if err != nil && errors.Is(err, utility.ErrIntercessorUnavailable) {
 				allPhones.RemovePhone(phn)
 				continue
@@ -401,9 +413,10 @@ func FindIntercessors(ddbClnt db.DDBConnecter, skipPhone string) ([]object.Membe
 	return intercessors, nil
 }
 
-func getAndPreparePhones(ddbClnt db.DDBConnecter, skipPhone string) (object.IntercessorPhones, error) {
+func getAndPreparePhones(ctx context.Context, ddbClnt db.DDBConnecter, skipPhone string) (object.IntercessorPhones,
+	error) {
 	allPhones := object.IntercessorPhones{}
-	if err := allPhones.Get(ddbClnt); err != nil {
+	if err := allPhones.Get(ctx, ddbClnt); err != nil {
 		return allPhones, err
 	}
 
@@ -414,13 +427,13 @@ func getAndPreparePhones(ddbClnt db.DDBConnecter, skipPhone string) (object.Inte
 	return allPhones, nil
 }
 
-func processIntercessor(ddbClnt db.DDBConnecter, phone string) (*object.Member, error) {
+func processIntercessor(ctx context.Context, ddbClnt db.DDBConnecter, phone string) (*object.Member, error) {
 	intr := object.Member{Phone: phone}
-	if err := intr.Get(ddbClnt); err != nil {
+	if err := intr.Get(ctx, ddbClnt); err != nil {
 		return nil, err
 	}
 
-	isActive, err := object.IsPrayerActive(ddbClnt, intr.Phone)
+	isActive, err := object.IsPrayerActive(ctx, ddbClnt, intr.Phone)
 	if err != nil {
 		return nil, err
 	}
@@ -442,7 +455,7 @@ func processIntercessor(ddbClnt db.DDBConnecter, phone string) (*object.Member, 
 		}
 	}
 
-	if err := intr.Put(ddbClnt); err != nil {
+	if err := intr.Put(ctx, ddbClnt); err != nil {
 		return nil, err
 	}
 	return &intr, nil
@@ -461,8 +474,8 @@ func canResetPrayerCount(intr object.Member) bool {
 	return diffDays > float64(weekDays)
 }
 
-func queuePrayer(msg messaging.TextMessage, mem object.Member, ddbClnt db.DDBConnecter,
-	smsClnt messaging.TextSender) error {
+func queuePrayer(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender, msg messaging.TextMessage,
+	mem object.Member) error {
 	pryr := object.Prayer{}
 	// A random ID is generated since queued Prayers do not have an intercessor assigned to them. We use the ID in place
 	// if the intercessors phone number until there is an available intercessor, at which time the ID will get changed
@@ -474,46 +487,47 @@ func queuePrayer(msg messaging.TextMessage, mem object.Member, ddbClnt db.DDBCon
 
 	pryr.IntercessorPhone, pryr.Request, pryr.Requestor = id, msg.Body, mem
 
-	if err := pryr.Put(ddbClnt, true); err != nil {
+	if err := pryr.Put(ctx, ddbClnt, true); err != nil {
 		return err
 	}
 
-	return mem.SendMessage(smsClnt, messaging.MsgPrayerQueued)
+	return mem.SendMessage(ctx, smsClnt, messaging.MsgPrayerQueued)
 }
 
-func completePrayer(mem object.Member, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender) error {
+func completePrayer(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender,
+	mem object.Member) error {
 	pryr := object.Prayer{IntercessorPhone: mem.Phone}
-	if err := pryr.Get(ddbClnt, false); err != nil {
+	if err := pryr.Get(ctx, ddbClnt, false); err != nil {
 		return err
 	}
 
 	if pryr.Request == "" {
 		// Get Dynamodb calls return empty data if the key does not exist in the table. Therefor if prayer request is
 		// empty here, it means that it did not exist in the database
-		if err := mem.SendMessage(smsClnt, messaging.MsgNoActivePrayer); err != nil {
+		if err := mem.SendMessage(ctx, smsClnt, messaging.MsgNoActivePrayer); err != nil {
 			return err
 		}
 		return nil
 	}
 
-	if err := mem.SendMessage(smsClnt, messaging.MsgPrayerThankYou); err != nil {
+	if err := mem.SendMessage(ctx, smsClnt, messaging.MsgPrayerThankYou); err != nil {
 		return err
 	}
 
 	msg := strings.Replace(messaging.MsgPrayerConfirmation, "PLACEHOLDER", mem.Name, 1)
 
-	isActive, err := object.IsMemberActive(ddbClnt, pryr.Requestor.Phone)
+	isActive, err := object.IsMemberActive(ctx, ddbClnt, pryr.Requestor.Phone)
 	if err != nil {
 		return err
 	}
 
 	if isActive {
-		if err := pryr.Requestor.SendMessage(smsClnt, msg); err != nil {
+		if err := pryr.Requestor.SendMessage(ctx, smsClnt, msg); err != nil {
 			return err
 		}
 	} else {
 		slog.Warn("Skip sending message, member is not active", "recipient", pryr.Requestor.Phone, "body", msg)
 	}
 
-	return pryr.Delete(ddbClnt, false)
+	return pryr.Delete(ctx, ddbClnt, false)
 }

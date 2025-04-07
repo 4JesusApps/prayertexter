@@ -6,11 +6,11 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/4JesusApps/prayertexter/internal/utility"
 	goaway "github.com/TwiN/go-away"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/pinpointsmsvoicev2"
 	"github.com/aws/aws-sdk-go-v2/service/pinpointsmsvoicev2/types"
-	"github.com/4JesusApps/prayertexter/internal/utility"
 	"github.com/spf13/viper"
 )
 
@@ -78,15 +78,14 @@ func GetSmsClient() (*pinpointsmsvoicev2.Client, error) {
 	return smsClnt, nil
 }
 
-func SendText(smsClnt TextSender, msg TextMessage) error {
+func SendText(ctx context.Context, smsClnt TextSender, msg TextMessage) error {
 	body := MsgPre + msg.Body + "\n\n" + MsgPost
 
 	// This helps with SAM local testing. We don't want to actually send a SMS when doing SAM local tests (for now).
 	// However when unit testing, we can't skip this part since this is mocked and receives inputs.
 	if !utility.IsAwsLocal() {
 		timeout := viper.GetInt(TimeoutConfigPath)
-		ctx, cancel := context.WithTimeout(context.Background(),
-			time.Duration(timeout)*time.Second)
+		ctx, cancel := context.WithTimeout(ctx, time.Duration(timeout)*time.Second)
 		defer cancel()
 
 		phone := viper.GetString(PhoneConfigPath)

@@ -1,16 +1,17 @@
 package object_test
 
 import (
+	"context"
 	"errors"
 	"reflect"
 	"strconv"
 	"testing"
 
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/4JesusApps/prayertexter/internal/messaging"
 	"github.com/4JesusApps/prayertexter/internal/mock"
 	"github.com/4JesusApps/prayertexter/internal/object"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
 func TestSendMessage(t *testing.T) {
@@ -30,7 +31,8 @@ func TestSendMessage(t *testing.T) {
 		}
 
 		txtMock := &mock.TextSender{}
-		if err := member.SendMessage(txtMock, txtBody); err != nil {
+		ctx := context.Background()
+		if err := member.SendMessage(ctx, txtMock, txtBody); err != nil {
 			t.Errorf("unexpected error %v", err)
 		}
 
@@ -75,9 +77,10 @@ func TestIsMemberActive(t *testing.T) {
 
 	ddbMock := &mock.DDBConnecter{}
 	ddbMock.GetItemResults = mockGetItemResults
+	ctx := context.Background()
 
 	t.Run("Member is not active", func(t *testing.T) {
-		isActive, err := object.IsMemberActive(ddbMock, "+11234567890")
+		isActive, err := object.IsMemberActive(ctx, ddbMock, "+11234567890")
 		if err != nil {
 			t.Errorf("unexpected error %v", err)
 		} else if isActive {
@@ -86,7 +89,7 @@ func TestIsMemberActive(t *testing.T) {
 	})
 
 	t.Run("Member is active", func(t *testing.T) {
-		isActive, err := object.IsMemberActive(ddbMock, "+11234567890")
+		isActive, err := object.IsMemberActive(ctx, ddbMock, "+11234567890")
 		if err != nil {
 			t.Errorf("unexpected error %v", err)
 		} else if !isActive {
@@ -94,7 +97,7 @@ func TestIsMemberActive(t *testing.T) {
 		}
 	})
 	t.Run("returns error on get Member dynamodb call", func(t *testing.T) {
-		_, err := object.IsMemberActive(ddbMock, "+11234567890")
+		_, err := object.IsMemberActive(ctx, ddbMock, "+11234567890")
 		if err == nil {
 			t.Errorf("expected error, got %v", err)
 		}

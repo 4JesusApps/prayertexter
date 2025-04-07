@@ -1,7 +1,6 @@
 package config_test
 
 import (
-	"os"
 	"testing"
 
 	"github.com/4JesusApps/prayertexter/internal/config"
@@ -55,11 +54,7 @@ func TestEnvironmentalVariableOverride(t *testing.T) {
 		defaultPhone := viper.GetString(messaging.PhoneConfigPath)
 		newPhone := "+17777777777"
 
-		err := os.Setenv("PRAY_CONF_AWS_SMS_PHONE", newPhone)
-		if err != nil {
-			t.Errorf("unexpected error when setting environmental variable, %v", err)
-			return
-		}
+		t.Setenv("PRAY_CONF_AWS_SMS_PHONE", newPhone)
 
 		config.InitConfig()
 		phone := viper.GetString(messaging.PhoneConfigPath)

@@ -1,6 +1,8 @@
 package object
 
 import (
+	"context"
+
 	"github.com/4JesusApps/prayertexter/internal/db"
 	"github.com/4JesusApps/prayertexter/internal/messaging"
 	"github.com/4JesusApps/prayertexter/internal/utility"
@@ -21,8 +23,8 @@ type Member struct {
 const (
 	DefaultMemberTable    = "Members"
 	MemberTableConfigPath = "conf.aws.db.member.table"
-	
-	MemberAttribute       = "Phone"
+
+	MemberAttribute = "Phone"
 
 	MemberSetupInProgress = "IN PROGRESS"
 	MemberSetupComplete   = "COMPLETE"
@@ -33,9 +35,9 @@ const (
 	MemberSignUpStepFinal = 99
 )
 
-func (m *Member) Get(ddbClnt db.DDBConnecter) error {
+func (m *Member) Get(ctx context.Context, ddbClnt db.DDBConnecter) error {
 	table := viper.GetString(MemberTableConfigPath)
-	mem, err := db.GetDdbObject[Member](ddbClnt, MemberAttribute, m.Phone, table)
+	mem, err := db.GetDdbObject[Member](ctx, ddbClnt, MemberAttribute, m.Phone, table)
 	if err != nil {
 		return err
 	}
@@ -49,28 +51,28 @@ func (m *Member) Get(ddbClnt db.DDBConnecter) error {
 	return nil
 }
 
-func (m *Member) Put(ddbClnt db.DDBConnecter) error {
+func (m *Member) Put(ctx context.Context, ddbClnt db.DDBConnecter) error {
 	table := viper.GetString(MemberTableConfigPath)
-	return db.PutDdbObject(ddbClnt, table, m)
+	return db.PutDdbObject(ctx, ddbClnt, table, m)
 }
 
-func (m *Member) Delete(ddbClnt db.DDBConnecter) error {
+func (m *Member) Delete(ctx context.Context, ddbClnt db.DDBConnecter) error {
 	table := viper.GetString(MemberTableConfigPath)
-	return db.DelDdbItem(ddbClnt, MemberAttribute, m.Phone, table)
+	return db.DelDdbItem(ctx, ddbClnt, MemberAttribute, m.Phone, table)
 }
 
-func (m *Member) SendMessage(smsClnt messaging.TextSender, body string) error {
+func (m *Member) SendMessage(ctx context.Context, smsClnt messaging.TextSender, body string) error {
 	message := messaging.TextMessage{
 		Body:  body,
 		Phone: m.Phone,
 	}
 
-	return messaging.SendText(smsClnt, message)
+	return messaging.SendText(ctx, smsClnt, message)
 }
 
-func IsMemberActive(ddbClnt db.DDBConnecter, phone string) (bool, error) {
+func IsMemberActive(ctx context.Context, ddbClnt db.DDBConnecter, phone string) (bool, error) {
 	mem := Member{Phone: phone}
-	if err := mem.Get(ddbClnt); err != nil {
+	if err := mem.Get(ctx, ddbClnt); err != nil {
 		return false, utility.WrapError(err, "failed to check if Member is active")
 	}
 
