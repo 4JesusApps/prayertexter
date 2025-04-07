@@ -1,6 +1,7 @@
 package prayertexter_test
 
 import (
+	"context"
 	"errors"
 	"reflect"
 	"strconv"
@@ -8,15 +9,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/4JesusApps/prayertexter/internal/messaging"
 	"github.com/4JesusApps/prayertexter/internal/mock"
 	"github.com/4JesusApps/prayertexter/internal/object"
 	"github.com/4JesusApps/prayertexter/internal/prayertexter"
 	"github.com/4JesusApps/prayertexter/internal/utility"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
 type TestCase struct {
@@ -734,19 +735,20 @@ func TestMainFlowSignUp(t *testing.T) {
 	for _, test := range testCases {
 		txtMock := &mock.TextSender{}
 		ddbMock := &mock.DDBConnecter{}
+		ctx := context.Background()
 
 		t.Run(test.description, func(t *testing.T) {
 			setMocks(ddbMock, txtMock, test)
 
 			if test.expectedError {
 				// Handles failures for error mocks.
-				if err := prayertexter.MainFlow(test.initialMessage, ddbMock, txtMock); err == nil {
+				if err := prayertexter.MainFlow(ctx, ddbMock, txtMock, test.initialMessage); err == nil {
 					t.Fatalf("expected error, got nil")
 				}
 				testNumMethodCalls(ddbMock, txtMock, t, test)
 			} else {
 				// Handles success test cases.
-				if err := prayertexter.MainFlow(test.initialMessage, ddbMock, txtMock); err != nil {
+				if err := prayertexter.MainFlow(ctx, ddbMock, txtMock, test.initialMessage); err != nil {
 					t.Fatalf("unexpected error starting MainFlow: %v", err)
 				}
 
@@ -860,11 +862,12 @@ func TestMainFlowSignUpWrongInputs(t *testing.T) {
 	for _, test := range testCases {
 		txtMock := &mock.TextSender{}
 		ddbMock := &mock.DDBConnecter{}
+		ctx := context.Background()
 
 		t.Run(test.description, func(t *testing.T) {
 			setMocks(ddbMock, txtMock, test)
 
-			if err := prayertexter.MainFlow(test.initialMessage, ddbMock, txtMock); err != nil {
+			if err := prayertexter.MainFlow(ctx, ddbMock, txtMock, test.initialMessage); err != nil {
 				t.Fatalf("unexpected error starting MainFlow: %v", err)
 			}
 
@@ -1224,19 +1227,20 @@ func TestMainFlowMemberDelete(t *testing.T) {
 	for _, test := range testCases {
 		txtMock := &mock.TextSender{}
 		ddbMock := &mock.DDBConnecter{}
+		ctx := context.Background()
 
 		t.Run(test.description, func(t *testing.T) {
 			setMocks(ddbMock, txtMock, test)
 
 			if test.expectedError {
 				// Handles failures for error mocks.
-				if err := prayertexter.MainFlow(test.initialMessage, ddbMock, txtMock); err == nil {
+				if err := prayertexter.MainFlow(ctx, ddbMock, txtMock, test.initialMessage); err == nil {
 					t.Fatalf("expected error, got nil")
 				}
 				testNumMethodCalls(ddbMock, txtMock, t, test)
 			} else {
 				// Handles success test cases.
-				if err := prayertexter.MainFlow(test.initialMessage, ddbMock, txtMock); err != nil {
+				if err := prayertexter.MainFlow(ctx, ddbMock, txtMock, test.initialMessage); err != nil {
 					t.Fatalf("unexpected error starting MainFlow: %v", err)
 				}
 
@@ -1339,11 +1343,12 @@ func TestMainFlowHelp(t *testing.T) {
 	for _, test := range testCases {
 		txtMock := &mock.TextSender{}
 		ddbMock := &mock.DDBConnecter{}
+		ctx := context.Background()
 
 		t.Run(test.description, func(t *testing.T) {
 			setMocks(ddbMock, txtMock, test)
 
-			if err := prayertexter.MainFlow(test.initialMessage, ddbMock, txtMock); err != nil {
+			if err := prayertexter.MainFlow(ctx, ddbMock, txtMock, test.initialMessage); err != nil {
 				t.Fatalf("unexpected error starting MainFlow: %v", err)
 			}
 
@@ -1792,19 +1797,20 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 	for _, test := range testCases {
 		txtMock := &mock.TextSender{}
 		ddbMock := &mock.DDBConnecter{}
+		ctx := context.Background()
 
 		t.Run(test.description, func(t *testing.T) {
 			setMocks(ddbMock, txtMock, test)
 
 			if test.expectedError {
 				// handles failures for error mocks
-				if err := prayertexter.MainFlow(test.initialMessage, ddbMock, txtMock); err == nil {
+				if err := prayertexter.MainFlow(ctx, ddbMock, txtMock, test.initialMessage); err == nil {
 					t.Fatalf("expected error, got nil")
 				}
 				testNumMethodCalls(ddbMock, txtMock, t, test)
 			} else {
 				// handles success test cases
-				if err := prayertexter.MainFlow(test.initialMessage, ddbMock, txtMock); err != nil {
+				if err := prayertexter.MainFlow(ctx, ddbMock, txtMock, test.initialMessage); err != nil {
 					t.Fatalf("unexpected error starting MainFlow: %v", err)
 				}
 
@@ -2350,19 +2356,20 @@ func TestFindIntercessors(t *testing.T) {
 	for _, test := range testCases {
 		txtMock := &mock.TextSender{}
 		ddbMock := &mock.DDBConnecter{}
+		ctx := context.Background()
 
 		t.Run(test.description, func(t *testing.T) {
 			setMocks(ddbMock, txtMock, test)
 
 			if test.expectedError {
 				// Handles failures for error mocks.
-				if _, err := prayertexter.FindIntercessors(ddbMock, "+18888888888"); err == nil {
+				if _, err := prayertexter.FindIntercessors(ctx, ddbMock, "+18888888888"); err == nil {
 					t.Fatalf("expected error, got nil")
 				}
 				testNumMethodCalls(ddbMock, txtMock, t, test)
 			} else {
 				// Handles success test cases.
-				_, err := prayertexter.FindIntercessors(ddbMock, "+18888888888")
+				_, err := prayertexter.FindIntercessors(ctx, ddbMock, "+18888888888")
 				if err != nil && !errors.Is(err, utility.ErrNoAvailableIntercessors) {
 					// NoAvailableIntercessors is an expected errors that can occur with FindIntercessors. This
 					// error should be handled accordingly by the caller. Since this is expected, it is included
@@ -2723,19 +2730,20 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 	for _, test := range testCases {
 		txtMock := &mock.TextSender{}
 		ddbMock := &mock.DDBConnecter{}
+		ctx := context.Background()
 
 		t.Run(test.description, func(t *testing.T) {
 			setMocks(ddbMock, txtMock, test)
 
 			if test.expectedError {
 				// Handles failures for error mocks
-				if err := prayertexter.MainFlow(test.initialMessage, ddbMock, txtMock); err == nil {
+				if err := prayertexter.MainFlow(ctx, ddbMock, txtMock, test.initialMessage); err == nil {
 					t.Fatalf("expected error, got nil")
 				}
 				testNumMethodCalls(ddbMock, txtMock, t, test)
 			} else {
 				// Handles success test cases
-				if err := prayertexter.MainFlow(test.initialMessage, ddbMock, txtMock); err != nil {
+				if err := prayertexter.MainFlow(ctx, ddbMock, txtMock, test.initialMessage); err != nil {
 					t.Fatalf("unexpected error starting MainFlow: %v", err)
 				}
 

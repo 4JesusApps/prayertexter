@@ -1,6 +1,7 @@
 package object
 
 import (
+	"context"
 	"log/slog"
 	"math/rand/v2"
 	"slices"
@@ -23,9 +24,10 @@ const (
 	IntercessorPhonesKey       = "IntercessorPhones"
 )
 
-func (i *IntercessorPhones) Get(ddbClnt db.DDBConnecter) error {
+func (i *IntercessorPhones) Get(ctx context.Context, ddbClnt db.DDBConnecter) error {
 	table := viper.GetString(IntercessorPhonesTableConfigPath)
-	intr, err := db.GetDdbObject[IntercessorPhones](ddbClnt, IntercessorPhonesAttribute, IntercessorPhonesKey, table)
+	intr, err := db.GetDdbObject[IntercessorPhones](ctx, ddbClnt, IntercessorPhonesAttribute, IntercessorPhonesKey,
+		table)
 
 	if err != nil {
 		return err
@@ -40,11 +42,11 @@ func (i *IntercessorPhones) Get(ddbClnt db.DDBConnecter) error {
 	return nil
 }
 
-func (i *IntercessorPhones) Put(ddbClnt db.DDBConnecter) error {
+func (i *IntercessorPhones) Put(ctx context.Context, ddbClnt db.DDBConnecter) error {
 	table := viper.GetString(IntercessorPhonesTableConfigPath)
 	i.Key = IntercessorPhonesKey
 
-	return db.PutDdbObject(ddbClnt, table, i)
+	return db.PutDdbObject(ctx, ddbClnt, table, i)
 }
 
 func (i *IntercessorPhones) AddPhone(phone string) {

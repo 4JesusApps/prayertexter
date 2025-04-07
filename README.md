@@ -62,8 +62,6 @@ Good dynamodb commands:
 - implement text/template for message content
 - add tests for aws retry mechanism - is it worth it?
 - add logging for aws retry operations - is it worth it?
-- pass down lambda handler context to lower aws service functions so that context can be re-used
-    - this will follow go best practices and allow for better aws debugging (xray tracing)
 - save all initial sign up text messages for 10-DLC number requirements
 - web frontend for sign up process
     - possibly could add other features eventually

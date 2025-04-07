@@ -1,6 +1,8 @@
 package object
 
 import (
+	"context"
+
 	"github.com/4JesusApps/prayertexter/internal/db"
 	"github.com/4JesusApps/prayertexter/internal/messaging"
 	"github.com/4JesusApps/prayertexter/internal/utility"
@@ -32,9 +34,9 @@ const (
 	StateFailed     = "FAILED"
 )
 
-func (st *StateTracker) Get(ddbClnt db.DDBConnecter) error {
+func (st *StateTracker) Get(ctx context.Context, ddbClnt db.DDBConnecter) error {
 	table := viper.GetString(StateTrackerTableConfigPath)
-	sttrackr, err := db.GetDdbObject[StateTracker](ddbClnt, StateTrackerAttribute, StateTrackerKey, table)
+	sttrackr, err := db.GetDdbObject[StateTracker](ctx, ddbClnt, StateTrackerAttribute, StateTrackerKey, table)
 	if err != nil {
 		return err
 	}
@@ -48,16 +50,16 @@ func (st *StateTracker) Get(ddbClnt db.DDBConnecter) error {
 	return nil
 }
 
-func (st *StateTracker) Put(ddbClnt db.DDBConnecter) error {
+func (st *StateTracker) Put(ctx context.Context, ddbClnt db.DDBConnecter) error {
 	table := viper.GetString(StateTrackerTableConfigPath)
 	st.Key = StateTrackerKey
 
-	return db.PutDdbObject(ddbClnt, string(table), st)
+	return db.PutDdbObject(ctx, ddbClnt, table, st)
 }
 
-func (s *State) Update(ddbClnt db.DDBConnecter, remove bool) error {
+func (s *State) Update(ctx context.Context, ddbClnt db.DDBConnecter, remove bool) error {
 	st := StateTracker{}
-	if err := st.Get(ddbClnt); err != nil {
+	if err := st.Get(ctx, ddbClnt); err != nil {
 		return utility.WrapError(err, "failed state update")
 	}
 
@@ -72,7 +74,7 @@ func (s *State) Update(ddbClnt db.DDBConnecter, remove bool) error {
 		st.States = append(st.States, *s)
 	}
 
-	err := st.Put(ddbClnt)
+	err := st.Put(ctx, ddbClnt)
 
 	return utility.WrapError(err, "failed state update")
 }

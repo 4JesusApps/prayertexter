@@ -52,5 +52,4 @@ func InitConfig() {
 	viper.SetEnvPrefix("pray")
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()
-
 }

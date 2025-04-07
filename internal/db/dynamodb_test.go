@@ -1,18 +1,19 @@
 package db_test
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"strconv"
 	"testing"
 
-	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/4JesusApps/prayertexter/internal/db"
 	"github.com/4JesusApps/prayertexter/internal/messaging"
 	"github.com/4JesusApps/prayertexter/internal/mock"
 	"github.com/4JesusApps/prayertexter/internal/object"
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
 func TestDynamoDBOperations(t *testing.T) {
@@ -244,8 +245,9 @@ func TestDynamoDBOperations(t *testing.T) {
 }
 
 func testGetObject[T any](t *testing.T, ddbMock db.DDBConnecter, expectedObject *T) {
+	ctx := context.Background()
 	// The parameters test test test are used here because mocking makes using real parameters unnecessary.
-	testedObject, err := db.GetDdbObject[T](ddbMock, "test", "test", "test")
+	testedObject, err := db.GetDdbObject[T](ctx, ddbMock, "test", "test", "test")
 	if err != nil {
 		t.Errorf("getDdbObject failed for type %T: %v", expectedObject, err)
 	}
@@ -260,8 +262,9 @@ func testPutObject[T any](t *testing.T, ddbMock *mock.DDBConnecter, expectedObje
 	Output *dynamodb.GetItemOutput
 	Error  error
 }) {
+	ctx := context.Background()
 	// The parameter test is used here because mocking makes using real parameters unnecessary.
-	err := db.PutDdbObject(ddbMock, "test", expectedObject)
+	err := db.PutDdbObject(ctx, ddbMock, "test", expectedObject)
 	if err != nil {
 		t.Errorf("putDdbObject failed for type %T: %v", expectedObject, err)
 	}
