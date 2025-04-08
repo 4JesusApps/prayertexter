@@ -30,8 +30,8 @@ type DDBConnecter interface {
 		opts ...func(*dynamodb.Options)) (*dynamodb.DeleteItemOutput, error)
 }
 
-func GetDdbClient() (*dynamodb.Client, error) {
-	cfg, err := utility.GetAwsConfig()
+func GetDdbClient(ctx context.Context,) (*dynamodb.Client, error) {
+	cfg, err := utility.GetAwsConfig(ctx)
 	if err != nil {
 		return nil, utility.WrapError(err, "failed to get dynamodb client")
 	}

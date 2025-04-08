@@ -5,6 +5,7 @@
         "attributevalue",
         "clnt",
         "dynamodbsetup",
+        "GOARCH",
         "goaway",
         "golangci",
         "intercessorphones",
