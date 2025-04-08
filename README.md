@@ -24,7 +24,17 @@ Prerequisites:
 4. sam-cli
 
 Compile:
-1. make build-prayertexter
+There are several different options when compiling.
+1. Compile prayertexter app with default x64 cpu architecture:
+make build
+2. Compile prayertexter app with arm64 cpu architecture:
+make build ARCH=arm64
+3. Compile other-than prayertexter binary on arm64 cpu architecture:
+make build BUILD=announcer ARCH=arm64
+4. Delete /bin and bootstrap binary in current dir:
+make clean
+
+Compiled binary gets created in /bin/subfolder and then copied to to the current directory.
 
 Create ddb tables and start local services:
 1. ./localdev/dynamodbsetup.sh 

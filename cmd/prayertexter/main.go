@@ -27,13 +27,13 @@ func handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.API
 		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError}, err
 	}
 
-	ddbClnt, err := db.GetDdbClient()
+	ddbClnt, err := db.GetDdbClient(ctx)
 	if err != nil {
 		slog.ErrorContext(ctx, "lambda handler: failed to get dynamodb client", "error", err)
 		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError}, err
 	}
 
-	smsClnt, err := messaging.GetSmsClient()
+	smsClnt, err := messaging.GetSmsClient(ctx)
 	if err != nil {
 		slog.ErrorContext(ctx, "lambda handler: failed to get sms client", "error", err)
 		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError}, err

@@ -67,8 +67,8 @@ type TextSender interface {
 		optFns ...func(*pinpointsmsvoicev2.Options)) (*pinpointsmsvoicev2.SendTextMessageOutput, error)
 }
 
-func GetSmsClient() (*pinpointsmsvoicev2.Client, error) {
-	cfg, err := utility.GetAwsConfig()
+func GetSmsClient(ctx context.Context) (*pinpointsmsvoicev2.Client, error) {
+	cfg, err := utility.GetAwsConfig(ctx)
 	if err != nil {
 		return nil, utility.WrapError(err, "failed to get sms client")
 	}

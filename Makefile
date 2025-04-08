@@ -1,17 +1,37 @@
-VERSION=$(shell git describe --tags --long --dirty 2>/dev/null)
+VERSION := $(shell git describe --tags --long --dirty 2>/dev/null)
 
-### we must have tagged the repo at least once for VERSION to work
 ifeq ($(VERSION),)
-	VERSION = UNKNOWN
+	VERSION := UNKNOWN
 endif
 
-buildcmd = GOARCH=amd64 GOOS=linux go build -ldflags "-X main.version=${VERSION}" -o bootstrap && mv bootstrap ../../
+# DEFAULTS
+ARCH  ?= amd64
+BUILD ?= prayertexter
 
-build-announcer:
-	(cd cmd/announcer && $(buildcmd))
+ifeq ($(ARCH),arm64)
+	GOARCH := arm64
+else ifeq ($(ARCH),amd64)
+	GOARCH := amd64
+else
+$(error Unknown ARCH '$(ARCH)'; valid values are amd64, arm64)
+endif
 
-build-prayertexter:
-	(cd cmd/prayertexter && $(buildcmd))
+GOOS    := linux
+LDFLAGS := -ldflags "-X main.version=$(VERSION)"
+BINARY  := bootstrap
+OUTDIR  := bin/$(GOOS)_$(GOARCH)
 
-build-stateresolver:
-	(cd cmd/stateresolver && $(buildcmd))
+define BUILD_CMD
+	@mkdir -p $(OUTDIR)/$(1)
+	@echo "→ Building $(1) for $(GOOS)/$(GOARCH) (version=$(VERSION))"
+	GOOS=linux GOARCH=$(GOARCH) go build $(LDFLAGS) -o $(OUTDIR)/$(1)/$(BINARY) ./cmd/$(1)
+endef
+
+.PHONY: build clean
+build:
+	$(call BUILD_CMD,$(BUILD))
+	@cp $(OUTDIR)/$(BUILD)/$(BINARY) .
+
+clean:
+	@rm -rf bin
+	@rm -f bootstrap
