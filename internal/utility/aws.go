@@ -25,10 +25,11 @@ func GetAwsConfig(ctx context.Context) (aws.Config, error) {
 
 	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion("us-west-1"),
 		config.WithRetryer(func() aws.Retryer {
-			return retry.NewStandard(func(o *retry.StandardOptions) {
+			retryer := retry.NewStandard(func(o *retry.StandardOptions) {
 				o.MaxAttempts = maxRetry
 				o.MaxBackoff = time.Duration(maxBackoff) * time.Second
 			})
+			return &LoggingRetryer{delegate: retryer}
 		}))
 
 	return cfg, WrapError(err, "failed to get aws config")

@@ -58,7 +58,6 @@ Good dynamodb commands:
     - this may help with allowing for concurrent lambda functions to run
 - decide if/where to implement dynamodb strongly consistent writes (as opposed to default eventual consistency)
     - this may help with allowing for concurrent lambda functions to run
-- add logging for aws retry operations - is it worth it?
 - save all initial sign up text messages for 10-DLC number requirements
 - web frontend for sign up process
     - possibly could add other features eventually
