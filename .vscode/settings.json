@@ -21,6 +21,7 @@
         "prsn",
         "pryr",
         "queuetable",
+        "Retryable",
         "Retryer",
         "sndr",
         "sttrackr",
