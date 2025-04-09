@@ -166,11 +166,11 @@ func testPhones(inputs []dynamodb.PutItemInput, t *testing.T, test TestCase) {
 	for _, input := range inputs {
 		if *input.TableName != object.DefaultIntercessorPhonesTable {
 			continue
-		} else if val, ok := input.Item[object.IntercessorPhonesAttribute]; !ok {
+		} else if val, ok := input.Item[object.IntercessorPhonesKey]; !ok {
 			continue
 		} else if stringVal, isString := val.(*types.AttributeValueMemberS); !isString {
 			continue
-		} else if stringVal.Value != object.IntercessorPhonesKey {
+		} else if stringVal.Value != object.IntercessorPhonesKeyValue {
 			continue
 		}
 
@@ -617,7 +617,7 @@ func TestMainFlowSignUp(t *testing.T) {
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKey},
+							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKeyValue},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
 								&types.AttributeValueMemberS{Value: "+11111111111"},
 								&types.AttributeValueMemberS{Value: "+12222222222"},
@@ -642,7 +642,7 @@ func TestMainFlowSignUp(t *testing.T) {
 			},
 
 			expectedPhones: object.IntercessorPhones{
-				Key: object.IntercessorPhonesKey,
+				Key: object.IntercessorPhonesKeyValue,
 				Phones: []string{
 					"+11111111111",
 					"+12222222222",
@@ -700,7 +700,7 @@ func TestMainFlowSignUp(t *testing.T) {
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKey},
+							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKeyValue},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
 								&types.AttributeValueMemberS{Value: "+11111111111"},
 								&types.AttributeValueMemberS{Value: "+12222222222"},
@@ -970,7 +970,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKey},
+							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKeyValue},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
 								&types.AttributeValueMemberS{Value: "+11111111111"},
 								&types.AttributeValueMemberS{Value: "+12222222222"},
@@ -984,7 +984,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 			},
 
 			expectedPhones: object.IntercessorPhones{
-				Key: object.IntercessorPhonesKey,
+				Key: object.IntercessorPhonesKeyValue,
 				Phones: []string{
 					"+11111111111",
 					"+12222222222",
@@ -1055,7 +1055,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKey},
+							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKeyValue},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
 								&types.AttributeValueMemberS{Value: "+11111111111"},
 								&types.AttributeValueMemberS{Value: "+12222222222"},
@@ -1129,7 +1129,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 			},
 
 			expectedPhones: object.IntercessorPhones{
-				Key: object.IntercessorPhonesKey,
+				Key: object.IntercessorPhonesKeyValue,
 				Phones: []string{
 					"+11111111111",
 					"+12222222222",
@@ -1398,7 +1398,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKey},
+							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKeyValue},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
 								&types.AttributeValueMemberS{Value: "+11111111111"},
 								&types.AttributeValueMemberS{Value: "+12222222222"},
@@ -1611,7 +1611,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKey},
+							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKeyValue},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
 								&types.AttributeValueMemberS{Value: "+11111111111"},
 								&types.AttributeValueMemberS{Value: "+12222222222"},
@@ -1716,7 +1716,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKey},
+							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKeyValue},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
 								&types.AttributeValueMemberS{Value: "+11111111111"},
 								&types.AttributeValueMemberS{Value: "+12222222222"},
@@ -1835,7 +1835,7 @@ func TestFindIntercessors(t *testing.T) {
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKey},
+							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKeyValue},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
 								&types.AttributeValueMemberS{Value: "+11111111111"},
 								&types.AttributeValueMemberS{Value: "+12222222222"},
@@ -1988,7 +1988,7 @@ func TestFindIntercessors(t *testing.T) {
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKey},
+							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKeyValue},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
 								&types.AttributeValueMemberS{Value: "+11111111111"},
 								&types.AttributeValueMemberS{Value: "+12222222222"},
@@ -2089,7 +2089,7 @@ func TestFindIntercessors(t *testing.T) {
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKey},
+							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKeyValue},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
 								&types.AttributeValueMemberS{Value: "+11111111111"},
 								&types.AttributeValueMemberS{Value: "+18888888888"},
@@ -2147,7 +2147,7 @@ func TestFindIntercessors(t *testing.T) {
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKey},
+							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKeyValue},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
 								&types.AttributeValueMemberS{Value: "+11111111111"},
 								&types.AttributeValueMemberS{Value: "+12222222222"},
@@ -2213,7 +2213,7 @@ func TestFindIntercessors(t *testing.T) {
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKey},
+							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKeyValue},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
 								&types.AttributeValueMemberS{Value: "+11111111111"},
 								&types.AttributeValueMemberS{Value: "+12222222222"},

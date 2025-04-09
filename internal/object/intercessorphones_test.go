@@ -10,7 +10,7 @@ import (
 
 func TestIntercessorPhones(t *testing.T) {
 	i := object.IntercessorPhones{
-		Key: object.IntercessorPhonesKey,
+		Key: object.IntercessorPhonesKeyValue,
 		Phones: []string{
 			"+11111111111",
 			"+12222222222",

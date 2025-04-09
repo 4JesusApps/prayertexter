@@ -1,3 +1,9 @@
+/*
+Package prayertexter is the main package for the prayertexter application. This package contains all of the main
+application logic such as the sign up process, prayer request process, and prayer confirmation process. This package
+is the starting point for all received text messages and decides what to do with the message based on message content
+and sender member status.
+*/
 package prayertexter
 
 import (
@@ -25,10 +31,11 @@ const (
 	completePrayerStage = "COMPLETE PRAYER"
 	prayerRequestStage  = "PRAYER REQUEST"
 	postStage           = "POST"
-
-	stageErrPrefix = "failure during stage "
+	stageErrPrefix      = "failure during stage "
 )
 
+// MainFlow is the start of the prayertexter application. It receives a text message as a parameter and based on the
+// message content and sender phone number, it decides what operations to perform.
 func MainFlow(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender,
 	msg messaging.TextMessage) error {
 	config.InitConfig()
@@ -54,8 +61,8 @@ func MainFlow(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.Te
 
 	switch {
 	// HELP STAGE
-	// Responds with contact info and is a requirement to get sent to to anyone regardless whether they are a member or
-	// not.
+	// Responds with contact info and is a requirement for the 10DLC phone number provider to get sent to to anyone
+	// regardless whether they are a member or not.
 	case strings.ToLower(msg.Body) == "help":
 		stageErr = executeStage(ctx, ddbClnt, helpStage, &state, func() error {
 			return mem.SendMessage(ctx, smsClnt, messaging.MsgHelp)
@@ -77,7 +84,7 @@ func MainFlow(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.Te
 
 	// DROP MESSAGE STAGE
 	// Drops all messages if they do not meet any of the previous criteria. This serves as a catch all to drop any
-	// messages of non members.
+	// messages of non members (other than help and sign up messages).
 	case mem.SetupStatus == "":
 		slog.Warn("non registered user dropping message", "phone", mem.Phone, "msg", msg.Body)
 		stageErr = executeStage(ctx, ddbClnt, dropMessageStage, &state, func() error {
@@ -373,6 +380,8 @@ func prayerRequest(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messagi
 	return mem.SendMessage(ctx, smsClnt, messaging.MsgPrayerSentOut)
 }
 
+// FindIntercessors returns a slice of Member intercessors that are available to be assigned a prayer request. If there
+// are no available intercessors, it will return an error.
 func FindIntercessors(ctx context.Context, ddbClnt db.DDBConnecter, skipPhone string) ([]object.Member, error) {
 	allPhones, err := getAndPreparePhones(ctx, ddbClnt, skipPhone)
 	if err != nil {
@@ -421,7 +430,7 @@ func getAndPreparePhones(ctx context.Context, ddbClnt db.DDBConnecter, skipPhone
 	}
 
 	// Removes the prayer requestors phone number from IntercessorPhones so that they do not get assigned to pray for
-	// their own prayer request. This could happen if the prayer requester is also an intercessor.
+	// their own prayer request. This could happen if the prayer requestor is also an intercessor.
 	utility.RemoveItem(&allPhones.Phones, skipPhone)
 
 	return allPhones, nil
@@ -503,7 +512,7 @@ func completePrayer(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messag
 
 	if pryr.Request == "" {
 		// Get Dynamodb calls return empty data if the key does not exist in the table. Therefor if prayer request is
-		// empty here, it means that it did not exist in the database
+		// empty here, it means that it did not exist in the database.
 		if err := mem.SendMessage(ctx, smsClnt, messaging.MsgNoActivePrayer); err != nil {
 			return err
 		}

@@ -1,3 +1,6 @@
+/*
+Package db implements dynamodb operations (get, put, delete).
+*/
 package db
 
 import (
@@ -13,24 +16,23 @@ import (
 	"github.com/spf13/viper"
 )
 
+// Default values for configuration that has been exposed to be used with the config package.
 const (
 	DefaultTimeout    = 60
 	TimeoutConfigPath = "conf.aws.db.timeout"
 )
 
 type DDBConnecter interface {
-	GetItem(ctx context.Context,
-		input *dynamodb.GetItemInput,
-		opts ...func(*dynamodb.Options)) (*dynamodb.GetItemOutput, error)
-	PutItem(ctx context.Context,
-		input *dynamodb.PutItemInput,
-		opts ...func(*dynamodb.Options)) (*dynamodb.PutItemOutput, error)
-	DeleteItem(ctx context.Context,
-		input *dynamodb.DeleteItemInput,
-		opts ...func(*dynamodb.Options)) (*dynamodb.DeleteItemOutput, error)
+	GetItem(ctx context.Context, input *dynamodb.GetItemInput, opts ...func(*dynamodb.Options)) (
+		*dynamodb.GetItemOutput, error)
+	PutItem(ctx context.Context, input *dynamodb.PutItemInput, opts ...func(*dynamodb.Options)) (
+		*dynamodb.PutItemOutput, error)
+	DeleteItem(ctx context.Context, input *dynamodb.DeleteItemInput, opts ...func(*dynamodb.Options)) (
+		*dynamodb.DeleteItemOutput, error)
 }
 
-func GetDdbClient(ctx context.Context,) (*dynamodb.Client, error) {
+// GetDdbClient returns a dynamodb client that can be used for various dynamodb operations.
+func GetDdbClient(ctx context.Context) (*dynamodb.Client, error) {
 	cfg, err := utility.GetAwsConfig(ctx)
 	if err != nil {
 		return nil, utility.WrapError(err, "failed to get dynamodb client")
@@ -49,7 +51,7 @@ func GetDdbClient(ctx context.Context,) (*dynamodb.Client, error) {
 	return ddbClnt, nil
 }
 
-func getDdbItem(ctx context.Context, ddbClnt DDBConnecter, attr, key, table string) (*dynamodb.GetItemOutput, error) {
+func getDdbItem(ctx context.Context, ddbClnt DDBConnecter, key, keyVal, table string) (*dynamodb.GetItemOutput, error) {
 	timeout := viper.GetInt(TimeoutConfigPath)
 	ctx, cancel := context.WithTimeout(ctx, time.Duration(timeout)*time.Second)
 	defer cancel()
@@ -57,15 +59,17 @@ func getDdbItem(ctx context.Context, ddbClnt DDBConnecter, attr, key, table stri
 	item, err := ddbClnt.GetItem(ctx, &dynamodb.GetItemInput{
 		TableName: &table,
 		Key: map[string]types.AttributeValue{
-			attr: &types.AttributeValueMemberS{Value: key},
+			key: &types.AttributeValueMemberS{Value: keyVal},
 		},
 	})
 
 	return item, err
 }
 
-func GetDdbObject[T any](ctx context.Context, ddbClnt DDBConnecter, attr, key, table string) (*T, error) {
-	resp, err := getDdbItem(ctx, ddbClnt, attr, key, table)
+// GetDdbObject returns an object of various types from dynamodb. If the object key value does not exist in the
+// dynamodb table, this will return an empty object.
+func GetDdbObject[T any](ctx context.Context, ddbClnt DDBConnecter, key, keyVal, table string) (*T, error) {
+	resp, err := getDdbItem(ctx, ddbClnt, key, keyVal, table)
 	if err != nil {
 		return nil, utility.WrapError(err, fmt.Sprintf("failed to get %T from table %s", *new(T), table))
 	}
@@ -89,6 +93,7 @@ func putDdbItem(ctx context.Context, ddbClnt DDBConnecter, table string, data ma
 	return err
 }
 
+// PutDdbObject saves an object of various types to a dynamodb table.
 func PutDdbObject[T any](ctx context.Context, ddbClnt DDBConnecter, table string, object *T) error {
 	item, err := attributevalue.MarshalMap(object)
 	if err != nil {
@@ -102,7 +107,9 @@ func PutDdbObject[T any](ctx context.Context, ddbClnt DDBConnecter, table string
 	return nil
 }
 
-func DelDdbItem(ctx context.Context, ddbClnt DDBConnecter, attr, key, table string) error {
+// DelDdbItem deletes an item from a dynamodb table. If the item key value does not exist in the dynamodb table, it will
+// not return an error.
+func DelDdbItem(ctx context.Context, ddbClnt DDBConnecter, key, keyVal, table string) error {
 	timeout := viper.GetInt(TimeoutConfigPath)
 	ctx, cancel := context.WithTimeout(ctx, time.Duration(timeout)*time.Second)
 	defer cancel()
@@ -110,7 +117,7 @@ func DelDdbItem(ctx context.Context, ddbClnt DDBConnecter, attr, key, table stri
 	_, err := ddbClnt.DeleteItem(ctx, &dynamodb.DeleteItemInput{
 		TableName: &table,
 		Key: map[string]types.AttributeValue{
-			attr: &types.AttributeValueMemberS{Value: key},
+			key: &types.AttributeValueMemberS{Value: keyVal},
 		},
 	})
 

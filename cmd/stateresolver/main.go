@@ -1,3 +1,10 @@
+/*
+Stateresolver is a helper application for the main application prayertexter. Stateresolver runs on a scheduled basis
+similar to a cronjob. It attempts to assign prayers in the prayer queue. It also checks all active prayers and sends a
+reminder text message to the assigned intercessor that the prayer has not been prayed for for a configurable amount of
+time to prevent prayer requests from getting stale/forgotten. It also performs some level of retry/recovery mechanisms
+for previously failed operations.
+*/
 package main
 
 import (
