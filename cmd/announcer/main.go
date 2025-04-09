@@ -1,3 +1,8 @@
+/*
+Announcer is a helper application for the main application prayertexter. Announcer can be used to send announcements
+to all prayertexter members. This could be for general updates, taking down or turning up prayertexter, or alerts for
+things such as outages or service restoration.
+*/
 package main
 
 import (
@@ -15,7 +20,7 @@ import (
 var version string // do not remove or modify
 
 //nolint:revive // IGNORING UNUSED CTX AND REQ VARIABLES FOR NOW; REMOVE ONCE THIS FUNCTION IS IMPLEMENTED
-func handler(_ context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+func handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	// Place holder for future code.
 	// Don't forget to remove the above nolint when this is implemented.
 

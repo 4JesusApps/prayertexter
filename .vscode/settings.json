@@ -25,6 +25,7 @@
         "Retryable",
         "Retryer",
         "sndr",
+        "Stateresolver",
         "sttrackr",
         "testattr",
         "texter",

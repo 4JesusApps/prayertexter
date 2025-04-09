@@ -1,3 +1,16 @@
+/*
+Prayertexter is a prayer application over text messaging. Users can sign up over text message and become members. There
+are 2 types of members: regular and intercessors. Regular members are able to send in prayer requests to the
+prayertexter phone number. Intercessors are able to do the same, as well as receive prayer requests sent by regular
+members. When an intercessor receives a prayer request, they must pray over that request in a reasonable amount of time
+and text back the word "prayed" to prayertexter. The prayer requestor will then be alerted that their request was prayed
+for.
+
+To sign up over text message, one must text the word "pray" to the prayertexter phone number. There is a sign up flow
+in which the user will text back and forth between prayertexter until they are officially signed up and in the
+prayertexter system. Sign up options include whether they want to remain anonymous, to be an intercessor, and how many
+prayers they are willing to receive per week (if they agreed to be an intercessor).
+*/
 package main
 
 import (

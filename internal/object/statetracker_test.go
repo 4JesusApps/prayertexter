@@ -21,7 +21,7 @@ func TestUpdate(t *testing.T) {
 		{
 			Output: &dynamodb.GetItemOutput{
 				Item: map[string]types.AttributeValue{
-					"Key": &types.AttributeValueMemberS{Value: object.StateTrackerKey},
+					"Key": &types.AttributeValueMemberS{Value: object.StateTrackerKeyValue},
 					"States": &types.AttributeValueMemberL{
 						Value: []types.AttributeValue{
 							&types.AttributeValueMemberM{
@@ -48,7 +48,7 @@ func TestUpdate(t *testing.T) {
 	}
 
 	expectedStateTracker := object.StateTracker{
-		Key: object.StateTrackerKey,
+		Key: object.StateTrackerKeyValue,
 		States: []object.State{
 			{
 				Error: "sample error text",

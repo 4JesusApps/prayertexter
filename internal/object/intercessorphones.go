@@ -11,22 +11,33 @@ import (
 	"github.com/spf13/viper"
 )
 
+// IntercessorPhones contains all of the phone numbers of active intercessors. This is kept separately to allow for
+// quick lookups of all intercessor phone numbers at once, as opposed to looping through all Member objects, which would
+// also add a lot of extra dynamodb get calls.
 type IntercessorPhones struct {
-	Key    string
+	// Key is the dynamodb table key name used for dynamodb operations.
+	Key string
+	// Phones contains a slice of intercessor phone numbers.
 	Phones []string
 }
 
+// Default values for configuration that has been exposed to be used with the config package.
 const (
 	DefaultIntercessorPhonesTable    = "General"
 	IntercessorPhonesTableConfigPath = "conf.aws.db.intercessorphones.table"
-
-	IntercessorPhonesAttribute = "Key"
-	IntercessorPhonesKey       = "IntercessorPhones"
 )
 
+// IntercessorPhones object key/value used to interact with dynamodb tables.
+const (
+	IntercessorPhonesKey      = "Key"
+	IntercessorPhonesKeyValue = "IntercessorPhones"
+)
+
+// Get gets IntercessorPhones from dynamodb. If it does not exist, the current instance of IntercessorPhones will not
+// change.
 func (i *IntercessorPhones) Get(ctx context.Context, ddbClnt db.DDBConnecter) error {
 	table := viper.GetString(IntercessorPhonesTableConfigPath)
-	intr, err := db.GetDdbObject[IntercessorPhones](ctx, ddbClnt, IntercessorPhonesAttribute, IntercessorPhonesKey,
+	intr, err := db.GetDdbObject[IntercessorPhones](ctx, ddbClnt, IntercessorPhonesKey, IntercessorPhonesKeyValue,
 		table)
 
 	if err != nil {
@@ -42,21 +53,26 @@ func (i *IntercessorPhones) Get(ctx context.Context, ddbClnt db.DDBConnecter) er
 	return nil
 }
 
+// Put saves IntercessorPhones to dynamodb.
 func (i *IntercessorPhones) Put(ctx context.Context, ddbClnt db.DDBConnecter) error {
 	table := viper.GetString(IntercessorPhonesTableConfigPath)
-	i.Key = IntercessorPhonesKey
+	i.Key = IntercessorPhonesKeyValue
 
 	return db.PutDdbObject(ctx, ddbClnt, table, i)
 }
 
+// AddPhone adds a phone number string to IntercessorPhones.
 func (i *IntercessorPhones) AddPhone(phone string) {
 	i.Phones = append(i.Phones, phone)
 }
 
+// RemovePhone removes a phone number string from IntercessorPhones.
 func (i *IntercessorPhones) RemovePhone(phone string) {
 	utility.RemoveItem(&i.Phones, phone)
 }
 
+// GenRandPhones will return a string slice of individual intercessor phone numbers from phone numbers in
+// IntercessorPhones. The number of intercessor phones returned is a configurable number.
 func (i *IntercessorPhones) GenRandPhones() []string {
 	var selectedPhones []string
 
@@ -67,7 +83,7 @@ func (i *IntercessorPhones) GenRandPhones() []string {
 
 	intercessorsPerPrayer := viper.GetInt(IntercessorsPerPrayerConfigPath)
 
-	// This is needed so it can return some/one phones even if it is less than the set # of intercessors for each
+	// This is needed so it can return some/one phones even if they are less than the desired number of intercessors per
 	// prayer.
 	if len(i.Phones) <= intercessorsPerPrayer {
 		selectedPhones = append(selectedPhones, i.Phones...)
@@ -75,7 +91,7 @@ func (i *IntercessorPhones) GenRandPhones() []string {
 	}
 
 	for len(selectedPhones) < intercessorsPerPrayer {
-		phone := i.Phones[rand.IntN(len(i.Phones))] // # - false positive
+		phone := i.Phones[rand.IntN(len(i.Phones))] //nolint:gosec // this is a false positive
 		if slices.Contains(selectedPhones, phone) {
 			continue
 		}

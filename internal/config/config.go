@@ -1,3 +1,11 @@
+/*
+Package config implements configurable settings that are overridable by environmental variables. These configurations
+span across multiple other packages in prayertexter. If a package decides to expose a configuration, the config package
+can be used for that purpose. All configurations should have a default value which is determined by the user of this
+package. All configuration defaults should be kept up to date inside this package. Configuration defaults should be
+constants or variables and defined inside other packages (not this one). The config package only links the default
+values determined by other packages into this one in order to organize and set defaults.
+*/
 package config
 
 import (
@@ -42,6 +50,10 @@ func setDefaults() {
 	viper.SetDefault("conf", defaults)
 }
 
+// InitConfig sets the values of all exposed configurations. This creates a global viper instance which contains all
+// configuration values that can be accessed throughout the entire application. It will use default values unless
+// environmental variables are present for a specific configuration, in which case it will use the value set by the
+// environmental variable.
 func InitConfig() {
 	setDefaults()
 

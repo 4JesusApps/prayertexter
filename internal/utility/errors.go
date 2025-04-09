@@ -17,7 +17,8 @@ const (
 	ErrIntercessorUnavailable  = constError("intercessor unavailable")
 )
 
-// Use this for high level functions where you want to log and wrap the error.
+// LogAndWrapError will log, wrap, and return an error and is used for high level functions where most logging is done.
+// If the error is nil, this will return nil as well.
 func LogAndWrapError(err error, message string, attrs ...any) error {
 	if err == nil {
 		return nil
@@ -26,7 +27,8 @@ func LogAndWrapError(err error, message string, attrs ...any) error {
 	return fmt.Errorf("%s: %w", message, err)
 }
 
-// Use this for internal function where logging will happen at a higher level.
+// WrapError will wrap and return an error and is used when logging is not needed (lower level functions where error is
+// passed up the chain). If the error is nil, this will return nil as well.
 func WrapError(err error, message string) error {
 	if err == nil {
 		return nil

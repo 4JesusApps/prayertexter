@@ -41,7 +41,7 @@ func TestDynamoDBOperations(t *testing.T) {
 		{
 			Output: &dynamodb.GetItemOutput{
 				Item: map[string]types.AttributeValue{
-					"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKey},
+					"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKeyValue},
 					"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
 						&types.AttributeValueMemberS{Value: "+11111111111"},
 						&types.AttributeValueMemberS{Value: "+12222222222"},
@@ -88,7 +88,7 @@ func TestDynamoDBOperations(t *testing.T) {
 		{
 			Output: &dynamodb.GetItemOutput{
 				Item: map[string]types.AttributeValue{
-					"Key": &types.AttributeValueMemberS{Value: object.StateTrackerKey},
+					"Key": &types.AttributeValueMemberS{Value: object.StateTrackerKeyValue},
 					"States": &types.AttributeValueMemberL{
 						Value: []types.AttributeValue{
 							&types.AttributeValueMemberM{
@@ -141,7 +141,7 @@ func TestDynamoDBOperations(t *testing.T) {
 			WeeklyPrayerLimit: 5,
 		},
 		&object.IntercessorPhones{
-			Key: object.IntercessorPhonesKey,
+			Key: object.IntercessorPhonesKeyValue,
 			Phones: []string{
 				"+11111111111",
 				"+12222222222",
@@ -172,7 +172,7 @@ func TestDynamoDBOperations(t *testing.T) {
 			},
 		},
 		&object.StateTracker{
-			Key: object.StateTrackerKey,
+			Key: object.StateTrackerKeyValue,
 			States: []object.State{
 				{
 					Error: "sample error text",

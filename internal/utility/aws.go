@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/viper"
 )
 
+// Default values for configuration that has been exposed to be used with the config package.
 const (
 	DefaultAwsSvcRetryAttempts    = 5
 	AwsSvcRetryAttemptsConfigPath = "conf.aws.retry"
@@ -19,6 +20,7 @@ const (
 	AwsSvcMaxBackoffConfigPath = "conf.aws.backoff"
 )
 
+// GetAwsConfig returns an aws configuration that can be used to interact with aws services.
 func GetAwsConfig(ctx context.Context) (aws.Config, error) {
 	maxRetry := viper.GetInt(AwsSvcRetryAttemptsConfigPath)
 	maxBackoff := viper.GetInt(AwsSvcMaxBackoffConfigPath)
@@ -35,6 +37,7 @@ func GetAwsConfig(ctx context.Context) (aws.Config, error) {
 	return cfg, WrapError(err, "failed to get aws config")
 }
 
+// IsAwsLocal reports whether aws is running in a local testing environment (sam local).
 func IsAwsLocal() bool {
 	if local := os.Getenv("AWS_SAM_LOCAL"); local == "true" {
 		return true
