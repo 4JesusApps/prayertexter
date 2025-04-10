@@ -16,6 +16,7 @@ func TestDefaultConfigValues(t *testing.T) {
 		config.InitConfig()
 
 		configs := map[string]any{
+			utility.AwsRegionConfigPath:             utility.DefaultAwsRegion,
 			utility.AwsSvcMaxBackoffConfigPath:      utility.DefaultAwsSvcMaxBackoff,
 			utility.AwsSvcRetryAttemptsConfigPath:   utility.DefaultAwsSvcRetryAttempts,
 			db.TimeoutConfigPath:                    db.DefaultTimeout,

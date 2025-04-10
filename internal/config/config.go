@@ -21,6 +21,7 @@ import (
 func setDefaults() {
 	defaults := map[string]any{
 		"aws": map[string]any{
+			"region":  utility.DefaultAwsRegion,
 			"backoff": utility.DefaultAwsSvcMaxBackoff,
 			"retry":   utility.DefaultAwsSvcRetryAttempts,
 			"db": map[string]any{

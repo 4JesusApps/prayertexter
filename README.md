@@ -92,6 +92,9 @@ Good dynamodb commands:
 - web frontend for sign up process
     - possibly could add other features eventually
     - minimum required feature is to be able to complete entire sign up flow in a web form and submit to be added to prayer texter app
+- implement single prayer table with dynamodb sort key
+    - sort key will be whether prayer is active or queue
+    - this will allow the consolidation of 2 prayer tables into one
 - dynamodb TransactWriteItems for atomic write operations (to help with error recovery)
     - this will complicate current implementation of dynamodb because new functions and mocks will be needed
     - this will allow for better recovery because TransactWriteItems allows for grouping of multiple put/delete items into a single

@@ -13,6 +13,9 @@ import (
 
 // Default values for configuration that has been exposed to be used with the config package.
 const (
+	DefaultAwsRegion    = "us-west-1"
+	AwsRegionConfigPath = "conf.aws.region"
+
 	DefaultAwsSvcRetryAttempts    = 5
 	AwsSvcRetryAttemptsConfigPath = "conf.aws.retry"
 
@@ -22,10 +25,11 @@ const (
 
 // GetAwsConfig returns an aws configuration that can be used to interact with aws services.
 func GetAwsConfig(ctx context.Context) (aws.Config, error) {
+	region := viper.GetString(AwsRegionConfigPath)
 	maxRetry := viper.GetInt(AwsSvcRetryAttemptsConfigPath)
 	maxBackoff := viper.GetInt(AwsSvcMaxBackoffConfigPath)
 
-	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion("us-west-1"),
+	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(region),
 		config.WithRetryer(func() aws.Retryer {
 			retryer := retry.NewStandard(func(o *retry.StandardOptions) {
 				o.MaxAttempts = maxRetry
