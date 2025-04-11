@@ -155,12 +155,12 @@ func signUp(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.Text
 			return utility.WrapError(err, "failed sign up stage 1")
 		}
 	case msg.Body != "2" && mem.SetupStage == object.MemberSignUpStepOne:
-		if err := signUpStageTwoA(ctx, ddbClnt, smsClnt, mem, msg); err != nil {
-			return utility.WrapError(err, "failed sign up stage 2A")
+		if err := signUpStageTwo(ctx, ddbClnt, smsClnt, mem, msg, false); err != nil {
+			return utility.WrapError(err, "failed sign up stage 2")
 		}
 	case msg.Body == "2" && mem.SetupStage == object.MemberSignUpStepOne:
-		if err := signUpStageTwoB(ctx, ddbClnt, smsClnt, mem); err != nil {
-			return utility.WrapError(err, "failed sign up stage 2B")
+		if err := signUpStageTwo(ctx, ddbClnt, smsClnt, mem, msg, true); err != nil {
+			return utility.WrapError(err, "failed sign up stage 2")
 		}
 	case msg.Body == "1" && mem.SetupStage == object.MemberSignUpStepTwo:
 		if err := signUpFinalPrayerMessage(ctx, ddbClnt, smsClnt, mem); err != nil {
@@ -194,21 +194,15 @@ func signUpStageOne(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messag
 	return mem.SendMessage(ctx, smsClnt, messaging.MsgNameRequest)
 }
 
-func signUpStageTwoA(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender, mem object.Member,
-	msg messaging.TextMessage) error {
+func signUpStageTwo(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender, mem object.Member,
+	msg messaging.TextMessage, isAnon bool) error {
 	mem.SetupStage = object.MemberSignUpStepTwo
-	mem.Name = msg.Body
-	if err := mem.Put(ctx, ddbClnt); err != nil {
-		return err
+	if isAnon {
+		mem.Name = "Anonymous"
+	} else {
+		mem.Name = msg.Body
 	}
 
-	return mem.SendMessage(ctx, smsClnt, messaging.MsgMemberTypeRequest)
-}
-
-func signUpStageTwoB(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender,
-	mem object.Member) error {
-	mem.SetupStage = object.MemberSignUpStepTwo
-	mem.Name = "Anonymous"
 	if err := mem.Put(ctx, ddbClnt); err != nil {
 		return err
 	}
@@ -242,8 +236,7 @@ func signUpStageThree(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt mess
 }
 
 func signUpFinalIntercessorMessage(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender,
-	mem object.Member,
-	msg messaging.TextMessage) error {
+	mem object.Member, msg messaging.TextMessage) error {
 	num, err := strconv.Atoi(msg.Body)
 	if err != nil {
 		return signUpWrongInput(ctx, smsClnt, mem, msg)
@@ -424,16 +417,16 @@ func FindIntercessors(ctx context.Context, ddbClnt db.DDBConnecter, skipPhone st
 
 func getAndPreparePhones(ctx context.Context, ddbClnt db.DDBConnecter, skipPhone string) (object.IntercessorPhones,
 	error) {
-	allPhones := object.IntercessorPhones{}
-	if err := allPhones.Get(ctx, ddbClnt); err != nil {
-		return allPhones, err
+	phones := object.IntercessorPhones{}
+	if err := phones.Get(ctx, ddbClnt); err != nil {
+		return phones, err
 	}
 
 	// Removes the prayer requestors phone number from IntercessorPhones so that they do not get assigned to pray for
 	// their own prayer request. This could happen if the prayer requestor is also an intercessor.
-	utility.RemoveItem(&allPhones.Phones, skipPhone)
+	utility.RemoveItem(&phones.Phones, skipPhone)
 
-	return allPhones, nil
+	return phones, nil
 }
 
 func processIntercessor(ctx context.Context, ddbClnt db.DDBConnecter, phone string) (*object.Member, error) {
