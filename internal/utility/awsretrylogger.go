@@ -35,8 +35,8 @@ func (r *LoggingRetryer) GetInitialToken() (releaseToken func(error) error) {
 	return r.delegate.GetInitialToken()
 }
 
-// RetryDelay delegates this to the actual aws.Retryer, while also adding additional afterwards. The purpose of this is
-// to log aws retries.
+// RetryDelay delegates to the actual aws.Retryer, while also adding logging in between so that aws retries are visible
+// in application logs.
 func (r *LoggingRetryer) RetryDelay(attempt int, opErr error) (time.Duration, error) {
 	delay, calcErr := r.delegate.RetryDelay(attempt, opErr)
 	slog.Warn("AWS retry", "attempt", attempt, "error", opErr, "delay", delay)
