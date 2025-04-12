@@ -61,8 +61,14 @@ func (i *IntercessorPhones) Put(ctx context.Context, ddbClnt db.DDBConnecter) er
 	return db.PutDdbObject(ctx, ddbClnt, table, i)
 }
 
-// AddPhone adds a phone number string to IntercessorPhones.
+// AddPhone adds a phone number string to IntercessorPhones. If phone already exists, it will not add a duplicate.
 func (i *IntercessorPhones) AddPhone(phone string) {
+	for _, p := range i.Phones {
+		if p == phone {
+			return
+		}
+	}
+
 	i.Phones = append(i.Phones, phone)
 }
 
