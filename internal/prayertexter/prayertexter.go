@@ -36,25 +36,24 @@ const (
 
 // MainFlow is the start of the prayertexter application. It receives a text message as a parameter and based on the
 // message content and sender phone number, it decides what operations to perform.
-func MainFlow(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender,
-	msg messaging.TextMessage) error {
+func MainFlow(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender, msg messaging.TextMessage) error {
 	config.InitConfig()
 
 	currTime := time.Now().Format(time.RFC3339)
 	id, err := utility.GenerateID()
 	if err != nil {
-		return utility.LogAndWrapError(err, stageErrPrefix+preStage, "phone", msg.Phone, "msg", msg.Body)
+		return utility.LogAndWrapError(ctx, err, stageErrPrefix+preStage, "phone", msg.Phone, "msg", msg.Body)
 	}
 
 	state := object.State{}
 	state.Status, state.TimeStart, state.ID, state.Message = object.StateInProgress, currTime, id, msg
-	if err := state.Update(ctx, ddbClnt, false); err != nil {
-		return utility.LogAndWrapError(err, stageErrPrefix+preStage, "phone", msg.Phone, "msg", msg.Body)
+	if err = state.Update(ctx, ddbClnt, false); err != nil {
+		return utility.LogAndWrapError(ctx, err, stageErrPrefix+preStage, "phone", msg.Phone, "msg", msg.Body)
 	}
 
 	mem := object.Member{Phone: msg.Phone}
-	if err := mem.Get(ctx, ddbClnt); err != nil {
-		return utility.LogAndWrapError(err, stageErrPrefix+preStage, "phone", msg.Phone, "msg", msg.Body)
+	if err = mem.Get(ctx, ddbClnt); err != nil {
+		return utility.LogAndWrapError(ctx, err, stageErrPrefix+preStage, "phone", msg.Phone, "msg", msg.Body)
 	}
 
 	var stageErr error
@@ -86,7 +85,7 @@ func MainFlow(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.Te
 	// Drops all messages if they do not meet any of the previous criteria. This serves as a catch all to drop any
 	// messages of non members (other than help and sign up messages).
 	case mem.SetupStatus == "":
-		slog.Warn("non registered user dropping message", "phone", mem.Phone, "msg", msg.Body)
+		slog.WarnContext(ctx, "non registered user dropping message", "phone", mem.Phone, "msg", msg.Body)
 		stageErr = executeStage(ctx, ddbClnt, dropMessageStage, &state, func() error {
 			return nil
 		})
@@ -108,8 +107,8 @@ func MainFlow(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.Te
 
 	// This should never happen and if it does then it is a bug.
 	default:
-		err := errors.New("unexpected text message input/member status")
-		return utility.LogAndWrapError(err, "could not satisfy any required conditions", "phone", mem.Phone, "msg",
+		err = errors.New("unexpected text message input/member status")
+		return utility.LogAndWrapError(ctx, err, "could not satisfy any required conditions", "phone", mem.Phone, "msg",
 			msg.Body)
 	}
 
@@ -117,18 +116,17 @@ func MainFlow(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.Te
 		return stageErr
 	}
 
-	if err := state.Update(ctx, ddbClnt, true); err != nil {
-		return utility.LogAndWrapError(err, stageErrPrefix+postStage, "phone", mem.Phone, "msg", msg.Body)
+	if err = state.Update(ctx, ddbClnt, true); err != nil {
+		return utility.LogAndWrapError(ctx, err, stageErrPrefix+postStage, "phone", mem.Phone, "msg", msg.Body)
 	}
 
 	return nil
 }
 
-func executeStage(ctx context.Context, ddbClnt db.DDBConnecter, stageName string, state *object.State,
-	stageFunc func() error) error {
+func executeStage(ctx context.Context, ddbClnt db.DDBConnecter, stageName string, state *object.State, stageFunc func() error) error {
 	state.Stage = stageName
 	if err := state.Update(ctx, ddbClnt, false); err != nil {
-		return utility.LogAndWrapError(err, stageErrPrefix+stageName, "phone", state.Message.Phone, "msg",
+		return utility.LogAndWrapError(ctx, err, stageErrPrefix+stageName, "phone", state.Message.Phone, "msg",
 			state.Message.Body)
 	}
 
@@ -136,19 +134,18 @@ func executeStage(ctx context.Context, ddbClnt db.DDBConnecter, stageName string
 		state.Error = stageErr.Error()
 		state.Status = object.StateFailed
 		if updateErr := state.Update(ctx, ddbClnt, false); updateErr != nil {
-			return utility.LogAndWrapError(updateErr, stageErrPrefix+stageName, "stage error", stageErr.Error(),
+			return utility.LogAndWrapError(ctx, updateErr, stageErrPrefix+stageName, "stage error", stageErr.Error(),
 				"phone", state.Message.Phone, "msg", state.Message.Body)
 		}
 
-		return utility.LogAndWrapError(stageErr, stageErrPrefix+stageName, "phone", state.Message.Phone,
+		return utility.LogAndWrapError(ctx, stageErr, stageErrPrefix+stageName, "phone", state.Message.Phone,
 			"msg", state.Message.Body)
 	}
 
 	return nil
 }
 
-func signUp(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender, msg messaging.TextMessage,
-	mem object.Member) error {
+func signUp(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender, msg messaging.TextMessage, mem object.Member) error {
 	switch {
 	case strings.ToLower(msg.Body) == "pray":
 		if err := signUpStageOne(ctx, ddbClnt, smsClnt, mem); err != nil {
@@ -183,8 +180,7 @@ func signUp(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.Text
 	return nil
 }
 
-func signUpStageOne(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender,
-	mem object.Member) error {
+func signUpStageOne(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender, mem object.Member) error {
 	mem.SetupStatus = object.MemberSetupInProgress
 	mem.SetupStage = object.MemberSignUpStepOne
 	if err := mem.Put(ctx, ddbClnt); err != nil {
@@ -194,8 +190,7 @@ func signUpStageOne(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messag
 	return mem.SendMessage(ctx, smsClnt, messaging.MsgNameRequest)
 }
 
-func signUpStageTwo(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender, mem object.Member,
-	msg messaging.TextMessage, isAnon bool) error {
+func signUpStageTwo(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender, mem object.Member, msg messaging.TextMessage, isAnon bool) error {
 	mem.SetupStage = object.MemberSignUpStepTwo
 	if isAnon {
 		mem.Name = "Anonymous"
@@ -210,8 +205,7 @@ func signUpStageTwo(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messag
 	return mem.SendMessage(ctx, smsClnt, messaging.MsgMemberTypeRequest)
 }
 
-func signUpFinalPrayerMessage(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender,
-	mem object.Member) error {
+func signUpFinalPrayerMessage(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender, mem object.Member) error {
 	mem.SetupStatus = object.MemberSetupComplete
 	mem.SetupStage = object.MemberSignUpStepFinal
 	mem.Intercessor = false
@@ -224,8 +218,7 @@ func signUpFinalPrayerMessage(ctx context.Context, ddbClnt db.DDBConnecter, smsC
 	return mem.SendMessage(ctx, smsClnt, body)
 }
 
-func signUpStageThree(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender,
-	mem object.Member) error {
+func signUpStageThree(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender, mem object.Member) error {
 	mem.SetupStage = object.MemberSignUpStepThree
 	mem.Intercessor = true
 	if err := mem.Put(ctx, ddbClnt); err != nil {
@@ -235,20 +228,19 @@ func signUpStageThree(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt mess
 	return mem.SendMessage(ctx, smsClnt, messaging.MsgPrayerNumRequest)
 }
 
-func signUpFinalIntercessorMessage(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender,
-	mem object.Member, msg messaging.TextMessage) error {
+func signUpFinalIntercessorMessage(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender, mem object.Member, msg messaging.TextMessage) error {
 	num, err := strconv.Atoi(msg.Body)
 	if err != nil {
 		return signUpWrongInput(ctx, smsClnt, mem, msg)
 	}
 
 	phones := object.IntercessorPhones{}
-	if err := phones.Get(ctx, ddbClnt); err != nil {
+	if err = phones.Get(ctx, ddbClnt); err != nil {
 		return err
 	}
 
 	phones.AddPhone(mem.Phone)
-	if err := phones.Put(ctx, ddbClnt); err != nil {
+	if err = phones.Put(ctx, ddbClnt); err != nil {
 		return err
 	}
 
@@ -256,7 +248,7 @@ func signUpFinalIntercessorMessage(ctx context.Context, ddbClnt db.DDBConnecter,
 	mem.SetupStage = object.MemberSignUpStepFinal
 	mem.WeeklyPrayerLimit = num
 	mem.WeeklyPrayerDate = time.Now().Format(time.RFC3339)
-	if err := mem.Put(ctx, ddbClnt); err != nil {
+	if err = mem.Put(ctx, ddbClnt); err != nil {
 		return err
 	}
 
@@ -266,9 +258,8 @@ func signUpFinalIntercessorMessage(ctx context.Context, ddbClnt db.DDBConnecter,
 	return mem.SendMessage(ctx, smsClnt, body)
 }
 
-func signUpWrongInput(ctx context.Context, smsClnt messaging.TextSender, mem object.Member,
-	msg messaging.TextMessage) error {
-	slog.Warn("wrong input received during sign up", "member", mem.Phone, "msg", msg)
+func signUpWrongInput(ctx context.Context, smsClnt messaging.TextSender, mem object.Member, msg messaging.TextMessage) error {
+	slog.WarnContext(ctx, "wrong input received during sign up", "member", mem.Phone, "msg", msg)
 
 	return mem.SendMessage(ctx, smsClnt, messaging.MsgWrongInput)
 }
@@ -309,18 +300,19 @@ func moveActivePrayer(ctx context.Context, ddbClnt db.DDBConnecter, mem object.M
 
 	if isActive {
 		pryr := object.Prayer{IntercessorPhone: mem.Phone}
-		if err := pryr.Get(ctx, ddbClnt, false); err != nil {
+		if err = pryr.Get(ctx, ddbClnt, false); err != nil {
 			return err
 		}
 
-		if err := pryr.Delete(ctx, ddbClnt, false); err != nil {
+		if err = pryr.Delete(ctx, ddbClnt, false); err != nil {
 			return err
 		}
 
 		// A random ID is generated since queued Prayers do not have an intercessor assigned to them. We use the ID in
 		// place if the intercessors phone number until there is an available intercessor, at which time the ID will get
 		// changed to the available intercessors phone number.
-		id, err := utility.GenerateID()
+		var id string
+		id, err = utility.GenerateID()
 		if err != nil {
 			return err
 		}
@@ -332,8 +324,7 @@ func moveActivePrayer(ctx context.Context, ddbClnt db.DDBConnecter, mem object.M
 	return nil
 }
 
-func prayerRequest(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender,
-	msg messaging.TextMessage, mem object.Member) error {
+func prayerRequest(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender, msg messaging.TextMessage, mem object.Member) error {
 	profanity := msg.CheckProfanity()
 	if profanity != "" {
 		msg := strings.Replace(messaging.MsgProfanityFound, "PLACEHOLDER", profanity, 1)
@@ -345,7 +336,7 @@ func prayerRequest(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messagi
 
 	intercessors, err := FindIntercessors(ctx, ddbClnt, mem.Phone)
 	if err != nil && errors.Is(err, utility.ErrNoAvailableIntercessors) {
-		if err := queuePrayer(ctx, ddbClnt, smsClnt, msg, mem); err != nil {
+		if err = queuePrayer(ctx, ddbClnt, smsClnt, msg, mem); err != nil {
 			return utility.WrapError(err, "failed to queue prayer")
 		}
 		return nil
@@ -360,12 +351,12 @@ func prayerRequest(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messagi
 			Request:          msg.Body,
 			Requestor:        mem,
 		}
-		if err := pryr.Put(ctx, ddbClnt, false); err != nil {
+		if err = pryr.Put(ctx, ddbClnt, false); err != nil {
 			return err
 		}
 
 		msg := strings.Replace(messaging.MsgPrayerIntro, "PLACEHOLDER", mem.Name, 1)
-		if err := intr.SendMessage(ctx, smsClnt, msg+pryr.Request); err != nil {
+		if err = intr.SendMessage(ctx, smsClnt, msg+pryr.Request); err != nil {
 			return err
 		}
 	}
@@ -399,7 +390,8 @@ func FindIntercessors(ctx context.Context, ddbClnt db.DDBConnecter, skipPhone st
 		}
 
 		for _, phn := range randPhones {
-			intr, err := processIntercessor(ctx, ddbClnt, phn)
+			var intr *object.Member
+			intr, err = processIntercessor(ctx, ddbClnt, phn)
 			if err != nil && errors.Is(err, utility.ErrIntercessorUnavailable) {
 				allPhones.RemovePhone(phn)
 				continue
@@ -415,8 +407,7 @@ func FindIntercessors(ctx context.Context, ddbClnt db.DDBConnecter, skipPhone st
 	return intercessors, nil
 }
 
-func getAndPreparePhones(ctx context.Context, ddbClnt db.DDBConnecter, skipPhone string) (object.IntercessorPhones,
-	error) {
+func getAndPreparePhones(ctx context.Context, ddbClnt db.DDBConnecter, skipPhone string) (object.IntercessorPhones, error) {
 	phones := object.IntercessorPhones{}
 	if err := phones.Get(ctx, ddbClnt); err != nil {
 		return phones, err
@@ -457,7 +448,7 @@ func processIntercessor(ctx context.Context, ddbClnt db.DDBConnecter, phone stri
 		}
 	}
 
-	if err := intr.Put(ctx, ddbClnt); err != nil {
+	if err = intr.Put(ctx, ddbClnt); err != nil {
 		return nil, err
 	}
 	return &intr, nil
@@ -476,8 +467,7 @@ func canResetPrayerCount(intr object.Member) bool {
 	return diffDays > float64(weekDays)
 }
 
-func queuePrayer(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender, msg messaging.TextMessage,
-	mem object.Member) error {
+func queuePrayer(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender, msg messaging.TextMessage, mem object.Member) error {
 	pryr := object.Prayer{}
 	// A random ID is generated since queued Prayers do not have an intercessor assigned to them. We use the ID in place
 	// if the intercessors phone number until there is an available intercessor, at which time the ID will get changed
@@ -489,15 +479,14 @@ func queuePrayer(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging
 
 	pryr.IntercessorPhone, pryr.Request, pryr.Requestor = id, msg.Body, mem
 
-	if err := pryr.Put(ctx, ddbClnt, true); err != nil {
+	if err = pryr.Put(ctx, ddbClnt, true); err != nil {
 		return err
 	}
 
 	return mem.SendMessage(ctx, smsClnt, messaging.MsgPrayerQueued)
 }
 
-func completePrayer(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender,
-	mem object.Member) error {
+func completePrayer(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender, mem object.Member) error {
 	pryr := object.Prayer{IntercessorPhone: mem.Phone}
 	if err := pryr.Get(ctx, ddbClnt, false); err != nil {
 		return err
@@ -524,11 +513,12 @@ func completePrayer(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messag
 	}
 
 	if isActive {
-		if err := pryr.Requestor.SendMessage(ctx, smsClnt, msg); err != nil {
+		if err = pryr.Requestor.SendMessage(ctx, smsClnt, msg); err != nil {
 			return err
 		}
 	} else {
-		slog.Warn("Skip sending message, member is not active", "recipient", pryr.Requestor.Phone, "body", msg)
+		slog.WarnContext(ctx, "Skip sending message, member is not active", "recipient", pryr.Requestor.Phone,
+			"body", msg)
 	}
 
 	return pryr.Delete(ctx, ddbClnt, false)

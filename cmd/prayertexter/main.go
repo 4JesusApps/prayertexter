@@ -52,7 +52,7 @@ func handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.API
 		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError}, err
 	}
 
-	if err := prayertexter.MainFlow(ctx, ddbClnt, smsClnt, msg); err != nil {
+	if err = prayertexter.MainFlow(ctx, ddbClnt, smsClnt, msg); err != nil {
 		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError}, err
 	}
 

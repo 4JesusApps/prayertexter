@@ -26,12 +26,12 @@ func (r *LoggingRetryer) MaxAttempts() int {
 }
 
 // GetRetryToken is a dummy method to satisfy the aws.Retryer interface. It delegates to the actual Retryer.
-func (r *LoggingRetryer) GetRetryToken(ctx context.Context, opErr error) (releaseToken func(error) error, err error) {
+func (r *LoggingRetryer) GetRetryToken(ctx context.Context, opErr error) (func(error) error, error) {
 	return r.delegate.GetRetryToken(ctx, opErr)
 }
 
 // GetInitialToken is a dummy method to satisfy the aws.Retryer interface. It delegates to the actual Retryer.
-func (r *LoggingRetryer) GetInitialToken() (releaseToken func(error) error) {
+func (r *LoggingRetryer) GetInitialToken() func(error) error {
 	return r.delegate.GetInitialToken()
 }
 

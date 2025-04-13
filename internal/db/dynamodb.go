@@ -100,7 +100,7 @@ func PutDdbObject[T any](ctx context.Context, ddbClnt DDBConnecter, table string
 		return utility.WrapError(err, fmt.Sprintf("failed to marshal %T from table %s", *new(T), table))
 	}
 
-	if err := putDdbItem(ctx, ddbClnt, table, item); err != nil {
+	if err = putDdbItem(ctx, ddbClnt, table, item); err != nil {
 		return utility.WrapError(err, fmt.Sprintf("failed to put %T from table %s", *new(T), table))
 	}
 

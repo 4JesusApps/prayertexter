@@ -274,11 +274,11 @@ func testPutObject[T any](t *testing.T, ddbMock *mock.DDBConnecter, expectedObje
 	expectedMap := make(map[string]any)
 	lastPutMap := make(map[string]any)
 
-	if err := attributevalue.UnmarshalMap(expectedDdbItem.Output.Item, &expectedMap); err != nil {
+	if err = attributevalue.UnmarshalMap(expectedDdbItem.Output.Item, &expectedMap); err != nil {
 		t.Errorf("failed to unmarshal expectedDdbItem: %v", err)
 	}
 
-	if err := attributevalue.UnmarshalMap(lastPutItem, &lastPutMap); err != nil {
+	if err = attributevalue.UnmarshalMap(lastPutItem, &lastPutMap); err != nil {
 		t.Errorf("failed to unmarshal lastPutItem: %v", err)
 	}
 

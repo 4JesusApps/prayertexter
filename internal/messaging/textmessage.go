@@ -102,7 +102,8 @@ func SendText(ctx context.Context, smsClnt TextSender, msg TextMessage) error {
 	// However when unit testing, we can't skip this part since this is mocked and receives inputs.
 	if !utility.IsAwsLocal() {
 		timeout := viper.GetInt(TimeoutConfigPath)
-		ctx, cancel := context.WithTimeout(ctx, time.Duration(timeout)*time.Second)
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, time.Duration(timeout)*time.Second)
 		defer cancel()
 
 		phone := viper.GetString(PhoneConfigPath)
@@ -118,7 +119,7 @@ func SendText(ctx context.Context, smsClnt TextSender, msg TextMessage) error {
 		return utility.WrapError(err, fmt.Sprintf("failed to send text message to %s", msg.Phone))
 	}
 
-	slog.Info("sent text message", "phone", msg.Phone, "body", body)
+	slog.InfoContext(ctx, "sent text message", "phone", msg.Phone, "body", body)
 	return nil
 }
 
