@@ -128,7 +128,7 @@ linters:
     #- ireturn # accept interfaces, return concrete types
     #- prealloc # [premature optimization, but can be used in some cases] finds slice declarations that could potentially be preallocated
     #- tagalign # checks that struct tags are well aligned
-    # PRAY: removed due to panic - unparam # reports unused function parameters
+    # PRAYERTEXTER: removed due to panic - unparam # reports unused function parameters
     #- varnamelen # [great idea, but too many false positives] checks that the length of a variable's name matches its scope
     #- wrapcheck # checks that errors returned from external packages are wrapped
     #- zerologlint # detects the wrong usage of zerolog that a user forgets to dispatch zerolog.Event
@@ -371,7 +371,7 @@ linters:
       # - "default": report only the default slog logger
       # https://github.com/go-simpler/sloglint?tab=readme-ov-file#no-global
       # Default: ""
-      # PRAY: removed global logger checks because global logger is fine in our simple logging use case
+      # PRAYERTEXTER: removed global logger checks because global logger is fine in our simple logging use case
       # no-global: all
       no-global: ""
       # Enforce using methods that accept a context.
@@ -437,9 +437,9 @@ linters:
           - gosec
           - noctx
           - wrapcheck
-      # PRAY: skip long lines of function declarations (long parameters)
+      # PRAYERTEXTER: skip long lines of function declarations (long parameters)
       - source: '^func'
         linters: [ golines ]
-      # PRAY: skip long lines of map[string]types.AttributeValue in test files
+      # PRAYERTEXTER: skip long lines of map[string]types.AttributeValue in test files
       - source: '&types.AttributeValueMember'
         linters: [ golines ]
