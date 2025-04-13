@@ -76,9 +76,9 @@ func GetPrayerTable(queue bool) string {
 
 	if queue {
 		return queuedPrayersTable
-	} else {
-		return activePrayersTable
 	}
+
+	return activePrayersTable
 }
 
 // IsPrayerActive reports whether a Prayer is found (active) in dynamodb.

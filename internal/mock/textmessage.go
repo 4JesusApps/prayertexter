@@ -14,10 +14,7 @@ type TextSender struct {
 	}
 }
 
-func (m *TextSender) SendTextMessage(_ context.Context,
-	params *pinpointsmsvoicev2.SendTextMessageInput, _ ...func(*pinpointsmsvoicev2.Options)) (
-	*pinpointsmsvoicev2.SendTextMessageOutput, error) { //nolint:whitespace // line too long, needed new line
-
+func (m *TextSender) SendTextMessage(_ context.Context, params *pinpointsmsvoicev2.SendTextMessageInput, _ ...func(*pinpointsmsvoicev2.Options)) (*pinpointsmsvoicev2.SendTextMessageOutput, error) {
 	m.SendTextCalls++
 	m.SendTextInputs = append(m.SendTextInputs, params)
 

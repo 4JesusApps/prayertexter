@@ -2,6 +2,7 @@ package utility_test
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"log/slog"
 	"strings"
@@ -11,6 +12,7 @@ import (
 )
 
 func TestErrorOperations(t *testing.T) {
+	ctx := context.Background()
 	origErr := errors.New("original error")
 	expectedErrString := "wrapped new error message: original error"
 	newErrorMsg := "wrapped new error message"
@@ -26,11 +28,11 @@ func TestErrorOperations(t *testing.T) {
 	})
 	t.Run("LogAndWrapError", func(t *testing.T) {
 		t.Run("basic error wrapping/logging string test", func(t *testing.T) {
-			testErrAndLog(t, origErr, expectedErrString, newErrorMsg, false)
+			testErrAndLog(ctx, t, origErr, expectedErrString, newErrorMsg, false)
 		})
 
 		t.Run("nil err as parameter should also return nil and not log anything", func(t *testing.T) {
-			testErrAndLog(t, origErr, expectedErrString, newErrorMsg, true)
+			testErrAndLog(ctx, t, origErr, expectedErrString, newErrorMsg, true)
 		})
 	})
 }
@@ -51,21 +53,21 @@ func testErr(t *testing.T, origErr error, expectedErrString, newErrorMsg string,
 	}
 }
 
-func testErrAndLog(t *testing.T, origErr error, expectedErrString, newErrorMsg string, nilErr bool) {
+func testErrAndLog(ctx context.Context, t *testing.T, origErr error, expectedErrString, newErrorMsg string, nilErr bool) {
 	var buff bytes.Buffer
 	log := slog.New(slog.NewTextHandler(&buff, nil))
 	slog.SetDefault(log)
 	expectedLog := `level=ERROR msg="wrapped new error message" testattr1=1 testattr2=2 error="original error"`
 
 	if nilErr {
-		testNilErrorAndLog(t, newErrorMsg, &buff)
+		testNilErrorAndLog(ctx, t, newErrorMsg, &buff)
 	} else {
-		testActualErrorAndLog(t, origErr, newErrorMsg, expectedErrString, expectedLog, &buff)
+		testActualErrorAndLog(ctx, t, origErr, newErrorMsg, expectedErrString, expectedLog, &buff)
 	}
 }
 
-func testNilErrorAndLog(t *testing.T, newErrorMsg string, buff *bytes.Buffer) {
-	newErr := utility.LogAndWrapError(nil, newErrorMsg, "testattr1", "1", "testattr2", "2")
+func testNilErrorAndLog(ctx context.Context, t *testing.T, newErrorMsg string, buff *bytes.Buffer) {
+	newErr := utility.LogAndWrapError(ctx, nil, newErrorMsg, "testattr1", "1", "testattr2", "2")
 
 	if newErr != nil {
 		t.Errorf("expected nil error, got %v", newErr.Error())
@@ -76,9 +78,8 @@ func testNilErrorAndLog(t *testing.T, newErrorMsg string, buff *bytes.Buffer) {
 	}
 }
 
-func testActualErrorAndLog(t *testing.T, origErr error, newErrorMsg, expectedErrString, expectedLog string,
-	buff *bytes.Buffer) {
-	newErr := utility.LogAndWrapError(origErr, newErrorMsg, "testattr1", "1", "testattr2", "2")
+func testActualErrorAndLog(ctx context.Context, t *testing.T, origErr error, newErrorMsg, expectedErrString, expectedLog string, buff *bytes.Buffer) {
+	newErr := utility.LogAndWrapError(ctx, origErr, newErrorMsg, "testattr1", "1", "testattr2", "2")
 
 	if newErr.Error() != expectedErrString {
 		t.Errorf("expected error string %v, got %v", expectedErrString, newErr.Error())

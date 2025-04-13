@@ -371,7 +371,9 @@ linters:
       # - "default": report only the default slog logger
       # https://github.com/go-simpler/sloglint?tab=readme-ov-file#no-global
       # Default: ""
-      no-global: all
+      # PRAY: removed global logger checks because global logger is fine in our simple logging use case
+      # no-global: all
+      no-global: ""
       # Enforce using methods that accept a context.
       # Values:
       # - "": disabled
@@ -435,3 +437,9 @@ linters:
           - gosec
           - noctx
           - wrapcheck
+      # PRAY: skip long lines of function declarations (long parameters)
+      - source: '^func'
+        linters: [ golines ]
+      # PRAY: skip long lines of map[string]types.AttributeValue in test files
+      - source: '&types.AttributeValueMember'
+        linters: [ golines ]
