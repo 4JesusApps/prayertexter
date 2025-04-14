@@ -4,7 +4,6 @@ This application is a work in progress!
 
 PrayerTexter is a Go application that lets users submit prayer requests via text message (SMS). These requests are then assigned to “intercessors”—other users who have volunteered to pray over incoming requests. Once prayed for, the original requestor receives a confirmation. Below is a thorough overview of how the application works, the business logic, and the overall code layout.
 
----
 
 ## High-Level Functionality
 
@@ -27,7 +26,38 @@ PrayerTexter is a Go application that lets users submit prayer requests via text
    • Users can text “help” to receive the phone number’s contact and help information (required by SMS service regulations).
    • Multiple phone numbers can be assigned to handle announcements or asynchronous tasks (like stateresolver).
 
----
+
+## Main Technical Flows
+
+1. **Sign-Up Flow**
+   1) A user texts “pray.”
+   2) The system checks if they are new; if so, sets them as “IN PROGRESS,” step one.
+   3) They are asked their name (or choose “2” for anonymous).
+   4) They decide whether to be a regular member or an intercessor. If intercessor, how many prayers per week.
+   5) The user is flagged “COMPLETE,” enabling them to submit requests. If intercessor, they’re added to the “IntercessorsPhones” list.
+
+2. **Prayer Request**
+   1) A member texts any arbitrary message with a prayer need.
+   2) The system checks for profanity. If found, the request is refused. Otherwise, it tries to find available intercessors.
+   3) Each suitable intercessor is updated in DynamoDB (incrementing their prayer counts, verifying no active request conflicts).
+   4) The request is saved as an “active prayer” for each intercessor.
+   5) If no intercessors can be assigned, the request goes into “QueuedPrayers.”
+
+3. **Completing a Prayer**
+   1) Intercessors reply “prayed.”
+   2) If an active prayer is found for their phone number, it is removed from “ActivePrayers.”
+   3) The requestor is notified that their prayer has been prayed over—unless the requestor has canceled membership.
+   4) The intercessor’s “active prayer” slot is now cleared.
+
+4. **Member Removal**
+   1) A user can text “cancel” or “stop.”
+   2) They’re removed from “Members,” and if they are an intercessor, from “IntercessorPhones.”
+   3) If they had an active prayer assigned, that prayer is changed from active to queued so that future intercessors may cover it.
+
+5. **StateTracker**
+   - Tracks operations (e.g., sign-up or prayer assignment failures) for later recovery.
+   - On success, the state is removed from StateTracker. On failure, it’s stored with the error message.
+
 
 ## Directory and Code Structure
 
@@ -85,49 +115,13 @@ PrayerTexter is structured to separate code for domain logic, AWS integrations, 
    - Makes extensive use of “mock” packages for AWS calls to keep tests deterministic.
    - Covers sign-up flows, prayer queue logic, text-sending, and error-handling scenarios.
 
----
-
-## Main Technical Flows
-
-1. **Sign-Up Flow**
-   1) A user texts “pray.”
-   2) The system checks if they are new; if so, sets them as “IN PROGRESS,” step one.
-   3) They are asked their name (or choose “2” for anonymous).
-   4) They decide whether to be a regular member or an intercessor. If intercessor, how many prayers per week.
-   5) The user is flagged “COMPLETE,” enabling them to submit requests. If intercessor, they’re added to the “IntercessorsPhones” list.
-
-2. **Prayer Request**
-   1) A member texts any arbitrary message with a prayer need.
-   2) The system checks for profanity. If found, the request is refused. Otherwise, it tries to find available intercessors.
-   3) Each suitable intercessor is updated in DynamoDB (incrementing their prayer counts, verifying no active request conflicts).
-   4) The request is saved as an “active prayer” for each intercessor.
-   5) If no intercessors can be assigned, the request goes into “QueuedPrayers.”
-
-3. **Completing a Prayer**
-   1) Intercessors reply “prayed.”
-   2) If an active prayer is found for their phone number, it is removed from “ActivePrayers.”
-   3) The requestor is notified that their prayer has been prayed over—unless the requestor has canceled membership.
-   4) The intercessor’s “active prayer” slot is now cleared.
-
-4. **Member Removal**
-   1) A user can text “cancel” or “stop.”
-   2) They’re removed from “Members,” and if they are an intercessor, from “IntercessorPhones.”
-   3) If they had an active prayer assigned, that prayer is changed from active to queued so that future intercessors may cover it.
-
-5. **StateTracker**
-   - Tracks operations (e.g., sign-up or prayer assignment failures) for later recovery.
-   - On success, the state is removed from StateTracker. On failure, it’s stored with the error message.
-
----
 
 ## Summary
 
-• “cmd/prayertexter/main.go” is the primary Lambda handler for inbound SMS events via API Gateway.
-• “internal/prayertexter/prayertexter.go” orchestrates each message’s flow: sign-up, prayer requests, completion, cancels, etc.
-• “internal/object” models the data stored in DynamoDB (Members, Prayers, IntercessorPhones, etc.). Each model provides CRUD capabilities.
-• “internal/db” generalizes DynamoDB interactions so that the logic can be shared and tested easily.
-• “internal/messaging” handles SMS logic, from constructing messages to sending them through AWS Pinpoint.
-• “internal/config” and “internal/utility” handle environment config, error handling, and AWS session setup.
-• Tests leverage “mock” frameworks to avoid actual AWS calls.
-
-The net effect is that, once deployed via AWS SAM, PrayerTexter can receive inbound texts, sign people up, route requests, and confirm prayers automatically. The system also supports future expansions: an announcer Lambda for broadcast messages, a stateresolver Lambda for automatically moving queued prayers out of backlog, retrials, or scheduling reminders.
+- “cmd/prayertexter/main.go” is the primary Lambda handler for inbound SMS events via API Gateway.
+- “internal/prayertexter/prayertexter.go” orchestrates each message’s flow: sign-up, prayer requests, completion, cancels, etc.
+- “internal/object” models the data stored in DynamoDB (Members, Prayers, IntercessorPhones, etc.). Each model provides CRUD capabilities.
+- “internal/db” generalizes DynamoDB interactions so that the logic can be shared and tested easily.
+- “internal/messaging” handles SMS logic, from constructing messages to sending them through AWS Pinpoint.
+- “internal/config” and “internal/utility” handle environment config, error handling, and AWS session setup.
+- Tests leverage “mock” frameworks to avoid actual AWS calls.
