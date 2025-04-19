@@ -34,8 +34,8 @@ func TestSendText(t *testing.T) {
 			t.Errorf("expected txt %v, got %v", msg, receivedText)
 		}
 
-		if *txtMock.SendTextInputs[0].OriginationIdentity != messaging.DefaultPhone {
-			t.Errorf("expected phone number %v, got %v", messaging.DefaultPhone,
+		if *txtMock.SendTextInputs[0].OriginationIdentity != messaging.DefaultPhonePool {
+			t.Errorf("expected phone number %v, got %v", messaging.DefaultPhonePool,
 				*txtMock.SendTextInputs[0].OriginationIdentity)
 		}
 	})

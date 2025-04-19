@@ -1,6 +1,7 @@
 {
     "makefile.configureOnOpen": false,
     "cSpell.words": [
+        "activeprayer",
         "activetable",
         "attributevalue",
         "clnt",
@@ -15,11 +16,13 @@
         "mapstructure",
         "nolint",
         "nosec",
+        "phonepool",
         "pinpointsmsvoicev",
         "prayertexter",
         "prayyy",
         "prsn",
         "pryr",
+        "queuedprayer",
         "queuetable",
         "Retryable",
         "Retryer",

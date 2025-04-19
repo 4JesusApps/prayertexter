@@ -22,10 +22,10 @@ type Prayer struct {
 
 // Default values for configuration that has been exposed to be used with the config package.
 const (
-	DefaultActivePrayersTable    = "ActivePrayers"
+	DefaultActivePrayersTable    = "ActivePrayer"
 	ActivePrayersTableConfigPath = "conf.aws.db.prayer.activetable"
 
-	DefaultQueuedPrayersTable    = "QueuedPrayers"
+	DefaultQueuedPrayersTable    = "QueuedPrayer"
 	QueuedPrayersTableConfigPath = "conf.aws.db.prayer.queuetable"
 
 	DefaultIntercessorsPerPrayer    = 2
