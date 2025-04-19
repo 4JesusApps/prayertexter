@@ -1,28 +1,30 @@
 Transform: AWS::Serverless-2016-10-31
+
+Parameters:
+  # The end user messaging SMS pool needs to be set here manually. This needs to be created separately and is managed
+  # outside of cloudformation.
+  SMSPhonePoolArn:
+    Type: String
+    Default: arn:aws:sms-voice:us-west-1:681271545794:pool/pool-34c6fe4aaf88416abe070959a2241a8b
+
+Globals:
+  Function:
+    Timeout: 60
+    MemorySize: 128
+    Tracing: Active
+    Environment:
+      Variables:
+        # Env variables need to match specific format. See prayertexter config package for details.
+        PRAY_CONF_AWS_DB_PRAYER_ACTIVETABLE: !Ref ActivePrayer
+        PRAY_CONF_AWS_DB_INTERCESSORPHONES_TABLE: !Ref General
+        PRAY_CONF_AWS_DB_STATETRACKER_TABLE: !Ref General
+        PRAY_CONF_AWS_DB_MEMBER_TABLE: !Ref Member
+        PRAY_CONF_AWS_DB_PRAYER_QUEUETABLE: !Ref QueuedPrayer
+        PRAY_CONF_AWS_SMS_PHONEPOOL: !Ref SMSPhonePoolArn
+
 Resources:
-  Api:
-    Type: AWS::Serverless::Api
-    Properties:
-      Name: !Sub
-        - ${ResourceName} From Stack ${AWS::StackName}
-        - ResourceName: Api
-      StageName: Prod
-      DefinitionBody:
-        openapi: '3.0'
-        info: {}
-        paths:
-          /:
-            post:
-              x-amazon-apigateway-integration:
-                httpMethod: POST
-                type: aws_proxy
-                uri: !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${PrayerTexter.Arn}/invocations
-              responses: {}
-      EndpointConfiguration: REGIONAL
-      TracingEnabled: true
-      Cors:
-        MaxAge: 5
-  ActivePrayers:
+  # Dynamodb tables
+  ActivePrayer:
     Type: AWS::DynamoDB::Table
     Properties:
       AttributeDefinitions:
@@ -34,6 +36,7 @@ Resources:
           KeyType: HASH
       StreamSpecification:
         StreamViewType: NEW_AND_OLD_IMAGES
+
   General:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -46,7 +49,8 @@ Resources:
           KeyType: HASH
       StreamSpecification:
         StreamViewType: NEW_AND_OLD_IMAGES
-  Members:
+
+  Member:
     Type: AWS::DynamoDB::Table
     Properties:
       AttributeDefinitions:
@@ -58,7 +62,8 @@ Resources:
           KeyType: HASH
       StreamSpecification:
         StreamViewType: NEW_AND_OLD_IMAGES
-  QueuedPrayers:
+
+  QueuedPrayer:
     Type: AWS::DynamoDB::Table
     Properties:
       AttributeDefinitions:
@@ -70,49 +75,94 @@ Resources:
           KeyType: HASH
       StreamSpecification:
         StreamViewType: NEW_AND_OLD_IMAGES
+
+  # SNS topic that triggers PrayerTexter lambda function
+  PrayerTexterMainTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: prayertexter-main-trigger
+
+  # Log group for SMS delivery events
+  SMSLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: prayertexter-sms
+      RetentionInDays: 30
+      Tags:
+        - Key: prayertexter
+          Value: ""
+
+  # Policy that allows sending logs to cloudwatch log group
+  SMSVoiceLogPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: send-cloudwatch-logs-log-group-prayertexter-sms
+      Path: /
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - logs:CreateLogStream
+              - logs:DescribeLogStreams
+              - logs:PutLogEvents
+            Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:prayertexter-sms:*
+
+  # Role that binds SMS to cloudwatch log group policy
+  SMSVoiceLogRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: end-user-messaging-send-cloudwatch-logs
+      Path: /
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: sms-voice.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+              ArnLike:
+                aws:SourceArn: !Sub arn:aws:sms-voice:${AWS::Region}:${AWS::AccountId}:configuration-set/prayertexter
+      ManagedPolicyArns:
+        - !Ref SMSVoiceLogPolicy
+
+  # Main lambda function
   PrayerTexter:
     Type: AWS::Serverless::Function
     Metadata:
       BuildMethod: go1.x
     Properties:
-# Architecture lines are only needed when running sam local tests on ARM CPU (Mac with apple silicon)
-#      Architectures:
-#        - arm64
-      Description: !Sub
-        - Stack ${AWS::StackName} Function ${ResourceName}
-        - ResourceName: PrayerTexter
-      CodeUri: .
+      Description: !Sub "Stack ${AWS::StackName} Function PrayerTexter"
+      CodeUri: cmd/prayertexter/apigateway-test/
       Handler: bootstrap
       Runtime: provided.al2023
-      MemorySize: 128
-      Timeout: 30
-      Tracing: Active
-      Events:
-        ApiPOST:
-          Type: Api
-          Properties:
-            Path: /
-            Method: POST
-            RestApiId: !Ref Api
-      Environment:
-        Variables:
-          ACTIVE_PRAYERS_TABLE_NAME: !Ref ActivePrayers
-          ACTIVE_PRAYERS_TABLE_ARN: !GetAtt ActivePrayers.Arn
-          GENERAL_TABLE_NAME: !Ref General
-          GENERAL_TABLE_ARN: !GetAtt General.Arn
-          MEMBERS_TABLE_NAME: !Ref Members
-          MEMBERS_TABLE_ARN: !GetAtt Members.Arn
-          QUEUED_PRAYERS_TABLE_NAME: !Ref QueuedPrayers
-          QUEUED_PRAYERS_TABLE_ARN: !GetAtt QueuedPrayers.Arn
       Policies:
+        # Grants lambda function access to dynamodb tables
         - DynamoDBCrudPolicy:
-            TableName: !Ref ActivePrayers
+            TableName: !Ref ActivePrayer
         - DynamoDBCrudPolicy:
             TableName: !Ref General
         - DynamoDBCrudPolicy:
-            TableName: !Ref Members
+            TableName: !Ref Member
         - DynamoDBCrudPolicy:
-            TableName: !Ref QueuedPrayers
+            TableName: !Ref QueuedPrayer
+        # Grants lambda function access to send SMS
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - sms-voice:SendTextMessage
+              Resource: !Ref SMSPhonePoolArn
+      Events:
+        SNSTriggerTopic:
+          Type: SNS
+          Properties:
+            Topic: !Ref PrayerTexterMainTopic
+
+  # Log group for main lambda function
   PrayerTexterLogGroup:
     Type: AWS::Logs::LogGroup
     DeletionPolicy: Retain
@@ -120,9 +170,10 @@ Resources:
       LogGroupName: !Sub /aws/lambda/${PrayerTexter}
 
 Outputs:
-  PrayerTexter:
-    Description: "PrayerTexter"
-    Value: !Ref PrayerTexter
-  API:
-    Description: "API Gateway endpoint URL for the API"
-    Value: !Sub "https://${Api}.execute-api.${AWS::Region}.amazonaws.com/Prod"
+  PrayerTexterFunctionArn:
+    Description: ARN of the PrayerTexter function
+    Value: !GetAtt PrayerTexter.Arn
+
+  MainTopicArn:
+    Description: SNS Topic ARN for main messages
+    Value: !Ref PrayerTexterMainTopic

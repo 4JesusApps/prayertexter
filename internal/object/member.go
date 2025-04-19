@@ -38,7 +38,7 @@ type Member struct {
 
 // Default values for configuration that has been exposed to be used with the config package.
 const (
-	DefaultMemberTable    = "Members"
+	DefaultMemberTable    = "Member"
 	MemberTableConfigPath = "conf.aws.db.member.table"
 )
 

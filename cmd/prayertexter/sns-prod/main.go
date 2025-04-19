@@ -17,7 +17,6 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
-	"net/http"
 
 	"github.com/4JesusApps/prayertexter/internal/db"
 	"github.com/4JesusApps/prayertexter/internal/messaging"
@@ -32,31 +31,37 @@ import (
 //lint:ignore U1000 - var used in Makefile
 var version string // do not remove or modify
 
-func handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	msg := messaging.TextMessage{}
+func handler(ctx context.Context, snsEvent events.SNSEvent) {
+	// According to aws documentation, there should only be 1 record per SNS, however since Records is a slice we are
+	// checking here just to be safe.
+	if len(snsEvent.Records) > 1 {
+		for _, record := range snsEvent.Records {
+			slog.ErrorContext(ctx, "lambda handler: there are more than 1 SNS records! This is unexpected and only "+
+				"the first record will be handled", "message", record.SNS.Message, "messageid", record.SNS.MessageID)
+		}
+	}
 
-	if err := json.Unmarshal([]byte(req.Body), &msg); err != nil {
+	msg := messaging.TextMessage{}
+	if err := json.Unmarshal([]byte(snsEvent.Records[0].SNS.Message), &msg); err != nil {
 		slog.ErrorContext(ctx, "lambda handler: failed to unmarshal api gateway request", "error", err)
-		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError}, err
+		return
 	}
 
 	ddbClnt, err := db.GetDdbClient(ctx)
 	if err != nil {
 		slog.ErrorContext(ctx, "lambda handler: failed to get dynamodb client", "error", err)
-		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError}, err
+		return
 	}
 
 	smsClnt, err := messaging.GetSmsClient(ctx)
 	if err != nil {
 		slog.ErrorContext(ctx, "lambda handler: failed to get sms client", "error", err)
-		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError}, err
+		return
 	}
 
 	if err = prayertexter.MainFlow(ctx, ddbClnt, smsClnt, msg); err != nil {
-		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError}, err
+		return
 	}
-
-	return events.APIGatewayProxyResponse{StatusCode: http.StatusOK, Body: "Success"}, nil
 }
 
 func main() {

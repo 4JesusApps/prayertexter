@@ -20,8 +20,8 @@ import (
 
 // Default values for configuration that has been exposed to be used with the config package.
 const (
-	DefaultPhone    = "+12762908579"
-	PhoneConfigPath = "conf.aws.sms.phone"
+	DefaultPhonePool    = "dummy"
+	PhonePoolConfigPath = "conf.aws.sms.phonepool"
 
 	DefaultTimeout    = 60
 	TimeoutConfigPath = "conf.aws.sms.timeout"
@@ -72,9 +72,9 @@ const (
 // A TextMessage represents a received text message from a user.
 type TextMessage struct {
 	// Body is the text message content.
-	Body string `json:"body"`
+	Body string `json:"messageBody"`
 	// Phone is the phone number of the text message sender.
-	Phone string `json:"phone-number"`
+	Phone string `json:"originationNumber"`
 }
 
 type TextSender interface {
@@ -106,12 +106,12 @@ func SendText(ctx context.Context, smsClnt TextSender, msg TextMessage) error {
 		ctx, cancel = context.WithTimeout(ctx, time.Duration(timeout)*time.Second)
 		defer cancel()
 
-		phone := viper.GetString(PhoneConfigPath)
+		phonepool := viper.GetString(PhonePoolConfigPath)
 		input := &pinpointsmsvoicev2.SendTextMessageInput{
 			DestinationPhoneNumber: aws.String(msg.Phone),
 			MessageBody:            aws.String(body),
 			MessageType:            types.MessageTypeTransactional,
-			OriginationIdentity:    aws.String(phone),
+			OriginationIdentity:    aws.String(phonepool),
 		}
 
 		_, err := smsClnt.SendTextMessage(ctx, input)

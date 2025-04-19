@@ -1,3 +1,4 @@
 # Ignore binary
 bootstrap
 bin
+.aws-sam

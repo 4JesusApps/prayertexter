@@ -41,8 +41,8 @@ func setDefaults() {
 				},
 			},
 			"sms": map[string]any{
-				"phone":   messaging.DefaultPhone,
-				"timeout": messaging.DefaultTimeout,
+				"phonepool": messaging.DefaultPhonePool,
+				"timeout":   messaging.DefaultTimeout,
 			},
 		},
 		"intercessorsperprayer": object.DefaultIntercessorsPerPrayer,

@@ -25,7 +25,7 @@ func TestDefaultConfigValues(t *testing.T) {
 			object.ActivePrayersTableConfigPath:     object.DefaultActivePrayersTable,
 			object.QueuedPrayersTableConfigPath:     object.DefaultQueuedPrayersTable,
 			object.StateTrackerTableConfigPath:      object.DefaultStateTrackerTable,
-			messaging.PhoneConfigPath:               messaging.DefaultPhone,
+			messaging.PhonePoolConfigPath:           messaging.DefaultPhonePool,
 			messaging.TimeoutConfigPath:             messaging.DefaultTimeout,
 			object.IntercessorsPerPrayerConfigPath:  object.DefaultIntercessorsPerPrayer,
 		}
@@ -52,13 +52,13 @@ func TestDefaultConfigValues(t *testing.T) {
 func TestEnvironmentalVariableOverride(t *testing.T) {
 	t.Run("verify environmental variables can override default config values", func(t *testing.T) {
 		config.InitConfig()
-		defaultPhone := viper.GetString(messaging.PhoneConfigPath)
+		defaultPhone := viper.GetString(messaging.PhonePoolConfigPath)
 		newPhone := "+17777777777"
 
-		t.Setenv("PRAY_CONF_AWS_SMS_PHONE", newPhone)
+		t.Setenv("PRAY_CONF_AWS_SMS_PHONEPOOL", newPhone)
 
 		config.InitConfig()
-		phone := viper.GetString(messaging.PhoneConfigPath)
+		phone := viper.GetString(messaging.PhonePoolConfigPath)
 
 		if phone == defaultPhone {
 			t.Errorf("expected phones to not be equal, got %v for both", phone)
