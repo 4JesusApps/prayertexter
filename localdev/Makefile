@@ -19,18 +19,18 @@ endif
 GOOS    := linux
 LDFLAGS := -ldflags "-X main.version=$(VERSION)"
 BINARY  := bootstrap
-OUTDIR  := bin/$(GOOS)_$(GOARCH)
+OUTDIR  := ../bin/$(GOOS)_$(GOARCH)
 
 define BUILD_CMD
 	@mkdir -p $(OUTDIR)/$(1)
 	@echo "→ Building $(1) for $(GOOS)/$(GOARCH) (version=$(VERSION))"
-	GOOS=linux GOARCH=$(GOARCH) go build $(LDFLAGS) -o $(OUTDIR)/$(1)/$(BINARY) ./cmd/$(1)
+	GOOS=linux GOARCH=$(GOARCH) CGO_ENABLED=0 go build -tags lambda.norpc $(LDFLAGS) -o $(OUTDIR)/$(1)/$(BINARY) ../cmd/$(1)/apigateway-test
 endef
 
 .PHONY: build clean
 build:
 	$(call BUILD_CMD,$(BUILD))
-	@cp $(OUTDIR)/$(BUILD)/$(BINARY) .
+	@cp $(OUTDIR)/$(BUILD)/$(BINARY) ../
 
 clean:
 	@rm -rf bin

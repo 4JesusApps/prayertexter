@@ -1,5 +1,5 @@
 {
-    "TableName": "ActivePrayers",
+    "TableName": "ActivePrayer",
     "KeySchema": [
       { "AttributeName": "IntercessorPhone", "KeyType": "HASH" }
     ],
