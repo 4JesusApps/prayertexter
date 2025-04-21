@@ -29,6 +29,8 @@ type DDBConnecter interface {
 		*dynamodb.PutItemOutput, error)
 	DeleteItem(ctx context.Context, input *dynamodb.DeleteItemInput, opts ...func(*dynamodb.Options)) (
 		*dynamodb.DeleteItemOutput, error)
+	Scan(ctx context.Context, params *dynamodb.ScanInput, optFns ...func(*dynamodb.Options)) (
+		*dynamodb.ScanOutput, error)
 }
 
 // GetDdbClient returns a dynamodb client that can be used for various dynamodb operations.
@@ -56,12 +58,15 @@ func getDdbItem(ctx context.Context, ddbClnt DDBConnecter, key, keyVal, table st
 	ctx, cancel := context.WithTimeout(ctx, time.Duration(timeout)*time.Second)
 	defer cancel()
 
-	item, err := ddbClnt.GetItem(ctx, &dynamodb.GetItemInput{
+	input := &dynamodb.GetItemInput{
 		TableName: &table,
 		Key: map[string]types.AttributeValue{
 			key: &types.AttributeValueMemberS{Value: keyVal},
 		},
-	})
+		ReturnConsumedCapacity: types.ReturnConsumedCapacityNone,
+	}
+
+	item, err := ddbClnt.GetItem(ctx, input)
 
 	return item, err
 }
@@ -85,10 +90,13 @@ func putDdbItem(ctx context.Context, ddbClnt DDBConnecter, table string, data ma
 	ctx, cancel := context.WithTimeout(ctx, time.Duration(timeout)*time.Second)
 	defer cancel()
 
-	_, err := ddbClnt.PutItem(ctx, &dynamodb.PutItemInput{
-		TableName: &table,
-		Item:      data,
-	})
+	input := &dynamodb.PutItemInput{
+		TableName:              &table,
+		Item:                   data,
+		ReturnConsumedCapacity: types.ReturnConsumedCapacityNone,
+	}
+
+	_, err := ddbClnt.PutItem(ctx, input)
 
 	return err
 }
@@ -114,12 +122,56 @@ func DelDdbItem(ctx context.Context, ddbClnt DDBConnecter, key, keyVal, table st
 	ctx, cancel := context.WithTimeout(ctx, time.Duration(timeout)*time.Second)
 	defer cancel()
 
-	_, err := ddbClnt.DeleteItem(ctx, &dynamodb.DeleteItemInput{
+	input := &dynamodb.DeleteItemInput{
 		TableName: &table,
 		Key: map[string]types.AttributeValue{
 			key: &types.AttributeValueMemberS{Value: keyVal},
 		},
-	})
+		ReturnConsumedCapacity: types.ReturnConsumedCapacityNone,
+	}
+
+	_, err := ddbClnt.DeleteItem(ctx, input)
 
 	return utility.WrapError(err, fmt.Sprintf("failed to delete item from table %s", table))
+}
+
+func getAllItems(ctx context.Context, ddbClnt DDBConnecter, table string) (*dynamodb.ScanOutput, error) {
+	timeout := viper.GetInt(TimeoutConfigPath)
+	ctx, cancel := context.WithTimeout(ctx, time.Duration(timeout)*time.Second)
+	defer cancel()
+
+	input := &dynamodb.ScanInput{
+		TableName:              aws.String(table),
+		ReturnConsumedCapacity: types.ReturnConsumedCapacityNone,
+	}
+
+	items, err := ddbClnt.Scan(ctx, input)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return items, nil
+}
+
+// GetAllObjects returns a slice of object of various types from dynamodb. If the table is empty, it will return an
+// empty slice.
+func GetAllObjects[T any](ctx context.Context, ddbClnt DDBConnecter, table string) ([]T, error) {
+	items, err := getAllItems(ctx, ddbClnt, table)
+
+	if err != nil {
+		return nil, utility.WrapError(err, fmt.Sprintf("failed to scan items of %T from table %s", *new(T), table))
+	}
+
+	objects := make([]T, 0, len(items.Items))
+
+	for _, item := range items.Items {
+		var object T
+		if err = attributevalue.UnmarshalMap(item, &object); err != nil {
+			return nil, utility.WrapError(err, fmt.Sprintf("failed to unmarshal %T from table %s", *new(T), table))
+		}
+		objects = append(objects, object)
+	}
+
+	return objects, nil
 }

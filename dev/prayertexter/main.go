@@ -1,5 +1,6 @@
 /*
-This file is used for sam local testing only. It uses an api gateway trigger which is easier to set up with sam local.
+This file is used for sam local testing only. It uses an api gateway trigger which is easier to set and up with sam
+local.
 */
 package main
 
@@ -16,13 +17,11 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 )
 
-// MUST BE SET by go build -ldflags "-X main.version=999"
-// like 0.6.14-0-g26fe727 or 0.6.14-2-g9118702-dirty
-
-//lint:ignore U1000 - var used in Makefile
+// MUST BE SET by go build -ldflags "-X main.version=999" like 0.6.14-0-g26fe727 or 0.6.14-2-g9118702-dirty.
 var version string // do not remove or modify
 
 func handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	slog.InfoContext(ctx, "running prayertexter", "version", version)
 	msg := messaging.TextMessage{}
 
 	if err := json.Unmarshal([]byte(req.Body), &msg); err != nil {
@@ -46,7 +45,7 @@ func handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.API
 		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError}, err
 	}
 
-	return events.APIGatewayProxyResponse{StatusCode: http.StatusOK, Body: "Success"}, nil
+	return events.APIGatewayProxyResponse{StatusCode: http.StatusOK, Body: "Success\n"}, nil
 }
 
 func main() {

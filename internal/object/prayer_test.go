@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/4JesusApps/prayertexter/internal/config"
-	"github.com/4JesusApps/prayertexter/internal/mock"
 	"github.com/4JesusApps/prayertexter/internal/object"
+	"github.com/4JesusApps/prayertexter/internal/test/mock"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )

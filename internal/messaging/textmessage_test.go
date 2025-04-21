@@ -6,7 +6,7 @@ import (
 
 	"github.com/4JesusApps/prayertexter/internal/config"
 	"github.com/4JesusApps/prayertexter/internal/messaging"
-	"github.com/4JesusApps/prayertexter/internal/mock"
+	"github.com/4JesusApps/prayertexter/internal/test/mock"
 )
 
 func TestSendText(t *testing.T) {

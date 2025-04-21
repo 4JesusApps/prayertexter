@@ -1,0 +1,69 @@
+Transform: AWS::Serverless-2016-10-31
+
+Globals:
+  Function:
+    Timeout: 60
+    MemorySize: 128
+    Tracing: Active
+    Environment:
+      Variables:
+        # Env variables need to match specific format. See prayertexter config package for details.
+        PRAY_CONF_AWS_DB_PRAYER_ACTIVETABLE: !ImportValue db-ActivePrayerTableName
+        PRAY_CONF_AWS_DB_INTERCESSORPHONES_TABLE: !ImportValue db-GeneralTableName
+        PRAY_CONF_AWS_DB_STATETRACKER_TABLE: !ImportValue db-GeneralTableName
+        PRAY_CONF_AWS_DB_MEMBER_TABLE: !ImportValue db-MemberTableName
+        PRAY_CONF_AWS_DB_PRAYER_QUEUETABLE: !ImportValue db-QueuedPrayerTableName
+        PRAY_CONF_AWS_SMS_PHONEPOOL: !ImportValue prayertexter-SMSPhonePoolARN
+
+Resources:
+  # Lambda function
+  StateController:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: go1.x
+    Properties:
+# Architecture lines are only needed when running sam local tests on ARM CPU (Mac with apple silicon)
+#      Architectures:
+#        - arm64
+      Description: !Sub "Stack ${AWS::StackName} Function StateController"
+      CodeUri: ../../cmd/StateController/
+      Handler: bootstrap
+      Runtime: provided.al2023
+      ReservedConcurrentExecutions: 1
+      Policies:
+        # Grants lambda function access to dynamodb tables
+        - DynamoDBCrudPolicy:
+            TableName: !ImportValue db-ActivePrayerTableName
+        - DynamoDBCrudPolicy:
+            TableName: !ImportValue db-GeneralTableName
+        - DynamoDBCrudPolicy:
+            TableName: !ImportValue db-MemberTableName
+        - DynamoDBCrudPolicy:
+            TableName: !ImportValue db-QueuedPrayerTableName
+        # Grants lambda function access to send SMS
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - sms-voice:SendTextMessage
+              Resource: !ImportValue prayertexter-SMSPhonePoolARN
+      Events:
+        HourlySchedule:
+          Type: Schedule
+          Properties:
+            Schedule: rate(1 hour)
+            Description: "Invoke statecontroller on a configurable schedule"
+            Enabled: true
+      Tags:
+        prayertexter: ""
+
+  # Log group for lambda function
+  StateControllerLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${StateController}
+      Tags:
+        - Key: prayertexter
+          Value: ""

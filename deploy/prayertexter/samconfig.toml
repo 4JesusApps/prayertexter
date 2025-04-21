@@ -6,6 +6,4 @@ s3_prefix = "prayertexter"
 region = "us-west-1"
 profile = "AdministratorAccess-681271545794"
 confirm_changeset = true
-capabilities = "CAPABILITY_IAM"
-image_repositories = []
-parameter_overrides = "SMSPhonePoolArn=\"arn:aws:sms-voice:us-west-1:681271545794:pool/pool-34c6fe4aaf88416abe070959a2241a8b\""
+capabilities = "CAPABILITY_IAM CAPABILITY_NAMED_IAM"
