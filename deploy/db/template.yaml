@@ -1,0 +1,100 @@
+Transform: AWS::Serverless-2016-10-31
+
+Resources:
+  # Dynamodb tables
+  ActivePrayer:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: IntercessorPhone
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        - AttributeName: IntercessorPhone
+          KeyType: HASH
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+      Tags:
+        - Key: prayertexter
+          Value: ""
+
+  General:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: Key
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        - AttributeName: Key
+          KeyType: HASH
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+      Tags:
+        - Key: prayertexter
+          Value: ""
+
+  Member:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: Phone
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        - AttributeName: Phone
+          KeyType: HASH
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+      Tags:
+        - Key: prayertexter
+          Value: ""
+
+  QueuedPrayer:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: IntercessorPhone
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        - AttributeName: IntercessorPhone
+          KeyType: HASH
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+      Tags:
+        - Key: prayertexter
+          Value: ""
+
+Outputs:
+  ActivePrayer:
+    Description: Active prayer dynamodb table name
+    Value: !Ref ActivePrayer
+    Export:
+      Name: !Sub "${AWS::StackName}-ActivePrayerTableName"
+
+  General:
+    Description: General dynamodb table name
+    Value: !Ref General
+    Export:
+      Name: !Sub "${AWS::StackName}-GeneralTableName"
+
+  Member:
+    Description: Member dynamodb table name
+    Value: !Ref Member
+    Export:
+      Name: !Sub "${AWS::StackName}-MemberTableName"
+
+  QueuedPrayer:
+    Description: Queued prayer dynamodb table name
+    Value: !Ref QueuedPrayer
+    Export:
+      Name: !Sub "${AWS::StackName}-QueuedPrayerTableName"

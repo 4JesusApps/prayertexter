@@ -12,7 +12,7 @@ func (err constError) Error() string {
 	return string(err)
 }
 
-// Errors raised by FindIntercessors.
+// Errors related to FindIntercessors.
 const (
 	ErrNoAvailableIntercessors = constError("no available intercessors")
 	ErrIntercessorUnavailable  = constError("intercessor unavailable")
@@ -26,6 +26,11 @@ func LogAndWrapError(ctx context.Context, err error, message string, attrs ...an
 	}
 	slog.ErrorContext(ctx, message, append(attrs, "error", err)...)
 	return fmt.Errorf("%s: %w", message, err)
+}
+
+// LogError will only log and not return an error.
+func LogError(ctx context.Context, err error, message string, attrs ...any) {
+	slog.ErrorContext(ctx, message, append(attrs, "error", err)...)
 }
 
 // WrapError will wrap and return an error and is used when logging is not needed (lower level functions where error is

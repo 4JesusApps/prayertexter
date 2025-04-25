@@ -83,7 +83,7 @@ func (i *IntercessorPhones) GenRandPhones() []string {
 	var selectedPhones []string
 
 	if len(i.Phones) == 0 {
-		slog.Warn("unable to generate phones; phone list is empty")
+		slog.Warn("unable to generate phones, phone list is empty")
 		return nil
 	}
 

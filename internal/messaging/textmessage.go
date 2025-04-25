@@ -6,7 +6,6 @@ package messaging
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"time"
 
@@ -37,7 +36,9 @@ const (
 	MsgPrayerNumRequest = "Reply with the number of maximum prayer texts you are willing to receive and pray for " +
 		"each week"
 	MsgIntercessorInstructions = "You are now signed up to receive prayer requests. Please try to pray for the " +
-		"requests ASAP. Once you are done praying, send 'prayed' back to this number for confirmation."
+		"requests ASAP. " + MsgPrayed
+	MsgPrayed = "Once you have prayed, reply back with the word prayed so that the prayer can be " +
+		"confirmed."
 	MsgWrongInput         = "Wrong input received during sign up process, please try again"
 	MsgSignUpConfirmation = "You have opted in to PrayerTexter. Msg & data rates may apply."
 	MsgRemoveUser         = "You have been removed from PrayerTexter. To sign back up, text the word pray to this " +
@@ -51,19 +52,19 @@ const (
 	MsgPrayerIntro  = "Hello! Please pray for PLACEHOLDER:\n"
 	MsgPrayerQueued = "We could not find any available intercessors. Your prayer has been added to the queue and " +
 		"will get sent out as soon as someone is available."
-	MsgPrayerSentOut = "Your prayer request has been sent out!"
+	MsgPrayerAssigned = "Your prayer request has been assigned!"
 )
 
 // Prayer completion stage message content sent by prayertexter.
 const (
-	MsgNoActivePrayer     = "You have no more active prayers to mark as prayed"
-	MsgPrayerThankYou     = "Thank you for praying!"
-	MsgPrayerConfirmation = "You're prayer request has been prayed for by PLACEHOLDER"
+	MsgNoActivePrayer     = "You have no more active prayers to mark as prayed."
+	MsgPrayerThankYou     = "Thank you for praying! We let the prayer requestor know that you prayed for them."
+	MsgPrayerConfirmation = "You're prayer request has been prayed for by PLACEHOLDER."
 )
 
 // Other (general) message content sent by prayertexter.
 const (
-	MsgHelp = "To receive support, please email info@4jesusministries.com or call/text (657) 217-1678. " +
+	MsgHelp = "To receive support, please email info@4jesusministries.com or call/text (949) 313-4375. " +
 		"Thank you!"
 	MsgPre  = "PrayerTexter: "
 	MsgPost = "Reply HELP for help or STOP to cancel."
@@ -116,7 +117,7 @@ func SendText(ctx context.Context, smsClnt TextSender, msg TextMessage) error {
 
 		_, err := smsClnt.SendTextMessage(ctx, input)
 
-		return utility.WrapError(err, fmt.Sprintf("failed to send text message to %s", msg.Phone))
+		return utility.LogAndWrapError(ctx, err, "failed to send text message", "phone", msg.Phone, "msg", msg.Body)
 	}
 
 	slog.InfoContext(ctx, "sent text message", "phone", msg.Phone, "body", body)

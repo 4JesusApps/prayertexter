@@ -25,13 +25,11 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 )
 
-// MUST BE SET by go build -ldflags "-X main.version=999"
-// like 0.6.14-0-g26fe727 or 0.6.14-2-g9118702-dirty
-
-//lint:ignore U1000 - var used in Makefile
+// MUST BE SET by go build -ldflags "-X main.version=999" like 0.6.14-0-g26fe727 or 0.6.14-2-g9118702-dirty.
 var version string // do not remove or modify
 
 func handler(ctx context.Context, snsEvent events.SNSEvent) {
+	slog.InfoContext(ctx, "running prayertexter", "version", version)
 	// According to aws documentation, there should only be 1 record per SNS, however since Records is a slice we are
 	// checking here just to be safe.
 	if len(snsEvent.Records) > 1 {

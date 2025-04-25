@@ -3,6 +3,7 @@
     "cSpell.words": [
         "activeprayer",
         "activetable",
+        "APPDIR",
         "attributevalue",
         "clnt",
         "dynamodbsetup",
@@ -26,7 +27,9 @@
         "queuetable",
         "Retryable",
         "Retryer",
+        "samconfig",
         "sndr",
+        "statecontroller",
         "Stateresolver",
         "sttrackr",
         "testattr",

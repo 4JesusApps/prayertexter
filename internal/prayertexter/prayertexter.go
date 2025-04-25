@@ -336,32 +336,46 @@ func prayerRequest(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messagi
 
 	intercessors, err := FindIntercessors(ctx, ddbClnt, mem.Phone)
 	if err != nil && errors.Is(err, utility.ErrNoAvailableIntercessors) {
+		slog.WarnContext(ctx, "no intercessors available", "request", msg.Body, "requestor", msg.Phone)
 		if err = queuePrayer(ctx, ddbClnt, smsClnt, msg, mem); err != nil {
 			return utility.WrapError(err, "failed to queue prayer")
 		}
 		return nil
 	} else if err != nil {
-		return utility.WrapError(err, "failed to find intercessor")
+		return utility.WrapError(err, "failed to find intercessors")
 	}
 
 	for _, intr := range intercessors {
 		pryr := object.Prayer{
-			Intercessor:      intr,
-			IntercessorPhone: intr.Phone,
-			Request:          msg.Body,
-			Requestor:        mem,
-		}
-		if err = pryr.Put(ctx, ddbClnt, false); err != nil {
-			return err
+			Request:   msg.Body,
+			Requestor: mem,
 		}
 
-		msg := strings.Replace(messaging.MsgPrayerIntro, "PLACEHOLDER", mem.Name, 1)
-		if err = intr.SendMessage(ctx, smsClnt, msg+pryr.Request); err != nil {
+		if err = AssignPrayer(ctx, ddbClnt, smsClnt, pryr, intr); err != nil {
 			return err
 		}
 	}
 
-	return mem.SendMessage(ctx, smsClnt, messaging.MsgPrayerSentOut)
+	return mem.SendMessage(ctx, smsClnt, messaging.MsgPrayerAssigned)
+}
+
+// AssignPrayer will save a prayer object to the dynamodb active prayers table with a newly assigned intercessor. It
+// will also send the intercessor a text message with the newly assigned prayer request.
+func AssignPrayer(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender, pryr object.Prayer, intr object.Member) error {
+	pryr.Intercessor, pryr.IntercessorPhone = intr, intr.Phone
+	if err := pryr.Put(ctx, ddbClnt, false); err != nil {
+		return err
+	}
+
+	body := strings.Replace(messaging.MsgPrayerIntro, "PLACEHOLDER", pryr.Requestor.Name, 1)
+
+	err := pryr.Intercessor.SendMessage(ctx, smsClnt, body+pryr.Request+"\n\n"+messaging.MsgPrayed)
+	if err != nil {
+		return err
+	}
+
+	slog.InfoContext(ctx, "assigned prayer successfully")
+	return nil
 }
 
 // FindIntercessors returns a slice of Member intercessors that are available to be assigned a prayer request. If there
@@ -378,10 +392,10 @@ func FindIntercessors(ctx context.Context, ddbClnt db.DDBConnecter, skipPhone st
 	for len(intercessors) < intercessorsPerPrayer {
 		randPhones := allPhones.GenRandPhones()
 		if randPhones == nil {
-			// There are no more intercessors to process/check from IntercessorPhones
+			slog.InfoContext(ctx, "there are no more intercessors left to check")
 			if len(intercessors) > 0 {
-				// There is at least one intercessor that has been found. This will be returned even though it is less
-				// than desired because returning less is better than returning none.
+				slog.InfoContext(ctx, "there is at least one intercessor found, returning this even though it is less "+
+					"than the desired number of intercessors per prayer")
 				return intercessors, nil
 			}
 
@@ -401,6 +415,7 @@ func FindIntercessors(ctx context.Context, ddbClnt db.DDBConnecter, skipPhone st
 
 			intercessors = append(intercessors, *intr)
 			allPhones.RemovePhone(phn)
+			slog.InfoContext(ctx, "found one available intercessor")
 		}
 	}
 
