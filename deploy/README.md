@@ -17,11 +17,11 @@ Update/install specific stack:
 ```
 cd deploy/<stack-name>
 sam build
-sam deploy
+sam deploy --profile <local-aws-credential-profile>
 ```
 
 If there are issues, you can also run guided builds and deployments:
 ```
 sam build --guided
-sam deploy --guided
+sam deploy --profile <local-aws-credential-profile> --guided
 ```
