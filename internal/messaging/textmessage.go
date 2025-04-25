@@ -28,43 +28,43 @@ const (
 
 // Sign up stage text message content sent by prayertexter.
 const (
-	MsgNameRequest       = "Reply your name, or 2 to stay anonymous"
+	MsgNameRequest = "Reply with your name, or 2 to stay anonymous."
+	MsgInvalidName = "That name is invalid. Please reply with a name at least 2 letters long, and only " +
+		"containing letters or spaces."
 	MsgMemberTypeRequest = "Reply 1 to send prayer request, or 2 to be added to the intercessors list (to pray for " +
 		"others). 2 will also allow you to send in prayer requests."
-	MsgPrayerInstructions = "You are now signed up to send prayer requests! You can send them directly to this number" +
-		" at any time. You will be alerted when someone has prayed for your request."
-	MsgPrayerNumRequest = "Reply with the number of maximum prayer texts you are willing to receive and pray for " +
-		"each week"
+	MsgPrayerInstructions = "You are now signed up to send prayer requests! You can text them directly to this number" +
+		" at any time."
+	MsgPrayerNumRequest = "Reply with the number of maximum prayer texts that you are willing to receive and pray for " +
+		"each week."
 	MsgIntercessorInstructions = "You are now signed up to receive prayer requests. Please try to pray for the " +
-		"requests ASAP. " + MsgPrayed
-	MsgPrayed = "Once you have prayed, reply back with the word prayed so that the prayer can be " +
-		"confirmed."
-	MsgWrongInput         = "Wrong input received during sign up process, please try again"
-	MsgSignUpConfirmation = "You have opted in to PrayerTexter. Msg & data rates may apply."
+		"requests as soon as you receive them. " + MsgPrayed
+	MsgPrayed             = "Once you have prayed, reply with the word prayed so that the prayer can be confirmed."
+	MsgWrongInput         = "Wrong input received during sign up, please try again."
+	MsgSignUpConfirmation = "You have opted into PrayerTexter. Msg & data rates may apply."
 	MsgRemoveUser         = "You have been removed from PrayerTexter. To sign back up, text the word pray to this " +
 		"number."
 )
 
 // Prayer request stage message content sent by prayertexter.
 const (
-	MsgProfanityFound = "There was profanity found in your prayer request:\n\nPLACEHOLDER\n\nPlease try the request " +
-		"again without this word or words."
 	MsgPrayerIntro  = "Hello! Please pray for PLACEHOLDER:\n"
 	MsgPrayerQueued = "We could not find any available intercessors. Your prayer has been added to the queue and " +
 		"will get sent out as soon as someone is available."
-	MsgPrayerAssigned = "Your prayer request has been assigned!"
+	MsgPrayerAssigned = "Your prayer request has been sent out and assigned!"
 )
 
 // Prayer completion stage message content sent by prayertexter.
 const (
-	MsgNoActivePrayer     = "You have no more active prayers to mark as prayed."
-	MsgPrayerThankYou     = "Thank you for praying! We let the prayer requestor know that you prayed for them."
+	MsgNoActivePrayer     = "You have no active prayers to mark as prayed."
+	MsgPrayerThankYou     = "Thank you for praying! We let the prayer requestor know that you have prayed for them."
 	MsgPrayerConfirmation = "You're prayer request has been prayed for by PLACEHOLDER."
 )
 
 // Other (general) message content sent by prayertexter.
 const (
-	MsgHelp = "To receive support, please email info@4jesusministries.com or call/text (949) 313-4375. " +
+	MsgProfanityDetected = "There was profanity found in your message:\n\nPLACEHOLDER\n\nPlease try again"
+	MsgHelp              = "To receive support, please email info@4jesusministries.com or call/text (949) 313-4375. " +
 		"Thank you!"
 	MsgPre  = "PrayerTexter: "
 	MsgPost = "Reply HELP for help or STOP to cancel."
