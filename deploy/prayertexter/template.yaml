@@ -3,9 +3,9 @@ Transform: AWS::Serverless-2016-10-31
 Parameters:
   # The end user messaging SMS pool needs to be set here manually. This needs to be created separately and is managed
   # outside of cloudformation.
-  SMSPhonePoolARN:
+  SMSPhonePoolID:
     Type: String
-    Default: arn:aws:sms-voice:us-west-1:681271545794:pool/pool-34c6fe4aaf88416abe070959a2241a8b
+    Default: pool-34c6fe4aaf88416abe070959a2241a8b
 
 Globals:
   Function:
@@ -20,7 +20,7 @@ Globals:
         PRAY_CONF_AWS_DB_STATETRACKER_TABLE: !ImportValue db-GeneralTableName
         PRAY_CONF_AWS_DB_MEMBER_TABLE: !ImportValue db-MemberTableName
         PRAY_CONF_AWS_DB_PRAYER_QUEUETABLE: !ImportValue db-QueuedPrayerTableName
-        PRAY_CONF_AWS_SMS_PHONEPOOL: !Ref SMSPhonePoolARN
+        PRAY_CONF_AWS_SMS_PHONEPOOL: !Sub arn:aws:sms-voice:${AWS::Region}:${AWS::AccountId}:pool/${SMSPhonePoolID}
 
 Resources:
   # SNS topic that triggers PrayerTexter lambda function
@@ -108,7 +108,7 @@ Resources:
             - Effect: Allow
               Action:
                 - sms-voice:SendTextMessage
-              Resource: !Ref SMSPhonePoolARN
+              Resource: !Sub arn:aws:sms-voice:${AWS::Region}:${AWS::AccountId}:pool/${SMSPhonePoolID}
       Events:
         SNSTriggerTopic:
           Type: SNS
@@ -131,6 +131,6 @@ Resources:
 Outputs:
   SMSPhonePoolARN:
     Description: End user messaging SMS pool ARN
-    Value: !Ref SMSPhonePoolARN
+    Value: !Sub arn:aws:sms-voice:${AWS::Region}:${AWS::AccountId}:pool/${SMSPhonePoolID}
     Export:
       Name: !Sub "${AWS::StackName}-SMSPhonePoolARN"
