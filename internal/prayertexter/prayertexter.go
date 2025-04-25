@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/4JesusApps/prayertexter/internal/config"
 	"github.com/4JesusApps/prayertexter/internal/db"
@@ -46,7 +47,11 @@ func MainFlow(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.Te
 	}
 
 	state := object.State{}
-	state.Status, state.TimeStart, state.ID, state.Message = object.StateInProgress, currTime, id, msg
+	state.Status = object.StateInProgress
+	state.TimeStart = currTime
+	state.ID = id
+	state.Message = msg
+
 	if err = state.Update(ctx, ddbClnt, false); err != nil {
 		return utility.LogAndWrapError(ctx, err, stageErrPrefix+preStage, "phone", msg.Phone, "msg", msg.Body)
 	}
@@ -57,26 +62,27 @@ func MainFlow(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.Te
 	}
 
 	var stageErr error
+	cleanMsg := cleanStr(msg.Body)
 
 	switch {
 	// HELP STAGE
 	// Responds with contact info and is a requirement for the 10DLC phone number provider to get sent to to anyone
 	// regardless whether they are a member or not.
-	case strings.ToLower(msg.Body) == "help":
+	case cleanMsg == "help":
 		stageErr = executeStage(ctx, ddbClnt, helpStage, &state, func() error {
 			return mem.SendMessage(ctx, smsClnt, messaging.MsgHelp)
 		})
 
 	// MEMBER DELETE STAGE
 	// Removes member from prayertexter.
-	case strings.ToLower(msg.Body) == "cancel" || strings.ToLower(msg.Body) == "stop":
+	case cleanMsg == "cancel" || cleanMsg == "stop":
 		stageErr = executeStage(ctx, ddbClnt, memberDeleteStage, &state, func() error {
 			return memberDelete(ctx, ddbClnt, smsClnt, mem)
 		})
 
 	// SIGN UP STAGE
 	// Initial member sign up process.
-	case strings.ToLower(msg.Body) == "pray" || mem.SetupStatus == object.MemberSetupInProgress:
+	case cleanMsg == "pray" || mem.SetupStatus == object.MemberSetupInProgress:
 		stageErr = executeStage(ctx, ddbClnt, signUpStage, &state, func() error {
 			return signUp(ctx, ddbClnt, smsClnt, msg, mem)
 		})
@@ -93,7 +99,7 @@ func MainFlow(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.Te
 	// COMPLETE PRAYER STAGE
 	// Intercessors confirm that they prayed for a prayer, a confirmations is sent out to the prayer requestor, and the
 	// prayer is marked as completed.
-	case strings.ToLower(msg.Body) == "prayed":
+	case cleanMsg == "prayed":
 		stageErr = executeStage(ctx, ddbClnt, completePrayerStage, &state, func() error {
 			return completePrayer(ctx, ddbClnt, smsClnt, mem)
 		})
@@ -123,6 +129,18 @@ func MainFlow(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.Te
 	return nil
 }
 
+func cleanStr(str string) string {
+	var sb strings.Builder
+	sb.Grow(len(str))
+	for _, ch := range str {
+		if unicode.IsLetter(ch) || unicode.IsDigit(ch) {
+			sb.WriteRune(unicode.ToLower(ch))
+		}
+	}
+
+	return sb.String()
+}
+
 func executeStage(ctx context.Context, ddbClnt db.DDBConnecter, stageName string, state *object.State, stageFunc func() error) error {
 	state.Stage = stageName
 	if err := state.Update(ctx, ddbClnt, false); err != nil {
@@ -146,24 +164,22 @@ func executeStage(ctx context.Context, ddbClnt db.DDBConnecter, stageName string
 }
 
 func signUp(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender, msg messaging.TextMessage, mem object.Member) error {
+	cleanMsg := cleanStr(msg.Body)
+
 	switch {
-	case strings.ToLower(msg.Body) == "pray":
+	case cleanMsg == "pray":
 		if err := signUpStageOne(ctx, ddbClnt, smsClnt, mem); err != nil {
 			return utility.WrapError(err, "failed sign up stage 1")
 		}
-	case msg.Body != "2" && mem.SetupStage == object.MemberSignUpStepOne:
-		if err := signUpStageTwo(ctx, ddbClnt, smsClnt, mem, msg, false); err != nil {
+	case mem.SetupStage == object.MemberSignUpStepOne:
+		if err := signUpStageTwo(ctx, ddbClnt, smsClnt, mem, msg); err != nil {
 			return utility.WrapError(err, "failed sign up stage 2")
 		}
-	case msg.Body == "2" && mem.SetupStage == object.MemberSignUpStepOne:
-		if err := signUpStageTwo(ctx, ddbClnt, smsClnt, mem, msg, true); err != nil {
-			return utility.WrapError(err, "failed sign up stage 2")
-		}
-	case msg.Body == "1" && mem.SetupStage == object.MemberSignUpStepTwo:
+	case cleanMsg == "1" && mem.SetupStage == object.MemberSignUpStepTwo:
 		if err := signUpFinalPrayerMessage(ctx, ddbClnt, smsClnt, mem); err != nil {
 			return utility.WrapError(err, "failed sign up final prayer message")
 		}
-	case msg.Body == "2" && mem.SetupStage == object.MemberSignUpStepTwo:
+	case cleanMsg == "2" && mem.SetupStage == object.MemberSignUpStepTwo:
 		if err := signUpStageThree(ctx, ddbClnt, smsClnt, mem); err != nil {
 			return utility.WrapError(err, "failed sign up stage 3")
 		}
@@ -190,19 +206,82 @@ func signUpStageOne(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messag
 	return mem.SendMessage(ctx, smsClnt, messaging.MsgNameRequest)
 }
 
-func signUpStageTwo(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender, mem object.Member, msg messaging.TextMessage, isAnon bool) error {
-	mem.SetupStage = object.MemberSignUpStepTwo
-	if isAnon {
+func signUpStageTwo(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender, mem object.Member, msg messaging.TextMessage) error {
+	hasProfanity, err := checkIfProfanity(ctx, smsClnt, mem, msg)
+	if err != nil {
+		return err
+	} else if hasProfanity {
+		return nil
+	}
+
+	if cleanStr(msg.Body) == "2" {
 		mem.Name = "Anonymous"
 	} else {
 		mem.Name = msg.Body
 	}
+
+	isValid, err := checkIfNameValid(ctx, smsClnt, mem)
+	if err != nil {
+		return err
+	} else if !isValid {
+		return nil
+	}
+
+	mem.SetupStage = object.MemberSignUpStepTwo
 
 	if err := mem.Put(ctx, ddbClnt); err != nil {
 		return err
 	}
 
 	return mem.SendMessage(ctx, smsClnt, messaging.MsgMemberTypeRequest)
+}
+
+// checkIfProfanity reports whether there is profanity in a text message. If there is, it will inform the sender.
+func checkIfProfanity(ctx context.Context, smsClnt messaging.TextSender, mem object.Member, msg messaging.TextMessage) (bool, error) {
+	profanity := msg.CheckProfanity()
+	if profanity != "" {
+		msg := strings.Replace(messaging.MsgProfanityDetected, "PLACEHOLDER", profanity, 1)
+		if err := mem.SendMessage(ctx, smsClnt, msg); err != nil {
+			return true, err
+		}
+
+		return true, nil
+	}
+
+	return false, nil
+}
+
+// checkIfNameValid reports whether a name is valid. A valid name is at least 2 characters long and does not contain any
+// numbers. If name is invalid, it will inform the sender.
+func checkIfNameValid(ctx context.Context, smsClnt messaging.TextSender, mem object.Member) (bool, error) {
+	letterCount := 0
+	minLetters := 2
+	isValid := true
+
+	for _, ch := range mem.Name {
+		switch {
+		case unicode.IsLetter(ch):
+			letterCount++
+		case ch == ' ':
+			// Do nothing; spaces are fine but don’t count toward letters.
+		default:
+			isValid = false
+		}
+	}
+
+	if letterCount < minLetters {
+		isValid = false
+	}
+
+	if !isValid {
+		if err := mem.SendMessage(ctx, smsClnt, messaging.MsgInvalidName); err != nil {
+			return isValid, err
+		}
+
+		return isValid, nil
+	}
+
+	return isValid, nil
 }
 
 func signUpFinalPrayerMessage(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender, mem object.Member) error {
@@ -229,7 +308,7 @@ func signUpStageThree(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt mess
 }
 
 func signUpFinalIntercessorMessage(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender, mem object.Member, msg messaging.TextMessage) error {
-	num, err := strconv.Atoi(msg.Body)
+	num, err := strconv.Atoi(cleanStr(msg.Body))
 	if err != nil {
 		return signUpWrongInput(ctx, smsClnt, mem, msg)
 	}
@@ -316,7 +395,8 @@ func moveActivePrayer(ctx context.Context, ddbClnt db.DDBConnecter, mem object.M
 		if err != nil {
 			return err
 		}
-		pryr.IntercessorPhone, pryr.Intercessor = id, object.Member{}
+		pryr.IntercessorPhone = id
+		pryr.Intercessor = object.Member{}
 
 		return pryr.Put(ctx, ddbClnt, true)
 	}
@@ -325,12 +405,10 @@ func moveActivePrayer(ctx context.Context, ddbClnt db.DDBConnecter, mem object.M
 }
 
 func prayerRequest(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender, msg messaging.TextMessage, mem object.Member) error {
-	profanity := msg.CheckProfanity()
-	if profanity != "" {
-		msg := strings.Replace(messaging.MsgProfanityFound, "PLACEHOLDER", profanity, 1)
-		if err := mem.SendMessage(ctx, smsClnt, msg); err != nil {
-			return err
-		}
+	hasProfanity, err := checkIfProfanity(ctx, smsClnt, mem, msg)
+	if err != nil {
+		return err
+	} else if hasProfanity {
 		return nil
 	}
 
@@ -362,7 +440,8 @@ func prayerRequest(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messagi
 // AssignPrayer will save a prayer object to the dynamodb active prayers table with a newly assigned intercessor. It
 // will also send the intercessor a text message with the newly assigned prayer request.
 func AssignPrayer(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender, pryr object.Prayer, intr object.Member) error {
-	pryr.Intercessor, pryr.IntercessorPhone = intr, intr.Phone
+	pryr.Intercessor = intr
+	pryr.IntercessorPhone = intr.Phone
 	if err := pryr.Put(ctx, ddbClnt, false); err != nil {
 		return err
 	}
@@ -492,7 +571,9 @@ func queuePrayer(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging
 		return err
 	}
 
-	pryr.IntercessorPhone, pryr.Request, pryr.Requestor = id, msg.Body, mem
+	pryr.IntercessorPhone = id
+	pryr.Request = msg.Body
+	pryr.Requestor = mem
 
 	if err = pryr.Put(ctx, ddbClnt, true); err != nil {
 		return err

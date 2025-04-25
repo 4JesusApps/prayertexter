@@ -20,10 +20,11 @@ import (
 func TestMainFlowSignUp(t *testing.T) {
 	testCases := []test.Case{
 		{
-			Description: "Sign up stage ONE: user texts the word pray to start sign up process",
+			Description: "Sign up stage ONE: user texts the word pray to start sign up process - this also tests that" +
+				"invalid characters are removed",
 
 			InitialMessage: messaging.TextMessage{
-				Body:  "pray",
+				Body:  "pray./,, ",
 				Phone: "+11234567890",
 			},
 
@@ -150,6 +151,126 @@ func TestMainFlowSignUp(t *testing.T) {
 			ExpectedSendTextCalls: 1,
 		},
 		{
+			Description: "Sign up stage TWO-A: user texts name with profanity which should get blocked",
+
+			InitialMessage: messaging.TextMessage{
+				Body:  "Bastard",
+				Phone: "+11234567890",
+			},
+
+			MockGetItemResults: []struct {
+				Output *dynamodb.GetItemOutput
+				Error  error
+			}{
+				{
+					// StateTracker empty get response. It would over complicate to test this here.
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
+				{
+					Output: &dynamodb.GetItemOutput{
+						Item: map[string]types.AttributeValue{
+							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
+							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepOne)},
+							"SetupStatus": &types.AttributeValueMemberS{Value: object.MemberSetupInProgress},
+						},
+					},
+					Error: nil,
+				},
+			},
+
+			ExpectedTexts: []messaging.TextMessage{
+				{
+					Body:  messaging.MsgProfanityDetected,
+					Phone: "+11234567890",
+				},
+			},
+
+			ExpectedGetItemCalls:  4,
+			ExpectedPutItemCalls:  3,
+			ExpectedSendTextCalls: 1,
+		},
+		{
+			Description: "Sign up stage TWO-A: user texts invalid name, less than 2 letters",
+
+			InitialMessage: messaging.TextMessage{
+				Body:  "A",
+				Phone: "+11234567890",
+			},
+
+			MockGetItemResults: []struct {
+				Output *dynamodb.GetItemOutput
+				Error  error
+			}{
+				{
+					// StateTracker empty get response. It would over complicate to test this here.
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
+				{
+					Output: &dynamodb.GetItemOutput{
+						Item: map[string]types.AttributeValue{
+							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
+							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepOne)},
+							"SetupStatus": &types.AttributeValueMemberS{Value: object.MemberSetupInProgress},
+						},
+					},
+					Error: nil,
+				},
+			},
+
+			ExpectedTexts: []messaging.TextMessage{
+				{
+					Body:  messaging.MsgInvalidName,
+					Phone: "+11234567890",
+				},
+			},
+
+			ExpectedGetItemCalls:  4,
+			ExpectedPutItemCalls:  3,
+			ExpectedSendTextCalls: 1,
+		},
+		{
+			Description: "Sign up stage TWO-A: user texts invalid name, contains non letters",
+
+			InitialMessage: messaging.TextMessage{
+				Body:  "Dude!",
+				Phone: "+11234567890",
+			},
+
+			MockGetItemResults: []struct {
+				Output *dynamodb.GetItemOutput
+				Error  error
+			}{
+				{
+					// StateTracker empty get response. It would over complicate to test this here.
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
+				{
+					Output: &dynamodb.GetItemOutput{
+						Item: map[string]types.AttributeValue{
+							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
+							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepOne)},
+							"SetupStatus": &types.AttributeValueMemberS{Value: object.MemberSetupInProgress},
+						},
+					},
+					Error: nil,
+				},
+			},
+
+			ExpectedTexts: []messaging.TextMessage{
+				{
+					Body:  messaging.MsgInvalidName,
+					Phone: "+11234567890",
+				},
+			},
+
+			ExpectedGetItemCalls:  4,
+			ExpectedPutItemCalls:  3,
+			ExpectedSendTextCalls: 1,
+		},
+		{
 			Description: "Sign up stage TWO-B: user texts 2 to remain anonymous",
 
 			InitialMessage: messaging.TextMessage{
@@ -199,10 +320,11 @@ func TestMainFlowSignUp(t *testing.T) {
 			ExpectedSendTextCalls: 1,
 		},
 		{
-			Description: "Sign up final prayer message: user texts 1 which means they do not want to be an intercessor",
+			Description: "Sign up final prayer message: user texts 1 which means they do not want to be an " +
+				"intercessor - this also tests that invalid characters are removed",
 
 			InitialMessage: messaging.TextMessage{
-				Body:  "1",
+				Body:  "1 !@#$%^&*() \n \n ",
 				Phone: "+11234567890",
 			},
 
@@ -301,11 +423,11 @@ func TestMainFlowSignUp(t *testing.T) {
 			ExpectedSendTextCalls: 1,
 		},
 		{
-			Description: "Sign up final intercessor message: user texts the number of prayers they are willing to" +
-				"receive per week",
+			Description: "Sign up final intercessor message: user texts the number of prayers they are willing to " +
+				"receive per week - this also tests that commas are removed from msg body",
 
 			InitialMessage: messaging.TextMessage{
-				Body:  "10",
+				Body:  "9,999",
 				Phone: "+11234567890",
 			},
 
@@ -358,7 +480,7 @@ func TestMainFlowSignUp(t *testing.T) {
 					SetupStage:        object.MemberSignUpStepFinal,
 					SetupStatus:       object.MemberSetupComplete,
 					WeeklyPrayerDate:  "dummy date/time",
-					WeeklyPrayerLimit: 10,
+					WeeklyPrayerLimit: 9999,
 				},
 			},
 
@@ -1248,7 +1370,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 			ExpectedSendTextCalls: 3,
 		},
 		{
-			Description: "Profanity detected",
+			Description: "Profanity detected in prayer request which should get blocked",
 
 			InitialMessage: messaging.TextMessage{
 				Body:  "sh!t",
@@ -1279,7 +1401,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 
 			ExpectedTexts: []messaging.TextMessage{
 				{
-					Body:  messaging.MsgProfanityFound,
+					Body:  messaging.MsgProfanityDetected,
 					Phone: "+11234567890",
 				},
 			},
@@ -2098,10 +2220,11 @@ func TestFindIntercessors(t *testing.T) {
 func TestMainFlowCompletePrayer(t *testing.T) {
 	testCases := []test.Case{
 		{
-			Description: "Successful prayer request completion",
+			Description: "Successful prayer request completion with capitol letters and spaces/new lines - this also" +
+				"tests that invalid characters are removed",
 
 			InitialMessage: messaging.TextMessage{
-				Body:  "prayed",
+				Body:  "prAyEd   \n",
 				Phone: "+11111111111",
 			},
 

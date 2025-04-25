@@ -279,8 +279,8 @@ func ValidateTxtMessage(txtMock *mock.TextSender, t *testing.T, tc Case) {
 		switch {
 		case strings.Contains(*input.MessageBody, "Hello! Please pray for"):
 			input.MessageBody = aws.String(messaging.MsgPrayerIntro)
-		case strings.Contains(*input.MessageBody, "There was profanity found in your prayer request:"):
-			input.MessageBody = aws.String(messaging.MsgProfanityFound)
+		case strings.Contains(*input.MessageBody, "There was profanity found in your message"):
+			input.MessageBody = aws.String(messaging.MsgProfanityDetected)
 		case strings.Contains(*input.MessageBody, "You're prayer request has been prayed for by"):
 			input.MessageBody = aws.String(messaging.MsgPrayerConfirmation)
 		}
