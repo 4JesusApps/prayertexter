@@ -17,6 +17,8 @@ jobs:
 
       - name: Print the Cloud Formation Linter Version & run Linter.
         run: |
+          pwd
+          ls -lah
           cfn-lint --version
           cfn-lint -t deploy/db/template.yaml
           cfn-lint -t deploy/prayertexter/template.yaml
