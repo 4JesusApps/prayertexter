@@ -229,7 +229,7 @@ func signUpStageTwo(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messag
 
 	mem.SetupStage = object.MemberSignUpStepTwo
 
-	if err := mem.Put(ctx, ddbClnt); err != nil {
+	if err = mem.Put(ctx, ddbClnt); err != nil {
 		return err
 	}
 
