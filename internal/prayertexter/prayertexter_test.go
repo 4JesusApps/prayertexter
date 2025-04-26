@@ -1201,7 +1201,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 			Description: "Successful simple prayer request flow",
 
 			InitialMessage: messaging.TextMessage{
-				Body:  "I need prayer for...",
+				Body:  "I need prayer for these things...",
 				Phone: "+11234567890",
 			},
 
@@ -1320,7 +1320,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 						WeeklyPrayerLimit: 5,
 					},
 					IntercessorPhone: "+11111111111",
-					Request:          "I need prayer for...",
+					Request:          "I need prayer for these things...",
 					Requestor: object.Member{
 						Name:        "John Doe",
 						Phone:       "+11234567890",
@@ -1340,7 +1340,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 						WeeklyPrayerLimit: 5,
 					},
 					IntercessorPhone: "+12222222222",
-					Request:          "I need prayer for...",
+					Request:          "I need prayer for these things...",
 					Requestor: object.Member{
 						Name:        "John Doe",
 						Phone:       "+11234567890",
@@ -1411,10 +1411,51 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 			ExpectedSendTextCalls: 1,
 		},
 		{
+			Description: "Invalid prayer - not enough words",
+
+			InitialMessage: messaging.TextMessage{
+				Body:  "this is four words",
+				Phone: "+11234567890",
+			},
+
+			MockGetItemResults: []struct {
+				Output *dynamodb.GetItemOutput
+				Error  error
+			}{
+				{
+					// StateTracker empty get response. It would over complicate to test this here.
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
+				{
+					Output: &dynamodb.GetItemOutput{
+						Item: map[string]types.AttributeValue{
+							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
+							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
+							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
+							"SetupStatus": &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+						},
+					},
+					Error: nil,
+				},
+			},
+
+			ExpectedTexts: []messaging.TextMessage{
+				{
+					Body:  messaging.MsgInvalidRequest,
+					Phone: "+11234567890",
+				},
+			},
+
+			ExpectedGetItemCalls:  4,
+			ExpectedPutItemCalls:  3,
+			ExpectedSendTextCalls: 1,
+		},
+		{
 			Description: "Error with first put Prayer in FindIntercessors",
 
 			InitialMessage: messaging.TextMessage{
-				Body:  "I need prayer for...",
+				Body:  "I need prayer for these things...",
 				Phone: "+11234567890",
 			},
 
@@ -1519,7 +1560,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 			Description: "No available intercessors because of maxed out prayer counters",
 
 			InitialMessage: messaging.TextMessage{
-				Body:  "I need prayer for...",
+				Body:  "I need prayer for these things...",
 				Phone: "+11234567890",
 			},
 
@@ -1605,7 +1646,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 			ExpectedPrayers: []object.Prayer{
 				{
 					IntercessorPhone: "dummy ID",
-					Request:          "I need prayer for...",
+					Request:          "I need prayer for these things...",
 					Requestor: object.Member{
 						Name:        "John Doe",
 						Phone:       "+11234567890",
