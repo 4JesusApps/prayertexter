@@ -29,8 +29,8 @@ const (
 // Sign up stage text message content sent by prayertexter.
 const (
 	MsgNameRequest = "Reply with your name, or 2 to stay anonymous."
-	MsgInvalidName = "That name is invalid. Please reply with a name at least 2 letters long, and only " +
-		"containing letters or spaces."
+	MsgInvalidName = "Sorry, that name is not valid. Please reply with a name that is at least 2 letters long and " +
+		"only contains letters or spaces."
 	MsgMemberTypeRequest = "Reply 1 to send prayer request, or 2 to be added to the intercessors list (to pray for " +
 		"others). 2 will also allow you to send in prayer requests."
 	MsgPrayerInstructions = "You are now signed up to send prayer requests! You can text them directly to this number" +
@@ -40,7 +40,7 @@ const (
 	MsgIntercessorInstructions = "You are now signed up to receive prayer requests. Please try to pray for the " +
 		"requests as soon as you receive them. " + MsgPrayed
 	MsgPrayed             = "Once you have prayed, reply with the word prayed so that the prayer can be confirmed."
-	MsgWrongInput         = "Wrong input received during sign up, please try again."
+	MsgWrongInput         = "Incorrect input received during sign up, please try again."
 	MsgSignUpConfirmation = "You have opted into PrayerTexter. Msg & data rates may apply."
 	MsgRemoveUser         = "You have been removed from PrayerTexter. To sign back up, text the word pray to this " +
 		"number."
@@ -48,8 +48,9 @@ const (
 
 // Prayer request stage message content sent by prayertexter.
 const (
-	MsgPrayerIntro  = "Hello! Please pray for PLACEHOLDER:\n"
-	MsgPrayerQueued = "We could not find any available intercessors. Your prayer has been added to the queue and " +
+	MsgInvalidRequest = "Sorry, that request is not valid. Prayer requests must contain at least 5 words."
+	MsgPrayerIntro    = "Hello! Please pray for PLACEHOLDER:\n"
+	MsgPrayerQueued   = "We could not find any available intercessors. Your prayer has been added to the queue and " +
 		"will get sent out as soon as someone is available."
 	MsgPrayerAssigned = "Your prayer request has been sent out and assigned!"
 )

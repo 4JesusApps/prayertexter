@@ -412,6 +412,13 @@ func prayerRequest(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messagi
 		return nil
 	}
 
+	isValid, err := checkIfRequestValid(ctx, smsClnt, msg, mem)
+	if err != nil {
+		return err
+	} else if !isValid {
+		return nil
+	}
+
 	intercessors, err := FindIntercessors(ctx, ddbClnt, mem.Phone)
 	if err != nil && errors.Is(err, utility.ErrNoAvailableIntercessors) {
 		slog.WarnContext(ctx, "no intercessors available", "request", msg.Body, "requestor", msg.Phone)
@@ -435,6 +442,19 @@ func prayerRequest(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messagi
 	}
 
 	return mem.SendMessage(ctx, smsClnt, messaging.MsgPrayerAssigned)
+}
+
+func checkIfRequestValid(ctx context.Context, smsClnt messaging.TextSender, msg messaging.TextMessage, mem object.Member) (bool, error) {
+	minWords := 5
+	if len(strings.Fields(msg.Body)) < minWords {
+		if err := mem.SendMessage(ctx, smsClnt, messaging.MsgInvalidRequest); err != nil {
+			return false, err
+		}
+
+		return false, nil
+	}
+
+	return true, nil
 }
 
 // AssignPrayer will save a prayer object to the dynamodb active prayers table with a newly assigned intercessor. It
