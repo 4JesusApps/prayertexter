@@ -466,9 +466,9 @@ func AssignPrayer(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messagin
 		return err
 	}
 
-	body := strings.Replace(messaging.MsgPrayerIntro, "PLACEHOLDER", pryr.Requestor.Name, 1)
-
-	err := pryr.Intercessor.SendMessage(ctx, smsClnt, body+pryr.Request+"\n\n"+messaging.MsgPrayed)
+	msg := strings.Replace(messaging.MsgPrayerIntro, "PLACEHOLDER", pryr.Requestor.Name, 1)
+	msg = msg + pryr.Request + "\n\n" + messaging.MsgPrayed
+	err := pryr.Intercessor.SendMessage(ctx, smsClnt, msg)
 	if err != nil {
 		return err
 	}
@@ -553,7 +553,12 @@ func processIntercessor(ctx context.Context, ddbClnt db.DDBConnecter, phone stri
 	if intr.PrayerCount < intr.WeeklyPrayerLimit {
 		intr.PrayerCount++
 	} else {
-		if canResetPrayerCount(intr) {
+		var canReset bool
+		canReset, err = canResetPrayerCount(intr)
+		if err != nil {
+			return nil, err
+		}
+		if canReset {
 			// Reset intercessor's weekly prayer count
 			intr.PrayerCount = 1
 			intr.WeeklyPrayerDate = time.Now().Format(time.RFC3339)
@@ -568,17 +573,17 @@ func processIntercessor(ctx context.Context, ddbClnt db.DDBConnecter, phone stri
 	return &intr, nil
 }
 
-func canResetPrayerCount(intr object.Member) bool {
+func canResetPrayerCount(intr object.Member) (bool, error) {
 	weekDays := 7
 	dayHours := 24
 
 	currentTime := time.Now()
 	previousTime, err := time.Parse(time.RFC3339, intr.WeeklyPrayerDate)
 	if err != nil {
-		return false
+		return false, err
 	}
 	diffDays := currentTime.Sub(previousTime).Hours() / float64(dayHours)
-	return diffDays > float64(weekDays)
+	return diffDays > float64(weekDays), nil
 }
 
 func queuePrayer(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender, msg messaging.TextMessage, mem object.Member) error {

@@ -28,6 +28,7 @@ func TestDefaultConfigValues(t *testing.T) {
 			messaging.PhonePoolConfigPath:           messaging.DefaultPhonePool,
 			messaging.TimeoutConfigPath:             messaging.DefaultTimeout,
 			object.IntercessorsPerPrayerConfigPath:  object.DefaultIntercessorsPerPrayer,
+			object.PrayerReminderHoursConfigPath:    object.DefaultPrayerReminderHours,
 		}
 
 		var config any

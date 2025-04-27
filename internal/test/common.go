@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/4JesusApps/prayertexter/internal/messaging"
 	"github.com/4JesusApps/prayertexter/internal/object"
@@ -161,6 +162,8 @@ func ValidatePrayers(inputs []dynamodb.PutItemInput, t *testing.T, tc Case) {
 			actualPryr.IntercessorPhone = "dummy ID"
 		}
 
+		actualPryr = replaceReminderDateIfChanged(t, actualPryr)
+
 		expectedPryr := tc.ExpectedPrayers[index]
 		if actualPryr != expectedPryr {
 			t.Errorf("expected Prayer %v, got %v", expectedPryr, actualPryr)
@@ -172,6 +175,24 @@ func ValidatePrayers(inputs []dynamodb.PutItemInput, t *testing.T, tc Case) {
 	if index < len(tc.ExpectedPrayers) {
 		t.Errorf("there are more Prayers in expected Prayers than in put inputs of table type: %v", expectedTable)
 	}
+}
+
+// replaceReminderDateIfChanged replaces date with a testable "date changed" string only if the date is within 1 minute
+// of time.Now(). This at least shows that the date was updated and allows us to test whether it was changed or not.
+func replaceReminderDateIfChanged(t *testing.T, actualPryr object.Prayer) object.Prayer {
+	if actualPryr.ReminderDate != "" {
+		currentDate := time.Now()
+		reminderDate, err := time.Parse(time.RFC3339, actualPryr.ReminderDate)
+		if err != nil {
+			t.Errorf("unexpected error parsing time: %v", err)
+		}
+		diffMins := currentDate.Sub(reminderDate).Minutes()
+		if diffMins < 1 {
+			actualPryr.ReminderDate = "date changed"
+		}
+	}
+
+	return actualPryr
 }
 
 func ValidatePhones(inputs []dynamodb.PutItemInput, t *testing.T, tc Case) {
@@ -283,6 +304,8 @@ func ValidateTxtMessage(txtMock *mock.TextSender, t *testing.T, tc Case) {
 			input.MessageBody = aws.String(messaging.MsgProfanityDetected)
 		case strings.Contains(*input.MessageBody, "You're prayer request has been prayed for by"):
 			input.MessageBody = aws.String(messaging.MsgPrayerConfirmation)
+		case strings.Contains(*input.MessageBody, "This is a friendly reminder to pray for"):
+			input.MessageBody = aws.String(messaging.MsgPrayerReminder)
 		}
 
 		receivedText := messaging.TextMessage{

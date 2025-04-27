@@ -21,6 +21,7 @@ Globals:
         PRAY_CONF_AWS_DB_MEMBER_TABLE: !ImportValue db-MemberTableName
         PRAY_CONF_AWS_DB_PRAYER_QUEUETABLE: !ImportValue db-QueuedPrayerTableName
         PRAY_CONF_AWS_SMS_PHONEPOOL: !Sub arn:aws:sms-voice:${AWS::Region}:${AWS::AccountId}:pool/${SMSPhonePoolID}
+        PRAY_CONF_INTERCESSORSPERPRAYER: 3
 
 Resources:
   # SNS topic that triggers PrayerTexter lambda function
@@ -41,23 +42,7 @@ Resources:
         - Key: prayertexter
           Value: ""
 
-  # Policy that allows sending logs to cloudwatch log group
-  SMSLogPolicy:
-    Type: AWS::IAM::ManagedPolicy
-    Properties:
-      ManagedPolicyName: send-cloudwatch-logs-log-group-prayertexter-sms
-      Path: /
-      PolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Action:
-              - logs:CreateLogStream
-              - logs:DescribeLogStreams
-              - logs:PutLogEvents
-            Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:prayertexter-sms:*
-
-  # Role that binds SMS to cloudwatch log group policy
+  # Role and policy that grants SMS access to send logs to log group
   SMSLogRole:
     Type: AWS::IAM::Role
     Properties:
@@ -75,8 +60,17 @@ Resources:
                 aws:SourceAccount: !Ref AWS::AccountId
               ArnLike:
                 aws:SourceArn: !Sub arn:aws:sms-voice:${AWS::Region}:${AWS::AccountId}:configuration-set/prayertexter
-      ManagedPolicyArns:
-        - !Ref SMSLogPolicy
+      Policies:
+        - PolicyName: SendSmsLogsToCloudWatch
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:DescribeLogStreams
+                  - logs:PutLogEvents
+                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:prayertexter-sms:*
       Tags:
         - Key: prayertexter
           Value: ""

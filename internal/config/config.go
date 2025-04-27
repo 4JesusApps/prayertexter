@@ -46,6 +46,7 @@ func setDefaults() {
 			},
 		},
 		"intercessorsperprayer": object.DefaultIntercessorsPerPrayer,
+		"prayerreminderhours":   object.DefaultPrayerReminderHours,
 	}
 
 	viper.SetDefault("conf", defaults)

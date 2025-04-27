@@ -14,6 +14,7 @@ Globals:
         PRAY_CONF_AWS_DB_MEMBER_TABLE: !ImportValue db-MemberTableName
         PRAY_CONF_AWS_DB_PRAYER_QUEUETABLE: !ImportValue db-QueuedPrayerTableName
         PRAY_CONF_AWS_SMS_PHONEPOOL: !ImportValue prayertexter-SMSPhonePoolARN
+        PRAY_CONF_INTERCESSORSPERPRAYER: 3
 
 Resources:
   # Lambda function
@@ -47,13 +48,6 @@ Resources:
               Action:
                 - sms-voice:SendTextMessage
               Resource: !ImportValue prayertexter-SMSPhonePoolARN
-      Events:
-        HourlySchedule:
-          Type: Schedule
-          Properties:
-            Schedule: rate(1 hour)
-            Description: "Invoke statecontroller on a configurable schedule"
-            Enabled: true
       Tags:
         prayertexter: ""
 
@@ -67,3 +61,41 @@ Resources:
       Tags:
         - Key: prayertexter
           Value: ""
+
+  # IAM role for eventbridge scheduler to invoke statecontroller lambda
+  SchedulerLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: scheduler.amazonaws.com
+            Action: sts:AssumeRole
+      Path: "/"
+      Policies:
+        - PolicyName: scheduler-invoke-lambda
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !GetAtt StateController.Arn
+      Tags:
+        - Key: prayertexter
+          Value: ""
+
+  # Eventbridge scheduler rule
+  StateControllerSchedule:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      Name: statecontroller-scheduler
+      ScheduleExpression: "cron(0 7-21 * * ? *)"
+      ScheduleExpressionTimezone: "America/Los_Angeles"
+      State: ENABLED
+      FlexibleTimeWindow:
+        Mode: "OFF"
+      Target:
+        Arn: !GetAtt StateController.Arn
+        RoleArn: !GetAtt SchedulerLambdaExecutionRole.Arn

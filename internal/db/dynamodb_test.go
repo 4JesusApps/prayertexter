@@ -67,6 +67,8 @@ func TestDynamoDBOperations(t *testing.T) {
 						},
 					},
 					"IntercessorPhone": &types.AttributeValueMemberS{Value: "+11111111111"},
+					"ReminderCount":    &types.AttributeValueMemberN{Value: "3"},
+					"ReminderDate":     &types.AttributeValueMemberS{Value: "2025-02-13T23:54:01Z"},
 					"Request":          &types.AttributeValueMemberS{Value: "I need prayer for..."},
 					"Requestor": &types.AttributeValueMemberM{
 						Value: map[string]types.AttributeValue{
@@ -159,6 +161,8 @@ func TestDynamoDBOperations(t *testing.T) {
 				WeeklyPrayerLimit: 5,
 			},
 			IntercessorPhone: "+11111111111",
+			ReminderCount:    3,
+			ReminderDate:     "2025-02-13T23:54:01Z",
 			Request:          "I need prayer for...",
 			Requestor: object.Member{
 				Intercessor:       false,
