@@ -30,7 +30,7 @@ func TestAssignQueuedPrayers(t *testing.T) {
 						Items: []map[string]types.AttributeValue{
 							{
 								"IntercessorPhone": &types.AttributeValueMemberS{Value: "848d9497e7d3cf7cc9bd997f44089967"},
-								"Request":          &types.AttributeValueMemberS{Value: "Please pray me ..."},
+								"Request":          &types.AttributeValueMemberS{Value: "Please pray for me ..."},
 								"Requestor": &types.AttributeValueMemberM{
 									Value: map[string]types.AttributeValue{
 										"Intercessor": &types.AttributeValueMemberBOOL{Value: false},
@@ -43,7 +43,7 @@ func TestAssignQueuedPrayers(t *testing.T) {
 							},
 							{
 								"IntercessorPhone": &types.AttributeValueMemberS{Value: "c3a3c79412496c510609c3d5110fbf14"},
-								"Request":          &types.AttributeValueMemberS{Value: "Please pray me too ..."},
+								"Request":          &types.AttributeValueMemberS{Value: "Please pray for me too ..."},
 								"Requestor": &types.AttributeValueMemberM{
 									Value: map[string]types.AttributeValue{
 										"Intercessor": &types.AttributeValueMemberBOOL{Value: false},
@@ -323,7 +323,7 @@ func TestAssignQueuedPrayers(t *testing.T) {
 						WeeklyPrayerLimit: 5,
 					},
 					IntercessorPhone: "+11111111111",
-					Request:          "Please pray me ...",
+					Request:          "Please pray for me ...",
 					Requestor: object.Member{
 						Name:        "John Doe1",
 						Phone:       "+11234567890",
@@ -343,7 +343,7 @@ func TestAssignQueuedPrayers(t *testing.T) {
 						WeeklyPrayerLimit: 50,
 					},
 					IntercessorPhone: "+12222222222",
-					Request:          "Please pray me ...",
+					Request:          "Please pray for me ...",
 					Requestor: object.Member{
 						Name:        "John Doe1",
 						Phone:       "+11234567890",
@@ -363,7 +363,7 @@ func TestAssignQueuedPrayers(t *testing.T) {
 						WeeklyPrayerLimit: 120,
 					},
 					IntercessorPhone: "+13333333333",
-					Request:          "Please pray me too ...",
+					Request:          "Please pray for me too ...",
 					Requestor: object.Member{
 						Name:        "John Doe2",
 						Phone:       "+14567890123",
@@ -383,7 +383,7 @@ func TestAssignQueuedPrayers(t *testing.T) {
 						WeeklyPrayerLimit: 1000,
 					},
 					IntercessorPhone: "+14444444444",
-					Request:          "Please pray me too ...",
+					Request:          "Please pray for me too ...",
 					Requestor: object.Member{
 						Name:        "John Doe2",
 						Phone:       "+14567890123",
@@ -981,6 +981,400 @@ func TestAssignQueuedPrayers(t *testing.T) {
 			} else {
 				// Handles success test cases.
 				if err := statecontroller.AssignQueuedPrayers(ctx, ddbMock, txtMock); err != nil {
+					t.Fatalf("unexpected error starting MainFlow: %v", err)
+				}
+
+				test.RunAllCommonTests(ddbMock, txtMock, t, tc)
+			}
+		})
+	}
+}
+
+func TestRemindActiveIntercessors(t *testing.T) {
+	testCases := []test.Case{
+		{
+			Description: "3 active prayers and all 3 need prayer reminder text messages",
+
+			MockScanResults: []struct {
+				Output *dynamodb.ScanOutput
+				Error  error
+			}{
+				{
+					Output: &dynamodb.ScanOutput{
+						Items: []map[string]types.AttributeValue{
+							{
+								"Intercessor": &types.AttributeValueMemberM{
+									Value: map[string]types.AttributeValue{
+										"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
+										"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
+										"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
+										"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
+										"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
+										"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+										"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "dummy date"},
+										"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
+									},
+								},
+								"IntercessorPhone": &types.AttributeValueMemberS{Value: "+11111111111"},
+								"ReminderCount":    &types.AttributeValueMemberN{Value: "1"},
+								"ReminderDate":     &types.AttributeValueMemberS{Value: "2024-12-01T01:00:00Z"},
+								"Request":          &types.AttributeValueMemberS{Value: "Please pray for me ..."},
+								"Requestor": &types.AttributeValueMemberM{
+									Value: map[string]types.AttributeValue{
+										"Intercessor": &types.AttributeValueMemberBOOL{Value: false},
+										"Name":        &types.AttributeValueMemberS{Value: "John Doe1"},
+										"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
+										"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
+										"SetupStatus": &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+									},
+								},
+							},
+							{
+								"Intercessor": &types.AttributeValueMemberM{
+									Value: map[string]types.AttributeValue{
+										"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
+										"Name":              &types.AttributeValueMemberS{Value: "Intercessor2"},
+										"Phone":             &types.AttributeValueMemberS{Value: "+12222222222"},
+										"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
+										"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
+										"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+										"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "dummy date"},
+										"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
+									},
+								},
+								"IntercessorPhone": &types.AttributeValueMemberS{Value: "+12222222222"},
+								"ReminderCount":    &types.AttributeValueMemberN{Value: "1"},
+								"ReminderDate":     &types.AttributeValueMemberS{Value: "2024-12-01T01:00:00Z"},
+								"Request":          &types.AttributeValueMemberS{Value: "Please pray for me too ..."},
+								"Requestor": &types.AttributeValueMemberM{
+									Value: map[string]types.AttributeValue{
+										"Intercessor": &types.AttributeValueMemberBOOL{Value: false},
+										"Name":        &types.AttributeValueMemberS{Value: "John Doe2"},
+										"Phone":       &types.AttributeValueMemberS{Value: "+14567890123"},
+										"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
+										"SetupStatus": &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+									},
+								},
+							},
+							{
+								"Intercessor": &types.AttributeValueMemberM{
+									Value: map[string]types.AttributeValue{
+										"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
+										"Name":              &types.AttributeValueMemberS{Value: "Intercessor3"},
+										"Phone":             &types.AttributeValueMemberS{Value: "+13333333333"},
+										"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
+										"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
+										"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+										"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "dummy date"},
+										"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
+									},
+								},
+								"IntercessorPhone": &types.AttributeValueMemberS{Value: "+13333333333"},
+								"ReminderCount":    &types.AttributeValueMemberN{Value: "1"},
+								"ReminderDate":     &types.AttributeValueMemberS{Value: "2024-12-01T01:00:00Z"},
+								"Request":          &types.AttributeValueMemberS{Value: "Pray for me also! ..."},
+								"Requestor": &types.AttributeValueMemberM{
+									Value: map[string]types.AttributeValue{
+										"Intercessor": &types.AttributeValueMemberBOOL{Value: false},
+										"Name":        &types.AttributeValueMemberS{Value: "John Doe3"},
+										"Phone":       &types.AttributeValueMemberS{Value: "+18901234567"},
+										"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
+										"SetupStatus": &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+									},
+								},
+							},
+						},
+					},
+					Error: nil,
+				},
+			},
+
+			ExpectedPrayers: []object.Prayer{
+				{
+					Intercessor: object.Member{
+						Intercessor:       true,
+						Name:              "Intercessor1",
+						Phone:             "+11111111111",
+						PrayerCount:       1,
+						SetupStage:        object.MemberSignUpStepFinal,
+						SetupStatus:       object.MemberSetupComplete,
+						WeeklyPrayerDate:  "dummy date/time",
+						WeeklyPrayerLimit: 5,
+					},
+					IntercessorPhone: "+11111111111",
+					ReminderCount:    2,
+					ReminderDate:     "date changed",
+					Request:          "Please pray for me ...",
+					Requestor: object.Member{
+						Name:        "John Doe1",
+						Phone:       "+11234567890",
+						SetupStage:  object.MemberSignUpStepFinal,
+						SetupStatus: object.MemberSetupComplete,
+					},
+				},
+				{
+					Intercessor: object.Member{
+						Intercessor:       true,
+						Name:              "Intercessor2",
+						Phone:             "+12222222222",
+						PrayerCount:       1,
+						SetupStage:        object.MemberSignUpStepFinal,
+						SetupStatus:       object.MemberSetupComplete,
+						WeeklyPrayerDate:  "dummy date/time",
+						WeeklyPrayerLimit: 5,
+					},
+					IntercessorPhone: "+12222222222",
+					ReminderCount:    2,
+					ReminderDate:     "date changed",
+					Request:          "Please pray for me too ...",
+					Requestor: object.Member{
+						Name:        "John Doe2",
+						Phone:       "+14567890123",
+						SetupStage:  object.MemberSignUpStepFinal,
+						SetupStatus: object.MemberSetupComplete,
+					},
+				},
+				{
+					Intercessor: object.Member{
+						Intercessor:       true,
+						Name:              "Intercessor3",
+						Phone:             "+13333333333",
+						PrayerCount:       1,
+						SetupStage:        object.MemberSignUpStepFinal,
+						SetupStatus:       object.MemberSetupComplete,
+						WeeklyPrayerDate:  "dummy date/time",
+						WeeklyPrayerLimit: 5,
+					},
+					IntercessorPhone: "+13333333333",
+					ReminderCount:    2,
+					ReminderDate:     "date changed",
+					Request:          "Pray for me also! ...",
+					Requestor: object.Member{
+						Name:        "John Doe3",
+						Phone:       "+18901234567",
+						SetupStage:  object.MemberSignUpStepFinal,
+						SetupStatus: object.MemberSetupComplete,
+					},
+				},
+			},
+
+			ExpectedTexts: []messaging.TextMessage{
+				{
+					Body:  messaging.MsgPrayerReminder,
+					Phone: "+11111111111",
+				},
+				{
+					Body:  messaging.MsgPrayerReminder,
+					Phone: "+12222222222",
+				},
+				{
+					Body:  messaging.MsgPrayerReminder,
+					Phone: "+13333333333",
+				},
+			},
+
+			ExpectedPutItemCalls:  3,
+			ExpectedScanCalls:     1,
+			ExpectedSendTextCalls: 3,
+		},
+		{
+			Description: "2 active prayers and only 1 needs prayer reminder text messages",
+
+			MockScanResults: []struct {
+				Output *dynamodb.ScanOutput
+				Error  error
+			}{
+				{
+					Output: &dynamodb.ScanOutput{
+						Items: []map[string]types.AttributeValue{
+							{
+								"Intercessor": &types.AttributeValueMemberM{
+									Value: map[string]types.AttributeValue{
+										"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
+										"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
+										"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
+										"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
+										"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
+										"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+										"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "dummy date"},
+										"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
+									},
+								},
+								"IntercessorPhone": &types.AttributeValueMemberS{Value: "+11111111111"},
+								"ReminderCount":    &types.AttributeValueMemberN{Value: "1"},
+								"ReminderDate":     &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
+								"Request":          &types.AttributeValueMemberS{Value: "Please pray for me ..."},
+								"Requestor": &types.AttributeValueMemberM{
+									Value: map[string]types.AttributeValue{
+										"Intercessor": &types.AttributeValueMemberBOOL{Value: false},
+										"Name":        &types.AttributeValueMemberS{Value: "John Doe1"},
+										"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
+										"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
+										"SetupStatus": &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+									},
+								},
+							},
+							{
+								"Intercessor": &types.AttributeValueMemberM{
+									Value: map[string]types.AttributeValue{
+										"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
+										"Name":              &types.AttributeValueMemberS{Value: "Intercessor2"},
+										"Phone":             &types.AttributeValueMemberS{Value: "+12222222222"},
+										"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
+										"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
+										"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+										"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "dummy date"},
+										"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
+									},
+								},
+								"IntercessorPhone": &types.AttributeValueMemberS{Value: "+12222222222"},
+								"ReminderCount":    &types.AttributeValueMemberN{Value: "1"},
+								"ReminderDate":     &types.AttributeValueMemberS{Value: "2024-12-01T01:00:00Z"},
+								"Request":          &types.AttributeValueMemberS{Value: "Please pray for me too ..."},
+								"Requestor": &types.AttributeValueMemberM{
+									Value: map[string]types.AttributeValue{
+										"Intercessor": &types.AttributeValueMemberBOOL{Value: false},
+										"Name":        &types.AttributeValueMemberS{Value: "John Doe2"},
+										"Phone":       &types.AttributeValueMemberS{Value: "+14567890123"},
+										"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
+										"SetupStatus": &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+									},
+								},
+							},
+						},
+					},
+					Error: nil,
+				},
+			},
+
+			ExpectedPrayers: []object.Prayer{
+				{
+					Intercessor: object.Member{
+						Intercessor:       true,
+						Name:              "Intercessor2",
+						Phone:             "+12222222222",
+						PrayerCount:       1,
+						SetupStage:        object.MemberSignUpStepFinal,
+						SetupStatus:       object.MemberSetupComplete,
+						WeeklyPrayerDate:  "dummy date/time",
+						WeeklyPrayerLimit: 5,
+					},
+					IntercessorPhone: "+12222222222",
+					ReminderCount:    2,
+					ReminderDate:     "date changed",
+					Request:          "Please pray for me too ...",
+					Requestor: object.Member{
+						Name:        "John Doe2",
+						Phone:       "+14567890123",
+						SetupStage:  object.MemberSignUpStepFinal,
+						SetupStatus: object.MemberSetupComplete,
+					},
+				},
+			},
+
+			ExpectedTexts: []messaging.TextMessage{
+				{
+					Body:  messaging.MsgPrayerReminder,
+					Phone: "+12222222222",
+				},
+			},
+
+			ExpectedPutItemCalls:  1,
+			ExpectedScanCalls:     1,
+			ExpectedSendTextCalls: 1,
+		},
+		{
+			Description: "2 active prayers and none prayer reminder text messages - nothing gets updated",
+
+			MockScanResults: []struct {
+				Output *dynamodb.ScanOutput
+				Error  error
+			}{
+				{
+					Output: &dynamodb.ScanOutput{
+						Items: []map[string]types.AttributeValue{
+							{
+								"Intercessor": &types.AttributeValueMemberM{
+									Value: map[string]types.AttributeValue{
+										"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
+										"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
+										"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
+										"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
+										"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
+										"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+										"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "dummy date"},
+										"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
+									},
+								},
+								"IntercessorPhone": &types.AttributeValueMemberS{Value: "+11111111111"},
+								"ReminderCount":    &types.AttributeValueMemberN{Value: "1"},
+								"ReminderDate":     &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
+								"Request":          &types.AttributeValueMemberS{Value: "Please pray for me ..."},
+								"Requestor": &types.AttributeValueMemberM{
+									Value: map[string]types.AttributeValue{
+										"Intercessor": &types.AttributeValueMemberBOOL{Value: false},
+										"Name":        &types.AttributeValueMemberS{Value: "John Doe1"},
+										"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
+										"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
+										"SetupStatus": &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+									},
+								},
+							},
+							{
+								"Intercessor": &types.AttributeValueMemberM{
+									Value: map[string]types.AttributeValue{
+										"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
+										"Name":              &types.AttributeValueMemberS{Value: "Intercessor2"},
+										"Phone":             &types.AttributeValueMemberS{Value: "+12222222222"},
+										"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
+										"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
+										"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+										"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "dummy date"},
+										"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
+									},
+								},
+								"IntercessorPhone": &types.AttributeValueMemberS{Value: "+12222222222"},
+								"ReminderCount":    &types.AttributeValueMemberN{Value: "1"},
+								"ReminderDate":     &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
+								"Request":          &types.AttributeValueMemberS{Value: "Please pray for me too ..."},
+								"Requestor": &types.AttributeValueMemberM{
+									Value: map[string]types.AttributeValue{
+										"Intercessor": &types.AttributeValueMemberBOOL{Value: false},
+										"Name":        &types.AttributeValueMemberS{Value: "John Doe2"},
+										"Phone":       &types.AttributeValueMemberS{Value: "+14567890123"},
+										"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
+										"SetupStatus": &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+									},
+								},
+							},
+						},
+					},
+					Error: nil,
+				},
+			},
+
+			ExpectedScanCalls: 1,
+		},
+	}
+
+	for _, tc := range testCases {
+		txtMock := &mock.TextSender{}
+		ddbMock := &mock.DDBConnecter{}
+		ctx := context.Background()
+
+		t.Run(tc.Description, func(t *testing.T) {
+			test.SetMocks(ddbMock, txtMock, tc)
+			config.InitConfig()
+
+			if tc.ExpectedError {
+				// Handles failures for error mocks.
+				if err := statecontroller.RemindActiveIntercessors(ctx, ddbMock, txtMock); err == nil {
+					t.Fatalf("expected error, got nil")
+				}
+				test.ValidateNumMethodCalls(ddbMock, txtMock, t, tc)
+			} else {
+				// Handles success test cases.
+				if err := statecontroller.RemindActiveIntercessors(ctx, ddbMock, txtMock); err != nil {
 					t.Fatalf("unexpected error starting MainFlow: %v", err)
 				}
 

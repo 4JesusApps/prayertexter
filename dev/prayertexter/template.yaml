@@ -99,8 +99,8 @@ Resources:
       BuildMethod: go1.x
     Properties:
 # Architecture lines are only needed when running sam local tests on ARM CPU (Mac with apple silicon)
-      Architectures:
-        - arm64
+#      Architectures:
+#        - arm64
       Description: !Sub "Stack ${AWS::StackName} Function PrayerTexter"
       CodeUri: .
       Handler: bootstrap

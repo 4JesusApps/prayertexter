@@ -14,6 +14,10 @@ type Prayer struct {
 	Intercessor Member
 	// IntercessorPhone is the phone number of the currently assigned intercessor.
 	IntercessorPhone string
+	// ReminderCount is the number of times the assigned intercessor has been reminded to pray for this prayer.
+	ReminderCount int
+	// ReminderDate is the date of the previous reminder text message that was sent.
+	ReminderDate string
 	// Request is the prayer request content.
 	Request string
 	// Requestor is the member who sent in the prayer request.
@@ -30,14 +34,17 @@ const (
 
 	DefaultIntercessorsPerPrayer    = 2
 	IntercessorsPerPrayerConfigPath = "conf.intercessorsperprayer"
+
+	DefaultPrayerReminderHours    = 3
+	PrayerReminderHoursConfigPath = "conf.prayerreminderhours"
 )
 
 // PrayerKey is the Prayer object key used to interact with dynamodb tables.
 const PrayerKey = "IntercessorPhone"
 
-// Get gets a Prayer from dynamodb. If it does not exist, the current instance of Prayer will not change.
+// Get gets a Prayer from dynamodb. If it does not exist, the current instance of Prayer will not change. Queue
+// determines whether the active or queued dynamodb prayer table is used.
 func (p *Prayer) Get(ctx context.Context, ddbClnt db.DDBConnecter, queue bool) error {
-	// Queue determines whether ActivePrayers or PrayersQueue table is used for dynamodb get requests.
 	table := GetPrayerTable(queue)
 	pryr, err := db.GetDdbObject[Prayer](ctx, ddbClnt, PrayerKey, p.IntercessorPhone, table)
 	if err != nil {
@@ -53,16 +60,15 @@ func (p *Prayer) Get(ctx context.Context, ddbClnt db.DDBConnecter, queue bool) e
 	return nil
 }
 
-// Put saves a Prayer to dynamodb.
+// Put saves a Prayer to dynamodb. Queue determines whether the active or queued dynamodb prayer table is used.
 func (p *Prayer) Put(ctx context.Context, ddbClnt db.DDBConnecter, queue bool) error {
-	// Prayers can get queued in order to save them for a time when intercessors are available. This will change the
-	// dynamodb table that the prayer is saved to.
 	table := GetPrayerTable(queue)
 
 	return db.PutDdbObject(ctx, ddbClnt, table, p)
 }
 
-// Delete deletes a Prayer from dynamodb. If it does not exist, it will not return an error.
+// Delete deletes a Prayer from dynamodb. If it does not exist, it will not return an error. Queue determines whether
+// the active or queued dynamodb prayer table is used.
 func (p *Prayer) Delete(ctx context.Context, ddbClnt db.DDBConnecter, queue bool) error {
 	table := GetPrayerTable(queue)
 
@@ -71,14 +77,11 @@ func (p *Prayer) Delete(ctx context.Context, ddbClnt db.DDBConnecter, queue bool
 
 // GetPrayerTable returns either the active or queued prayer table depending on the parameter queue.
 func GetPrayerTable(queue bool) string {
-	queuedPrayersTable := viper.GetString(QueuedPrayersTableConfigPath)
-	activePrayersTable := viper.GetString(ActivePrayersTableConfigPath)
-
 	if queue {
-		return queuedPrayersTable
+		return viper.GetString(QueuedPrayersTableConfigPath)
 	}
 
-	return activePrayersTable
+	return viper.GetString(ActivePrayersTableConfigPath)
 }
 
 // IsPrayerActive reports whether a Prayer is found (active) in dynamodb.

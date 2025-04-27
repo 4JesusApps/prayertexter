@@ -53,6 +53,7 @@ const (
 	MsgPrayerQueued   = "We could not find any available intercessors. Your prayer has been added to the queue and " +
 		"will get sent out as soon as someone is available."
 	MsgPrayerAssigned = "Your prayer request has been sent out and assigned!"
+	MsgPrayerReminder = "This is a friendly reminder to pray for PLACEHOLDER:\n"
 )
 
 // Prayer completion stage message content sent by prayertexter.

@@ -8,6 +8,8 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"strings"
+	"time"
 
 	"github.com/4JesusApps/prayertexter/internal/config"
 	"github.com/4JesusApps/prayertexter/internal/db"
@@ -24,6 +26,7 @@ func RunJobs(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.Tex
 
 	const (
 		assignQueuedPrayersJob = "Assign Queued Prayers"
+		remindActivePrayersJob = "Remind Intercessors with Active Prayers"
 	)
 
 	if err := AssignQueuedPrayers(ctx, ddbClnt, smsClnt); err != nil {
@@ -31,13 +34,19 @@ func RunJobs(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.Tex
 	} else {
 		slog.InfoContext(ctx, "finished job", "job", assignQueuedPrayersJob)
 	}
+
+	if err := RemindActiveIntercessors(ctx, ddbClnt, smsClnt); err != nil {
+		utility.LogError(ctx, err, "failed job", "job", remindActivePrayersJob)
+	} else {
+		slog.InfoContext(ctx, "finished job", "job", remindActivePrayersJob)
+	}
 }
 
 // AssignQueuedPrayers gets all prayers in the queued prayers table if any. It will then attempt to assign each prayer
 // to intercessors if there are any available. If a prayer is assigned successfully, it sends the prayer request to the
 // intercessors as well as sending a confirmation message to the prayer requestor.
 func AssignQueuedPrayers(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender) error {
-	prayers, err := getQueuedPrayers(ctx, ddbClnt)
+	prayers, err := getAllPrayers(ctx, ddbClnt, true)
 	if err != nil {
 		return utility.WrapError(err, "failed to get queued prayers")
 	}
@@ -70,7 +79,50 @@ func AssignQueuedPrayers(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt m
 	return nil
 }
 
-func getQueuedPrayers(ctx context.Context, ddbClnt db.DDBConnecter) ([]object.Prayer, error) {
-	table := viper.GetString(object.QueuedPrayersTableConfigPath)
+func getAllPrayers(ctx context.Context, ddbClnt db.DDBConnecter, queue bool) ([]object.Prayer, error) {
+	table := object.GetPrayerTable(queue)
 	return db.GetAllObjects[object.Prayer](ctx, ddbClnt, table)
+}
+
+func RemindActiveIntercessors(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender) error {
+	prayerReminderHours := viper.GetInt(object.PrayerReminderHoursConfigPath)
+
+	prayers, err := getAllPrayers(ctx, ddbClnt, false)
+	if err != nil {
+		return utility.WrapError(err, "failed to get active prayers")
+	}
+
+	currentTime := time.Now()
+	for _, pryr := range prayers {
+		// Set date initially on all active prayers. This is always empty for newly active prayers.
+		if pryr.ReminderDate == "" {
+			pryr.ReminderDate = currentTime.Format(time.RFC3339)
+			if err = pryr.Put(ctx, ddbClnt, false); err != nil {
+				return err
+			}
+			continue
+		}
+
+		var previousTime time.Time
+		previousTime, err = time.Parse(time.RFC3339, pryr.ReminderDate)
+		if err != nil {
+			return utility.WrapError(err, "failed to parse time")
+		}
+		diffTime := currentTime.Sub(previousTime).Hours()
+		if diffTime > float64(prayerReminderHours) {
+			pryr.ReminderCount++
+			pryr.ReminderDate = currentTime.Format(time.RFC3339)
+			if err = pryr.Put(ctx, ddbClnt, false); err != nil {
+				return err
+			}
+
+			msg := strings.Replace(messaging.MsgPrayerReminder, "PLACEHOLDER", pryr.Requestor.Name, 1)
+			msg = msg + pryr.Request + "\n\n" + messaging.MsgPrayed
+			if err = pryr.Intercessor.SendMessage(ctx, smsClnt, msg); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
