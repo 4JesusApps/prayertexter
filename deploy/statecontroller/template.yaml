@@ -14,7 +14,7 @@ Globals:
         PRAY_CONF_AWS_DB_MEMBER_TABLE: !ImportValue db-MemberTableName
         PRAY_CONF_AWS_DB_PRAYER_QUEUETABLE: !ImportValue db-QueuedPrayerTableName
         PRAY_CONF_AWS_SMS_PHONEPOOL: !ImportValue prayertexter-SMSPhonePoolARN
-        PRAY_CONF_INTERCESSORSPERPRAYER: 3
+        #PRAY_CONF_INTERCESSORSPERPRAYER: 3
 
 Resources:
   # Lambda function
