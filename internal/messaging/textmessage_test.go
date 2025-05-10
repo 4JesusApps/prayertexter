@@ -7,6 +7,7 @@ import (
 	"github.com/4JesusApps/prayertexter/internal/config"
 	"github.com/4JesusApps/prayertexter/internal/messaging"
 	"github.com/4JesusApps/prayertexter/internal/test/mock"
+	"github.com/aws/smithy-go"
 )
 
 func TestSendText(t *testing.T) {
@@ -39,6 +40,50 @@ func TestSendText(t *testing.T) {
 				*txtMock.SendTextInputs[0].OriginationIdentity)
 		}
 	})
+	t.Run("mock throttle message error to validate sms is retried 3 times after throttle error", func(t *testing.T) {
+		// The number of retries should match the max attempts from the messaging package logic
+		const wantRetries = 3
+
+		txtMock := &mock.TextSender{}
+		txtMock.SendTextResults = []struct {
+			Error error
+		}{
+			{
+				// smithy.GenericAPIError implements smithy.APIError
+				Error: &smithy.GenericAPIError{
+					Code:    "ThrottlingException",
+					Message: "rate exceeded",
+				},
+			},
+			{
+				Error: &smithy.GenericAPIError{
+					Code:    "ThrottlingException",
+					Message: "rate exceeded",
+				},
+			},
+			{
+				Error: &smithy.GenericAPIError{
+					Code:    "ThrottlingException",
+					Message: "rate exceeded",
+				},
+			},
+		}
+
+		msg := messaging.TextMessage{
+			Body:  "test text message",
+			Phone: "+11234567890",
+		}
+		err := messaging.SendText(context.Background(), txtMock, msg)
+
+		if err == nil {
+			t.Fatal("expected an error after exhausting retries, got nil")
+		}
+
+		if txtMock.SendTextCalls != wantRetries {
+			t.Errorf("expected SendTextMessage to be called %v times, got %v",
+				wantRetries, txtMock.SendTextCalls)
+		}
+	})
 }
 
 func TestCheckProfanity(t *testing.T) {
@@ -62,7 +107,7 @@ func TestCheckProfanity(t *testing.T) {
 
 // func TestSendRealText(t *testing.T) {
 // 	mem := Member{
-// 		Phone: "+16572171678",
+// 		Phone: "+11111111111",
 // 	}
 
 // 	smsClnt, err := GetSmsClient()
