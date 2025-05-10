@@ -10,6 +10,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue v1.15.17
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.37.1
 	github.com/aws/aws-sdk-go-v2/service/pinpointsmsvoicev2 v1.19.1
+	github.com/aws/smithy-go v1.22.2
 	github.com/spf13/viper v1.20.1
 
 )
@@ -27,7 +28,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sso v1.24.6 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.28.5 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.33.1 // indirect
-	github.com/aws/smithy-go v1.22.2 // indirect
 	github.com/fsnotify/fsnotify v1.8.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.2.1 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
