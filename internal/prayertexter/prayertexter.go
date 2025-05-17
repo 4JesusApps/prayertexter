@@ -503,6 +503,11 @@ func FindIntercessors(ctx context.Context, ddbClnt db.DDBConnecter, skipPhone st
 		}
 
 		for _, phn := range randPhones {
+			// Check if we've already reached the desired number of intercessors.
+			if len(intercessors) >= intercessorsPerPrayer {
+				return intercessors, nil
+			}
+
 			var intr *object.Member
 			intr, err = processIntercessor(ctx, ddbClnt, phn)
 			if err != nil && errors.Is(err, utility.ErrIntercessorUnavailable) {
