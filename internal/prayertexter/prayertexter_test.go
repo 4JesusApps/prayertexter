@@ -2225,6 +2225,135 @@ func TestFindIntercessors(t *testing.T) {
 			ExpectedGetItemCalls: 7,
 			ExpectedPutItemCalls: 1,
 		},
+		{
+			Description: "This should return 2 intercessors even when GenRandPhones returns 3 available intercessors",
+
+			MockGetItemResults: []struct {
+				Output *dynamodb.GetItemOutput
+				Error  error
+			}{
+				{
+					Output: &dynamodb.GetItemOutput{
+						Item: map[string]types.AttributeValue{
+							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKeyValue},
+							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
+								&types.AttributeValueMemberS{Value: "+11111111111"},
+								&types.AttributeValueMemberS{Value: "+12222222222"},
+								&types.AttributeValueMemberS{Value: "+13333333333"},
+								&types.AttributeValueMemberS{Value: "+14444444444"},
+							}},
+						},
+					},
+					Error: nil,
+				},
+				{
+					Output: &dynamodb.GetItemOutput{
+						Item: map[string]types.AttributeValue{
+							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
+							"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
+							"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
+							"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
+							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
+							"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
+							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
+						},
+					},
+					Error: nil,
+				},
+				{
+					// Prayer empty get response because there are no active prayers for this intercessor.
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
+				{
+					Output: &dynamodb.GetItemOutput{
+						Item: map[string]types.AttributeValue{
+							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
+							"Name":              &types.AttributeValueMemberS{Value: "Intercessor2"},
+							"Phone":             &types.AttributeValueMemberS{Value: "+12222222222"},
+							"PrayerCount":       &types.AttributeValueMemberN{Value: "5"},
+							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
+							"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
+							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
+						},
+					},
+					Error: nil,
+				},
+				{
+					// Prayer empty get response because there are no active prayers for this intercessor.
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
+				{
+					Output: &dynamodb.GetItemOutput{
+						Item: map[string]types.AttributeValue{
+							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
+							"Name":              &types.AttributeValueMemberS{Value: "Intercessor3"},
+							"Phone":             &types.AttributeValueMemberS{Value: "+13333333333"},
+							"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
+							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
+							"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
+							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
+						},
+					},
+					Error: nil,
+				},
+				{
+					// Prayer empty get response because there are no active prayers for this intercessor.
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
+				{
+					Output: &dynamodb.GetItemOutput{
+						Item: map[string]types.AttributeValue{
+							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
+							"Name":              &types.AttributeValueMemberS{Value: "Intercessor4"},
+							"Phone":             &types.AttributeValueMemberS{Value: "+14444444444"},
+							"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
+							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
+							"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
+							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
+						},
+					},
+					Error: nil,
+				},
+				{
+					// Prayer empty get response because there are no active prayers for this intercessor.
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
+			},
+
+			ExpectedMembers: []object.Member{
+				{
+					Intercessor:       true,
+					Name:              "Intercessor1",
+					Phone:             "+11111111111",
+					PrayerCount:       2,
+					SetupStage:        object.MemberSignUpStepFinal,
+					SetupStatus:       object.MemberSetupComplete,
+					WeeklyPrayerDate:  "dummy date/time",
+					WeeklyPrayerLimit: 5,
+				},
+				{
+					Intercessor:       true,
+					Name:              "Intercessor3",
+					Phone:             "+13333333333",
+					PrayerCount:       2,
+					SetupStage:        object.MemberSignUpStepFinal,
+					SetupStatus:       object.MemberSetupComplete,
+					WeeklyPrayerDate:  "dummy date/time",
+					WeeklyPrayerLimit: 5,
+				},
+			},
+
+			ExpectedGetItemCalls: 7,
+			ExpectedPutItemCalls: 2,
+		},
 	}
 
 	for _, tc := range testCases {
