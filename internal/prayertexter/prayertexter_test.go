@@ -1668,6 +1668,350 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 			ExpectedPutItemCalls:  4,
 			ExpectedSendTextCalls: 1,
 		},
+		{
+			Description: "Anonymous prayer request using #anon prefix",
+
+			InitialMessage: messaging.TextMessage{
+				Body:  "#anon I need prayer for these things...",
+				Phone: "+11234567890",
+			},
+
+			MockGetItemResults: []struct {
+				Output *dynamodb.GetItemOutput
+				Error  error
+			}{
+				{
+					// StateTracker empty get response. It would over complicate to test this here.
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
+				{
+					Output: &dynamodb.GetItemOutput{
+						Item: map[string]types.AttributeValue{
+							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
+							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
+							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
+							"SetupStatus": &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+						},
+					},
+					Error: nil,
+				},
+				{
+					// StateTracker empty get response. It would over complicate to test this here.
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
+				{
+					Output: &dynamodb.GetItemOutput{
+						Item: map[string]types.AttributeValue{
+							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKeyValue},
+							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
+								&types.AttributeValueMemberS{Value: "+11111111111"},
+								&types.AttributeValueMemberS{Value: "+12222222222"},
+							}},
+						},
+					},
+					Error: nil,
+				},
+				{
+					Output: &dynamodb.GetItemOutput{
+						Item: map[string]types.AttributeValue{
+							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
+							"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
+							"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
+							"PrayerCount":       &types.AttributeValueMemberN{Value: "0"},
+							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
+							"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "2024-12-01T01:00:00Z"},
+							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
+						},
+					},
+					Error: nil,
+				},
+				{
+					// Prayer empty get response because there are no active prayers for this intercessor.
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
+				{
+					Output: &dynamodb.GetItemOutput{
+						Item: map[string]types.AttributeValue{
+							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
+							"Name":              &types.AttributeValueMemberS{Value: "Intercessor2"},
+							"Phone":             &types.AttributeValueMemberS{Value: "+12222222222"},
+							"PrayerCount":       &types.AttributeValueMemberN{Value: "0"},
+							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
+							"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "2024-12-01T01:00:00Z"},
+							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
+						},
+					},
+					Error: nil,
+				},
+				{
+					// Prayer empty get response because there are no active prayers for this intercessor.
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
+			},
+
+			ExpectedMembers: []object.Member{
+				{
+					Intercessor:       true,
+					Name:              "Intercessor1",
+					Phone:             "+11111111111",
+					PrayerCount:       1,
+					SetupStage:        object.MemberSignUpStepFinal,
+					SetupStatus:       object.MemberSetupComplete,
+					WeeklyPrayerDate:  "dummy date/time",
+					WeeklyPrayerLimit: 5,
+				},
+				{
+					Intercessor:       true,
+					Name:              "Intercessor2",
+					Phone:             "+12222222222",
+					PrayerCount:       1,
+					SetupStage:        object.MemberSignUpStepFinal,
+					SetupStatus:       object.MemberSetupComplete,
+					WeeklyPrayerDate:  "dummy date/time",
+					WeeklyPrayerLimit: 5,
+				},
+			},
+
+			ExpectedPrayers: []object.Prayer{
+				{
+					Intercessor: object.Member{
+						Intercessor:       true,
+						Name:              "Intercessor1",
+						Phone:             "+11111111111",
+						PrayerCount:       1,
+						SetupStage:        object.MemberSignUpStepFinal,
+						SetupStatus:       object.MemberSetupComplete,
+						WeeklyPrayerDate:  "dummy date/time",
+						WeeklyPrayerLimit: 5,
+					},
+					IntercessorPhone: "+11111111111",
+					Request:          "I need prayer for these things...",
+					Requestor: object.Member{
+						Name:        "Anonymous",
+						Phone:       "+11234567890",
+						SetupStage:  object.MemberSignUpStepFinal,
+						SetupStatus: object.MemberSetupComplete,
+					},
+				},
+				{
+					Intercessor: object.Member{
+						Intercessor:       true,
+						Name:              "Intercessor2",
+						Phone:             "+12222222222",
+						PrayerCount:       1,
+						SetupStage:        object.MemberSignUpStepFinal,
+						SetupStatus:       object.MemberSetupComplete,
+						WeeklyPrayerDate:  "dummy date/time",
+						WeeklyPrayerLimit: 5,
+					},
+					IntercessorPhone: "+12222222222",
+					Request:          "I need prayer for these things...",
+					Requestor: object.Member{
+						Name:        "Anonymous",
+						Phone:       "+11234567890",
+						SetupStage:  object.MemberSignUpStepFinal,
+						SetupStatus: object.MemberSetupComplete,
+					},
+				},
+			},
+
+			ExpectedTexts: []messaging.TextMessage{
+				{
+					Body:  messaging.MsgPrayerIntro,
+					Phone: "+11111111111",
+				},
+				{
+					Body:  messaging.MsgPrayerIntro,
+					Phone: "+12222222222",
+				},
+				{
+					Body:  messaging.MsgPrayerAssigned,
+					Phone: "+11234567890",
+				},
+			},
+
+			ExpectedGetItemCalls:  9,
+			ExpectedPutItemCalls:  7,
+			ExpectedSendTextCalls: 3,
+		},
+		{
+			Description: "Anonymous prayer request using #anon anywhere in message",
+
+			InitialMessage: messaging.TextMessage{
+				Body:  "I need prayer for these things... #anon please keep this private",
+				Phone: "+11234567890",
+			},
+
+			MockGetItemResults: []struct {
+				Output *dynamodb.GetItemOutput
+				Error  error
+			}{
+				{
+					// StateTracker empty get response. It would over complicate to test this here.
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
+				{
+					Output: &dynamodb.GetItemOutput{
+						Item: map[string]types.AttributeValue{
+							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
+							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
+							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
+							"SetupStatus": &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+						},
+					},
+					Error: nil,
+				},
+				{
+					// StateTracker empty get response. It would over complicate to test this here.
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
+				{
+					Output: &dynamodb.GetItemOutput{
+						Item: map[string]types.AttributeValue{
+							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKeyValue},
+							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
+								&types.AttributeValueMemberS{Value: "+11111111111"},
+								&types.AttributeValueMemberS{Value: "+12222222222"},
+							}},
+						},
+					},
+					Error: nil,
+				},
+				{
+					Output: &dynamodb.GetItemOutput{
+						Item: map[string]types.AttributeValue{
+							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
+							"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
+							"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
+							"PrayerCount":       &types.AttributeValueMemberN{Value: "0"},
+							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
+							"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "2024-12-01T01:00:00Z"},
+							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
+						},
+					},
+					Error: nil,
+				},
+				{
+					// Prayer empty get response because there are no active prayers for this intercessor.
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
+				{
+					Output: &dynamodb.GetItemOutput{
+						Item: map[string]types.AttributeValue{
+							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
+							"Name":              &types.AttributeValueMemberS{Value: "Intercessor2"},
+							"Phone":             &types.AttributeValueMemberS{Value: "+12222222222"},
+							"PrayerCount":       &types.AttributeValueMemberN{Value: "0"},
+							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
+							"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "2024-12-01T01:00:00Z"},
+							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
+						},
+					},
+					Error: nil,
+				},
+				{
+					// Prayer empty get response because there are no active prayers for this intercessor.
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
+			},
+
+			ExpectedMembers: []object.Member{
+				{
+					Intercessor:       true,
+					Name:              "Intercessor1",
+					Phone:             "+11111111111",
+					PrayerCount:       1,
+					SetupStage:        object.MemberSignUpStepFinal,
+					SetupStatus:       object.MemberSetupComplete,
+					WeeklyPrayerDate:  "dummy date/time",
+					WeeklyPrayerLimit: 5,
+				},
+				{
+					Intercessor:       true,
+					Name:              "Intercessor2",
+					Phone:             "+12222222222",
+					PrayerCount:       1,
+					SetupStage:        object.MemberSignUpStepFinal,
+					SetupStatus:       object.MemberSetupComplete,
+					WeeklyPrayerDate:  "dummy date/time",
+					WeeklyPrayerLimit: 5,
+				},
+			},
+
+			ExpectedPrayers: []object.Prayer{
+				{
+					Intercessor: object.Member{
+						Intercessor:       true,
+						Name:              "Intercessor1",
+						Phone:             "+11111111111",
+						PrayerCount:       1,
+						SetupStage:        object.MemberSignUpStepFinal,
+						SetupStatus:       object.MemberSetupComplete,
+						WeeklyPrayerDate:  "dummy date/time",
+						WeeklyPrayerLimit: 5,
+					},
+					IntercessorPhone: "+11111111111",
+					Request:          "I need prayer for these things...  please keep this private",
+					Requestor: object.Member{
+						Name:        "Anonymous",
+						Phone:       "+11234567890",
+						SetupStage:  object.MemberSignUpStepFinal,
+						SetupStatus: object.MemberSetupComplete,
+					},
+				},
+				{
+					Intercessor: object.Member{
+						Intercessor:       true,
+						Name:              "Intercessor2",
+						Phone:             "+12222222222",
+						PrayerCount:       1,
+						SetupStage:        object.MemberSignUpStepFinal,
+						SetupStatus:       object.MemberSetupComplete,
+						WeeklyPrayerDate:  "dummy date/time",
+						WeeklyPrayerLimit: 5,
+					},
+					IntercessorPhone: "+12222222222",
+					Request:          "I need prayer for these things...  please keep this private",
+					Requestor: object.Member{
+						Name:        "Anonymous",
+						Phone:       "+11234567890",
+						SetupStage:  object.MemberSignUpStepFinal,
+						SetupStatus: object.MemberSetupComplete,
+					},
+				},
+			},
+
+			ExpectedTexts: []messaging.TextMessage{
+				{
+					Body:  messaging.MsgPrayerIntro,
+					Phone: "+11111111111",
+				},
+				{
+					Body:  messaging.MsgPrayerIntro,
+					Phone: "+12222222222",
+				},
+				{
+					Body:  messaging.MsgPrayerAssigned,
+					Phone: "+11234567890",
+				},
+			},
+
+			ExpectedGetItemCalls:  9,
+			ExpectedPutItemCalls:  7,
+			ExpectedSendTextCalls: 3,
+		},
 	}
 
 	for _, tc := range testCases {

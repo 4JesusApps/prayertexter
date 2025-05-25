@@ -263,7 +263,7 @@ func checkIfNameValid(ctx context.Context, smsClnt messaging.TextSender, mem obj
 		case unicode.IsLetter(ch):
 			letterCount++
 		case ch == ' ':
-			// Do nothing; spaces are fine but don’t count toward letters.
+			// Do nothing; spaces are fine but don't count toward letters.
 		default:
 			isValid = false
 		}
@@ -412,7 +412,14 @@ func prayerRequest(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messagi
 		return nil
 	}
 
-	isValid, err := checkIfRequestValid(ctx, smsClnt, msg, mem)
+	// Check for #anon anywhere in the message, handle anonymous request.
+	requestBody := msg.Body
+	if strings.Contains(strings.ToLower(requestBody), "#anon") {
+		mem.Name = "Anonymous"
+		requestBody = strings.TrimSpace(strings.ReplaceAll(requestBody, "#anon", ""))
+	}
+
+	isValid, err := checkIfRequestValid(ctx, smsClnt, messaging.TextMessage{Phone: msg.Phone, Body: requestBody}, mem)
 	if err != nil {
 		return err
 	} else if !isValid {
@@ -421,8 +428,8 @@ func prayerRequest(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messagi
 
 	intercessors, err := FindIntercessors(ctx, ddbClnt, mem.Phone)
 	if err != nil && errors.Is(err, utility.ErrNoAvailableIntercessors) {
-		slog.WarnContext(ctx, "no intercessors available", "request", msg.Body, "requestor", msg.Phone)
-		if err = queuePrayer(ctx, ddbClnt, smsClnt, msg, mem); err != nil {
+		slog.WarnContext(ctx, "no intercessors available", "request", requestBody, "requestor", msg.Phone)
+		if err = queuePrayer(ctx, ddbClnt, smsClnt, messaging.TextMessage{Phone: msg.Phone, Body: requestBody}, mem); err != nil {
 			return utility.WrapError(err, "failed to queue prayer")
 		}
 		return nil
@@ -432,7 +439,7 @@ func prayerRequest(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messagi
 
 	for _, intr := range intercessors {
 		pryr := object.Prayer{
-			Request:   msg.Body,
+			Request:   requestBody,
 			Requestor: mem,
 		}
 
