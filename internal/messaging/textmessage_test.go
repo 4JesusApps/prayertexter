@@ -103,6 +103,14 @@ func TestCheckProfanity(t *testing.T) {
 			t.Errorf("expected profanity, got none (empty string): %v", profanity)
 		}
 	})
+
+	t.Run("this should not detect profanity because spaces are added in between words", func(t *testing.T) {
+		msg.Body = "sh it, fu ck"
+		profanity := msg.CheckProfanity()
+		if profanity != "" {
+			t.Errorf("expected no profanity, got %v", profanity)
+		}
+	})
 }
 
 // func TestSendRealText(t *testing.T) {
