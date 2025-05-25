@@ -99,12 +99,13 @@ func SendText(ctx context.Context, smsClnt TextSender, msg TextMessage) error {
 // is detected.
 func (t TextMessage) CheckProfanity() string {
 	// We need to remove some words from the profanity filter because it is too sensitive.
-	removedWords := []string{"jerk", "ass", "stfu", "butt"}
+	profanityDetector := goaway.NewProfanityDetector().WithSanitizeSpaces(false)
+	removedWords := []string{"jerk", "ass", "butt"}
 	profanities := &goaway.DefaultProfanities
 
 	for _, word := range removedWords {
 		utility.RemoveItem(profanities, word)
 	}
 
-	return goaway.ExtractProfanity(t.Body)
+	return profanityDetector.ExtractProfanity(t.Body)
 }
