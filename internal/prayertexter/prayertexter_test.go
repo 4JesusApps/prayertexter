@@ -1841,10 +1841,10 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 			ExpectedSendTextCalls: 3,
 		},
 		{
-			Description: "Anonymous prayer request using #anon anywhere in message",
+			Description: "Anonymous prayer request using #ANON anywhere in message",
 
 			InitialMessage: messaging.TextMessage{
-				Body:  "I need prayer for these things... #anon please keep this private",
+				Body:  "I need prayer for these things... #ANON please keep this private",
 				Phone: "+11234567890",
 			},
 
@@ -2005,6 +2005,21 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				{
 					Body:  messaging.MsgPrayerAssigned,
 					Phone: "+11234567890",
+				},
+			},
+
+			ExpectedExactMessageMatch: []struct {
+				Index   int
+				Message string
+			}{
+				{
+					Index: 0,
+					Message: `PrayerTexter: Hello! Please pray for Anonymous:
+I need prayer for these things...  please keep this private
+
+Once you have prayed, reply with the word prayed so that the prayer can be confirmed.
+
+Reply HELP for help or STOP to cancel.`,
 				},
 			},
 

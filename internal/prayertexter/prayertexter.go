@@ -10,6 +10,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -412,24 +413,19 @@ func prayerRequest(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messagi
 		return nil
 	}
 
-	// Check for #anon anywhere in the message, handle anonymous request.
-	requestBody := msg.Body
-	if strings.Contains(strings.ToLower(requestBody), "#anon") {
-		mem.Name = "Anonymous"
-		requestBody = strings.TrimSpace(strings.ReplaceAll(requestBody, "#anon", ""))
-	}
-
-	isValid, err := checkIfRequestValid(ctx, smsClnt, messaging.TextMessage{Phone: msg.Phone, Body: requestBody}, mem)
+	isValid, err := checkIfRequestValid(ctx, smsClnt, msg, mem)
 	if err != nil {
 		return err
 	} else if !isValid {
 		return nil
 	}
 
+	handleTriggerWords(&msg, &mem)
+
 	intercessors, err := FindIntercessors(ctx, ddbClnt, mem.Phone)
 	if err != nil && errors.Is(err, utility.ErrNoAvailableIntercessors) {
-		slog.WarnContext(ctx, "no intercessors available", "request", requestBody, "requestor", msg.Phone)
-		if err = queuePrayer(ctx, ddbClnt, smsClnt, messaging.TextMessage{Phone: msg.Phone, Body: requestBody}, mem); err != nil {
+		slog.WarnContext(ctx, "no intercessors available", "request", msg.Body, "requestor", msg.Phone)
+		if err = queuePrayer(ctx, ddbClnt, smsClnt, msg, mem); err != nil {
 			return utility.WrapError(err, "failed to queue prayer")
 		}
 		return nil
@@ -439,7 +435,7 @@ func prayerRequest(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messagi
 
 	for _, intr := range intercessors {
 		pryr := object.Prayer{
-			Request:   requestBody,
+			Request:   msg.Body,
 			Requestor: mem,
 		}
 
@@ -462,6 +458,19 @@ func checkIfRequestValid(ctx context.Context, smsClnt messaging.TextSender, msg 
 	}
 
 	return true, nil
+}
+
+// handleTriggerWords performs the necessary actions for any trigger words in the message and then removes the trigger
+// words from the message body. Trigger words start with a #.
+func handleTriggerWords(msg *messaging.TextMessage, mem *object.Member) {
+	//nolint:gocritic // ignoring switch statement warning because this will be expanded in the future
+	switch {
+	case strings.Contains(strings.ToLower(msg.Body), "#anon"):
+		mem.Name = "Anonymous"
+		re := regexp.MustCompile(`(?i)#anon`)
+		msg.Body = strings.TrimSpace(re.ReplaceAllString(msg.Body, ""))
+		// Add future trigger words as new cases
+	}
 }
 
 // AssignPrayer will save a prayer object to the dynamodb active prayers table with a newly assigned intercessor. It
