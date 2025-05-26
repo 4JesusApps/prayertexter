@@ -22,7 +22,6 @@ const (
 		"each week."
 	MsgIntercessorInstructions = "You are now signed up to receive prayer requests. Please try to pray for the " +
 		"requests as soon as you receive them. " + MsgPrayed
-	MsgPrayed             = "Once you have prayed, reply with the word prayed so that the prayer can be confirmed."
 	MsgWrongInput         = "Incorrect input received during sign up, please try again."
 	MsgSignUpConfirmation = "You have opted into PrayerTexter. Msg & data rates may apply."
 	MsgRemoveUser         = "You have been removed from PrayerTexter. To sign back up, text the word pray to this " +
@@ -32,11 +31,12 @@ const (
 // Prayer request stage message content sent by prayertexter.
 const (
 	MsgInvalidRequest = "Sorry, that request is not valid. Prayer requests must contain at least 5 words."
-	MsgPrayerIntro    = "Hello! Please pray for PLACEHOLDER:\n"
+	MsgPrayerIntro    = "Hello! Please pray for PLACEHOLDER:\n\n"
+	MsgPrayed         = "Once you have prayed, reply with the word prayed so that the prayer can be confirmed."
 	MsgPrayerQueued   = "We could not find any available intercessors. Your prayer has been added to the queue and " +
 		"will get sent out as soon as someone is available."
 	MsgPrayerAssigned = "Your prayer request has been sent out and assigned!"
-	MsgPrayerReminder = "This is a friendly reminder to pray for PLACEHOLDER:\n"
+	MsgPrayerReminder = "This is a friendly reminder to pray for PLACEHOLDER:\n\n"
 )
 
 // Prayer completion stage message content sent by prayertexter.
