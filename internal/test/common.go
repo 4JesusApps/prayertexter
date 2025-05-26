@@ -32,6 +32,11 @@ type Case struct {
 	ExpectedError       bool
 	ExpectedPrayerQueue bool
 
+	ExpectedExactMessageMatch []struct {
+		Index   int
+		Message string
+	}
+
 	ExpectedDeleteItems []struct {
 		Key   string
 		Table string
@@ -70,6 +75,7 @@ func RunAllCommonTests(ddbMock *mock.DDBConnecter, txtMock *mock.TextSender, t *
 	ValidatePrayers(ddbMock.PutItemInputs, t, tc)
 	ValidatePhones(ddbMock.PutItemInputs, t, tc)
 	ValidateDeleteItem(ddbMock.DeleteItemInputs, t, tc)
+	ValidateExactMessageMatch(txtMock, t, tc)
 	ValidateTxtMessage(txtMock, t, tc)
 }
 
@@ -330,5 +336,17 @@ func ValidateTxtMessage(txtMock *mock.TextSender, t *testing.T, tc Case) {
 
 	if index < len(tc.ExpectedTexts) {
 		t.Errorf("there are more expected texts than text message inputs")
+	}
+}
+
+func ValidateExactMessageMatch(txtMock *mock.TextSender, t *testing.T, tc Case) {
+	if len(tc.ExpectedExactMessageMatch) == 0 {
+		return
+	}
+
+	for _, match := range tc.ExpectedExactMessageMatch {
+		if *txtMock.SendTextInputs[match.Index].MessageBody != match.Message {
+			t.Errorf("expected message %v, got %v", match.Message, *txtMock.SendTextInputs[match.Index].MessageBody)
+		}
 	}
 }
