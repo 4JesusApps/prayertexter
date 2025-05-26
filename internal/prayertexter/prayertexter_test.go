@@ -2015,6 +2015,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				{
 					Index: 0,
 					Message: `PrayerTexter: Hello! Please pray for Anonymous:
+
 I need prayer for these things...  please keep this private
 
 Once you have prayed, reply with the word prayed so that the prayer can be confirmed.
