@@ -9,6 +9,7 @@ Globals:
       Variables:
         # Env variables need to match specific format. See prayertexter config package for details.
         PRAY_CONF_AWS_DB_PRAYER_ACTIVETABLE: !ImportValue db-ActivePrayerTableName
+        PRAY_CONF_AWS_DB_BLOCKEDPHONES_TABLE: !ImportValue db-GeneralTableName
         PRAY_CONF_AWS_DB_INTERCESSORPHONES_TABLE: !ImportValue db-GeneralTableName
         PRAY_CONF_AWS_DB_STATETRACKER_TABLE: !ImportValue db-GeneralTableName
         PRAY_CONF_AWS_DB_MEMBER_TABLE: !ImportValue db-MemberTableName
