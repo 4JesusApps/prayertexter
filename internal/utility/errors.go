@@ -18,6 +18,9 @@ const (
 	ErrIntercessorUnavailable  = constError("intercessor unavailable")
 )
 
+// ErrInvalidPhone is when no valid phone numbers are found in a string.
+const ErrInvalidPhone = constError("no valid phone numbers found")
+
 // LogAndWrapError will log, wrap, and return an error and is used for high level functions where most logging is done.
 // If the error is nil, this will return nil as well.
 func LogAndWrapError(ctx context.Context, err error, message string, attrs ...any) error {

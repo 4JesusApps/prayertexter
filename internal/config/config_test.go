@@ -20,6 +20,7 @@ func TestDefaultConfigValues(t *testing.T) {
 			utility.AwsSvcMaxBackoffConfigPath:      utility.DefaultAwsSvcMaxBackoff,
 			utility.AwsSvcRetryAttemptsConfigPath:   utility.DefaultAwsSvcRetryAttempts,
 			db.TimeoutConfigPath:                    db.DefaultTimeout,
+			object.BlockedPhonesTableConfigPath:     object.DefaultBlockedPhonesTable,
 			object.IntercessorPhonesTableConfigPath: object.DefaultIntercessorPhonesTable,
 			object.MemberTableConfigPath:            object.DefaultMemberTable,
 			object.ActivePrayersTableConfigPath:     object.DefaultActivePrayersTable,
