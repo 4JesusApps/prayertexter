@@ -26,6 +26,9 @@ func setDefaults() {
 			"retry":   utility.DefaultAwsSvcRetryAttempts,
 			"db": map[string]any{
 				"timeout": db.DefaultTimeout,
+				"blockedphones": map[string]any{
+					"table": object.DefaultBlockedPhonesTable,
+				},
 				"intercessorphones": map[string]any{
 					"table": object.DefaultIntercessorPhonesTable,
 				},

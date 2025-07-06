@@ -11,6 +11,7 @@ import (
 	"errors"
 	"log/slog"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -26,6 +27,8 @@ import (
 
 const (
 	preStage            = "PRE"
+	blockedUserStage    = "BLOCKED USER"
+	addBlockedUserStage = "ADD BLOCKED USER"
 	helpStage           = "HELP"
 	memberDeleteStage   = "MEMBER DELETE"
 	signUpStage         = "SIGN UP"
@@ -62,10 +65,34 @@ func MainFlow(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.Te
 		return utility.LogAndWrapError(ctx, err, stageErrPrefix+preStage, "phone", msg.Phone, "msg", msg.Body)
 	}
 
+	blockedPhones := object.BlockedPhones{}
+	if err = blockedPhones.Get(ctx, ddbClnt); err != nil {
+		return utility.LogAndWrapError(ctx, err, stageErrPrefix+preStage, "phone", msg.Phone, "msg", msg.Body)
+	}
+	var isBlocked bool
+	if slices.Contains(blockedPhones.Phones, mem.Phone) {
+		isBlocked = true
+	}
+
 	var stageErr error
 	cleanMsg := cleanStr(msg.Body)
 
 	switch {
+	// BLOCKED USER STAGE
+	// Drops messages of all blocked users.
+	case isBlocked:
+		slog.WarnContext(ctx, "blocked user dropping message", "phone", mem.Phone, "msg", msg.Body)
+		stageErr = executeStage(ctx, ddbClnt, blockedUserStage, &state, func() error {
+			return nil
+		})
+
+	// ADD BLOCKED USER STAGE
+	// Adds a user to the blocked users list.
+	case strings.Contains(msg.Body, "#block"):
+		stageErr = executeStage(ctx, ddbClnt, addBlockedUserStage, &state, func() error {
+			return blockUser(ctx, ddbClnt, smsClnt, msg, mem, blockedPhones)
+		})
+
 	// HELP STAGE
 	// Responds with contact info and is a requirement for the 10DLC phone number provider to get sent to to anyone
 	// regardless whether they are a member or not.
@@ -162,6 +189,63 @@ func executeStage(ctx context.Context, ddbClnt db.DDBConnecter, stageName string
 	}
 
 	return nil
+}
+
+func blockUser(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender, msg messaging.TextMessage, mem object.Member, blockedPhones object.BlockedPhones) error {
+	if !mem.Administrator {
+		if err := mem.SendMessage(ctx, smsClnt, messaging.MsgUnauthorized); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	phone, err := extractPhone(msg.Body)
+	if errors.Is(err, utility.ErrInvalidPhone) {
+		if err = mem.SendMessage(ctx, smsClnt, messaging.MsgInvalidPhone); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	phone = "+1" + phone
+	if slices.Contains(blockedPhones.Phones, phone) {
+		if err = mem.SendMessage(ctx, smsClnt, messaging.MsgUserAlreadyBlocked); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	blockedUser := object.Member{Phone: phone}
+	if err = blockedUser.Get(ctx, ddbClnt); err != nil {
+		return err
+	}
+
+	if err = memberDelete(ctx, ddbClnt, smsClnt, blockedUser); err != nil {
+		return err
+	}
+
+	if err = blockedUser.SendMessage(ctx, smsClnt, messaging.MsgBlockedNotification+messaging.MsgHelp); err != nil {
+		return err
+	}
+
+	return mem.SendMessage(ctx, smsClnt, messaging.MsgSuccessfullyBlocked)
+}
+
+func extractPhone(msg string) (string, error) {
+	// regex matches:
+	// (123) 456-7890
+	// 123-456-7890
+	// 1234567890
+	var phoneRE = regexp.MustCompile(`\(?\b(\d{3})\)?[\s\-]?(\d{3})[\s\-]?(\d{4})\b`)
+
+	// Regex match is 1 + each compile group, which is 3.
+	matchNum := 4
+	matches := phoneRE.FindStringSubmatch(msg)
+	if len(matches) != matchNum {
+		return "", utility.ErrInvalidPhone
+	}
+
+	return matches[1] + matches[2] + matches[3], nil
 }
 
 func signUp(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender, msg messaging.TextMessage, mem object.Member) error {

@@ -17,6 +17,486 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
+func TestMainFlowBlockUser(t *testing.T) {
+	testCases := []test.Case{
+		{
+			Description: "Someone tries to block a user but is not an admin",
+
+			InitialMessage: messaging.TextMessage{
+				Body:  "#block 777-777-7777",
+				Phone: "+11234567890",
+			},
+
+			MockGetItemResults: []struct {
+				Output *dynamodb.GetItemOutput
+				Error  error
+			}{
+				{
+					// StateTracker empty get response. It would over complicate to test this here.
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
+				{
+					Output: &dynamodb.GetItemOutput{
+						Item: map[string]types.AttributeValue{
+							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
+							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
+							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
+							"SetupStatus": &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+						},
+					},
+					Error: nil,
+				},
+			},
+
+			ExpectedTexts: []messaging.TextMessage{
+				{
+					Body:  messaging.MsgUnauthorized,
+					Phone: "+11234567890",
+				},
+			},
+
+			ExpectedGetItemCalls:  5,
+			ExpectedPutItemCalls:  3,
+			ExpectedSendTextCalls: 1,
+		},
+		{
+			Description: "Blocking a user is attempted, but phone number is invalid",
+
+			InitialMessage: messaging.TextMessage{
+				Body:  "#block 123",
+				Phone: "+17777777777",
+			},
+
+			MockGetItemResults: []struct {
+				Output *dynamodb.GetItemOutput
+				Error  error
+			}{
+				{
+					// StateTracker empty get response. It would over complicate to test this here.
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
+				{
+					Output: &dynamodb.GetItemOutput{
+						Item: map[string]types.AttributeValue{
+							"Administrator": &types.AttributeValueMemberBOOL{Value: true},
+							"Name":          &types.AttributeValueMemberS{Value: "Admin User"},
+							"Phone":         &types.AttributeValueMemberS{Value: "+17777777777"},
+							"SetupStage":    &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
+							"SetupStatus":   &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+						},
+					},
+					Error: nil,
+				},
+			},
+
+			ExpectedTexts: []messaging.TextMessage{
+				{
+					Body:  messaging.MsgInvalidPhone,
+					Phone: "+17777777777",
+				},
+			},
+
+			ExpectedGetItemCalls:  5,
+			ExpectedPutItemCalls:  3,
+			ExpectedSendTextCalls: 1,
+		},
+		{
+			Description: "Blocking a user is attempted, but user is already blocked",
+
+			InitialMessage: messaging.TextMessage{
+				Body:  "#block 123-456-7890",
+				Phone: "+17777777777",
+			},
+
+			MockGetItemResults: []struct {
+				Output *dynamodb.GetItemOutput
+				Error  error
+			}{
+				{
+					// StateTracker empty get response. It would over complicate to test this here.
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
+				{
+					Output: &dynamodb.GetItemOutput{
+						Item: map[string]types.AttributeValue{
+							"Administrator": &types.AttributeValueMemberBOOL{Value: true},
+							"Name":          &types.AttributeValueMemberS{Value: "Admin User"},
+							"Phone":         &types.AttributeValueMemberS{Value: "+17777777777"},
+							"SetupStage":    &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
+							"SetupStatus":   &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+						},
+					},
+					Error: nil,
+				},
+				{
+					Output: &dynamodb.GetItemOutput{
+						Item: map[string]types.AttributeValue{
+							"Key": &types.AttributeValueMemberS{Value: object.BlockedPhonesKeyValue},
+							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
+								&types.AttributeValueMemberS{Value: "+11234567890"},
+								&types.AttributeValueMemberS{Value: "+12222222222"},
+								&types.AttributeValueMemberS{Value: "+13333333333"},
+							}},
+						},
+					},
+					Error: nil,
+				},
+			},
+
+			ExpectedTexts: []messaging.TextMessage{
+				{
+					Body:  messaging.MsgUserAlreadyBlocked,
+					Phone: "+17777777777",
+				},
+			},
+
+			ExpectedGetItemCalls:  5,
+			ExpectedPutItemCalls:  3,
+			ExpectedSendTextCalls: 1,
+		},
+		{
+			Description: "Admin successfully blocks a user",
+
+			InitialMessage: messaging.TextMessage{
+				Body:  "#block 123-456-7890",
+				Phone: "+17777777777",
+			},
+
+			MockGetItemResults: []struct {
+				Output *dynamodb.GetItemOutput
+				Error  error
+			}{
+				{
+					// StateTracker empty get response. It would over complicate to test this here.
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
+				{
+					Output: &dynamodb.GetItemOutput{
+						Item: map[string]types.AttributeValue{
+							"Administrator": &types.AttributeValueMemberBOOL{Value: true},
+							"Name":          &types.AttributeValueMemberS{Value: "Admin User"},
+							"Phone":         &types.AttributeValueMemberS{Value: "+17777777777"},
+							"SetupStage":    &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
+							"SetupStatus":   &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+						},
+					},
+					Error: nil,
+				},
+				{
+					Output: &dynamodb.GetItemOutput{
+						Item: map[string]types.AttributeValue{
+							"Key": &types.AttributeValueMemberS{Value: object.BlockedPhonesKeyValue},
+							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
+								&types.AttributeValueMemberS{Value: "+12222222222"},
+								&types.AttributeValueMemberS{Value: "+13333333333"},
+							}},
+						},
+					},
+					Error: nil,
+				},
+			},
+
+			ExpectedDeleteItems: []struct {
+				Key   string
+				Table string
+			}{
+				{
+					Key:   "+11234567890",
+					Table: object.DefaultMemberTable,
+				},
+			},
+
+			ExpectedTexts: []messaging.TextMessage{
+				{
+					Body:  messaging.MsgRemoveUser,
+					Phone: "+11234567890",
+				},
+				{
+					Body:  messaging.MsgBlockedNotification + messaging.MsgHelp,
+					Phone: "+11234567890",
+				},
+				{
+					Body:  messaging.MsgSuccessfullyBlocked,
+					Phone: "+17777777777",
+				},
+			},
+
+			ExpectedGetItemCalls:    6,
+			ExpectedPutItemCalls:    3,
+			ExpectedDeleteItemCalls: 1,
+			ExpectedSendTextCalls:   3,
+		},
+		{
+			Description: "Admin successfully blocks a user that is an intercessor with an active prayer",
+
+			InitialMessage: messaging.TextMessage{
+				Body:  "#block 123-456-7890",
+				Phone: "+17777777777",
+			},
+
+			MockGetItemResults: []struct {
+				Output *dynamodb.GetItemOutput
+				Error  error
+			}{
+				{
+					// StateTracker empty get response. It would over complicate to test this here.
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
+				{
+					Output: &dynamodb.GetItemOutput{
+						Item: map[string]types.AttributeValue{
+							"Administrator": &types.AttributeValueMemberBOOL{Value: true},
+							"Name":          &types.AttributeValueMemberS{Value: "Admin User"},
+							"Phone":         &types.AttributeValueMemberS{Value: "+17777777777"},
+							"SetupStage":    &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
+							"SetupStatus":   &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+						},
+					},
+					Error: nil,
+				},
+				{
+					Output: &dynamodb.GetItemOutput{
+						Item: map[string]types.AttributeValue{
+							"Key": &types.AttributeValueMemberS{Value: object.BlockedPhonesKeyValue},
+							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
+								&types.AttributeValueMemberS{Value: "+12222222222"},
+								&types.AttributeValueMemberS{Value: "+13333333333"},
+							}},
+						},
+					},
+					Error: nil,
+				},
+				{
+					// StateTracker empty get response. It would over complicate to test this here.
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
+				{
+					Output: &dynamodb.GetItemOutput{
+						Item: map[string]types.AttributeValue{
+							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
+							"Name":              &types.AttributeValueMemberS{Value: "Bad User"},
+							"Phone":             &types.AttributeValueMemberS{Value: "+11234567890"},
+							"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
+							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
+							"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "dummy date"},
+							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
+						},
+					},
+					Error: nil,
+				},
+				{
+					Output: &dynamodb.GetItemOutput{
+						Item: map[string]types.AttributeValue{
+							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKeyValue},
+							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
+								&types.AttributeValueMemberS{Value: "+11234567890"},
+								&types.AttributeValueMemberS{Value: "+11111111111"},
+								&types.AttributeValueMemberS{Value: "+14444444444"},
+								&types.AttributeValueMemberS{Value: "+17777777777"},
+							}},
+						},
+					},
+					Error: nil,
+				},
+				{
+					Output: &dynamodb.GetItemOutput{
+						Item: map[string]types.AttributeValue{
+							"Intercessor": &types.AttributeValueMemberM{
+								Value: map[string]types.AttributeValue{
+									"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
+									"Name":              &types.AttributeValueMemberS{Value: "Bad User"},
+									"Phone":             &types.AttributeValueMemberS{Value: "+11234567890"},
+									"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
+									"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
+									"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+									"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "dummy date"},
+									"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
+								},
+							},
+							"IntercessorPhone": &types.AttributeValueMemberS{Value: "+11234567890"},
+							"Request":          &types.AttributeValueMemberS{Value: "Please pray me.."},
+							"Requestor": &types.AttributeValueMemberM{
+								Value: map[string]types.AttributeValue{
+									"Intercessor": &types.AttributeValueMemberBOOL{Value: false},
+									"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
+									"Phone":       &types.AttributeValueMemberS{Value: "+18888888888"},
+									"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
+									"SetupStatus": &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+								},
+							},
+						},
+					},
+					Error: nil,
+				},
+				{
+					Output: &dynamodb.GetItemOutput{
+						Item: map[string]types.AttributeValue{
+							"Intercessor": &types.AttributeValueMemberM{
+								Value: map[string]types.AttributeValue{
+									"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
+									"Name":              &types.AttributeValueMemberS{Value: "Bad User"},
+									"Phone":             &types.AttributeValueMemberS{Value: "+11234567890"},
+									"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
+									"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
+									"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+									"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "dummy date"},
+									"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
+								},
+							},
+							"IntercessorPhone": &types.AttributeValueMemberS{Value: "+11234567890"},
+							"Request":          &types.AttributeValueMemberS{Value: "Please pray me.."},
+							"Requestor": &types.AttributeValueMemberM{
+								Value: map[string]types.AttributeValue{
+									"Intercessor": &types.AttributeValueMemberBOOL{Value: false},
+									"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
+									"Phone":       &types.AttributeValueMemberS{Value: "+18888888888"},
+									"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
+									"SetupStatus": &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+								},
+							},
+						},
+					},
+					Error: nil,
+				},
+			},
+
+			ExpectedPhones: object.IntercessorPhones{
+				Key: object.IntercessorPhonesKeyValue,
+				Phones: []string{
+					"+11111111111",
+					"+14444444444",
+					"+17777777777",
+				},
+			},
+
+			ExpectedPrayers: []object.Prayer{
+				{
+					Intercessor:      object.Member{},
+					IntercessorPhone: "dummy ID",
+					Request:          "Please pray me..",
+					Requestor: object.Member{
+						Intercessor: false,
+						Name:        "John Doe",
+						Phone:       "+18888888888",
+						SetupStage:  object.MemberSignUpStepFinal,
+						SetupStatus: object.MemberSetupComplete,
+					},
+				},
+			},
+
+			ExpectedDeleteItems: []struct {
+				Key   string
+				Table string
+			}{
+				{
+					Key:   "+11234567890",
+					Table: object.DefaultMemberTable,
+				},
+				{
+					Key:   "+11234567890",
+					Table: object.DefaultActivePrayersTable,
+				},
+			},
+
+			ExpectedTexts: []messaging.TextMessage{
+				{
+					Body:  messaging.MsgRemoveUser,
+					Phone: "+11234567890",
+				},
+				{
+					Body:  messaging.MsgBlockedNotification + messaging.MsgHelp,
+					Phone: "+11234567890",
+				},
+				{
+					Body:  messaging.MsgSuccessfullyBlocked,
+					Phone: "+17777777777",
+				},
+			},
+
+			ExpectedGetItemCalls:    9,
+			ExpectedPutItemCalls:    5,
+			ExpectedDeleteItemCalls: 2,
+			ExpectedSendTextCalls:   3,
+			ExpectedPrayerQueue:     true,
+		},
+		{
+			Description: "Blocked phone number sends in a message and message gets dropped",
+
+			InitialMessage: messaging.TextMessage{
+				Body:  "random text",
+				Phone: "+19999999999",
+			},
+
+			MockGetItemResults: []struct {
+				Output *dynamodb.GetItemOutput
+				Error  error
+			}{
+				{
+					// StateTracker empty get response. It would over complicate to test this here.
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
+				{
+					// Member empty get response.
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
+				{
+					Output: &dynamodb.GetItemOutput{
+						Item: map[string]types.AttributeValue{
+							"Key": &types.AttributeValueMemberS{Value: object.BlockedPhonesKeyValue},
+							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
+								&types.AttributeValueMemberS{Value: "+11111111111"},
+								&types.AttributeValueMemberS{Value: "+12222222222"},
+								&types.AttributeValueMemberS{Value: "+13333333333"},
+								&types.AttributeValueMemberS{Value: "+14444444444"},
+								&types.AttributeValueMemberS{Value: "+19999999999"},
+							}},
+						},
+					},
+					Error: nil,
+				},
+			},
+
+			ExpectedGetItemCalls: 5,
+			ExpectedPutItemCalls: 3,
+		},
+	}
+
+	for _, tc := range testCases {
+		txtMock := &mock.TextSender{}
+		ddbMock := &mock.DDBConnecter{}
+		ctx := context.Background()
+
+		t.Run(tc.Description, func(t *testing.T) {
+			test.SetMocks(ddbMock, txtMock, tc)
+
+			if tc.ExpectedError {
+				// Handles failures for error mocks.
+				if err := prayertexter.MainFlow(ctx, ddbMock, txtMock, tc.InitialMessage); err == nil {
+					t.Fatalf("expected error, got nil")
+				}
+
+				test.ValidateNumMethodCalls(ddbMock, txtMock, t, tc)
+			} else {
+				// Handles success test cases.
+				if err := prayertexter.MainFlow(ctx, ddbMock, txtMock, tc.InitialMessage); err != nil {
+					t.Fatalf("unexpected error starting MainFlow: %v", err)
+				}
+
+				test.RunAllCommonTests(ddbMock, txtMock, t, tc)
+			}
+		})
+	}
+}
+
 func TestMainFlowSignUp(t *testing.T) {
 	testCases := []test.Case{
 		{
@@ -43,7 +523,7 @@ func TestMainFlowSignUp(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls:  4,
+			ExpectedGetItemCalls:  5,
 			ExpectedPutItemCalls:  4,
 			ExpectedSendTextCalls: 1,
 		},
@@ -70,7 +550,7 @@ func TestMainFlowSignUp(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls:  4,
+			ExpectedGetItemCalls:  5,
 			ExpectedPutItemCalls:  4,
 			ExpectedSendTextCalls: 1,
 		},
@@ -128,6 +608,11 @@ func TestMainFlowSignUp(t *testing.T) {
 					},
 					Error: nil,
 				},
+				{
+					// BlockedPhones empty get response.
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
 			},
 
 			ExpectedMembers: []object.Member{
@@ -146,7 +631,7 @@ func TestMainFlowSignUp(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls:  4,
+			ExpectedGetItemCalls:  5,
 			ExpectedPutItemCalls:  4,
 			ExpectedSendTextCalls: 1,
 		},
@@ -177,6 +662,11 @@ func TestMainFlowSignUp(t *testing.T) {
 					},
 					Error: nil,
 				},
+				{
+					// BlockedPhones empty get response.
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
 			},
 
 			ExpectedTexts: []messaging.TextMessage{
@@ -186,7 +676,7 @@ func TestMainFlowSignUp(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls:  4,
+			ExpectedGetItemCalls:  5,
 			ExpectedPutItemCalls:  3,
 			ExpectedSendTextCalls: 1,
 		},
@@ -217,6 +707,11 @@ func TestMainFlowSignUp(t *testing.T) {
 					},
 					Error: nil,
 				},
+				{
+					// BlockedPhones empty get response.
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
 			},
 
 			ExpectedTexts: []messaging.TextMessage{
@@ -226,7 +721,7 @@ func TestMainFlowSignUp(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls:  4,
+			ExpectedGetItemCalls:  5,
 			ExpectedPutItemCalls:  3,
 			ExpectedSendTextCalls: 1,
 		},
@@ -257,6 +752,11 @@ func TestMainFlowSignUp(t *testing.T) {
 					},
 					Error: nil,
 				},
+				{
+					// BlockedPhones empty get response.
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
 			},
 
 			ExpectedTexts: []messaging.TextMessage{
@@ -266,7 +766,7 @@ func TestMainFlowSignUp(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls:  4,
+			ExpectedGetItemCalls:  5,
 			ExpectedPutItemCalls:  3,
 			ExpectedSendTextCalls: 1,
 		},
@@ -297,6 +797,11 @@ func TestMainFlowSignUp(t *testing.T) {
 					},
 					Error: nil,
 				},
+				{
+					// BlockedPhones empty get response.
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
 			},
 
 			ExpectedMembers: []object.Member{
@@ -315,7 +820,7 @@ func TestMainFlowSignUp(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls:  4,
+			ExpectedGetItemCalls:  5,
 			ExpectedPutItemCalls:  4,
 			ExpectedSendTextCalls: 1,
 		},
@@ -348,6 +853,11 @@ func TestMainFlowSignUp(t *testing.T) {
 					},
 					Error: nil,
 				},
+				{
+					// BlockedPhones empty get response.
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
 			},
 
 			ExpectedMembers: []object.Member{
@@ -367,7 +877,7 @@ func TestMainFlowSignUp(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls:  4,
+			ExpectedGetItemCalls:  5,
 			ExpectedPutItemCalls:  4,
 			ExpectedSendTextCalls: 1,
 		},
@@ -399,6 +909,11 @@ func TestMainFlowSignUp(t *testing.T) {
 					},
 					Error: nil,
 				},
+				{
+					// BlockedPhones empty get response.
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
 			},
 
 			ExpectedMembers: []object.Member{
@@ -418,7 +933,7 @@ func TestMainFlowSignUp(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls:  4,
+			ExpectedGetItemCalls:  5,
 			ExpectedPutItemCalls:  4,
 			ExpectedSendTextCalls: 1,
 		},
@@ -451,6 +966,11 @@ func TestMainFlowSignUp(t *testing.T) {
 						},
 					},
 					Error: nil,
+				},
+				{
+					// BlockedPhones empty get response.
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
 				},
 				{
 					// StateTracker empty get response. It would over complicate to test this here.
@@ -502,7 +1022,7 @@ func TestMainFlowSignUp(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls:  5,
+			ExpectedGetItemCalls:  6,
 			ExpectedPutItemCalls:  5,
 			ExpectedSendTextCalls: 1,
 		},
@@ -534,6 +1054,11 @@ func TestMainFlowSignUp(t *testing.T) {
 						},
 					},
 					Error: nil,
+				},
+				{
+					// BlockedPhones empty get response.
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
 				},
 				{
 					// StateTracker empty get response. It would over complicate to test this here.
@@ -570,7 +1095,7 @@ func TestMainFlowSignUp(t *testing.T) {
 			},
 
 			ExpectedError:        true,
-			ExpectedGetItemCalls: 5,
+			ExpectedGetItemCalls: 6,
 			ExpectedPutItemCalls: 4,
 		},
 	}
@@ -612,7 +1137,7 @@ func TestMainFlowSignUpWrongInputs(t *testing.T) {
 				Phone: "+11234567890",
 			},
 
-			ExpectedGetItemCalls: 4,
+			ExpectedGetItemCalls: 5,
 			ExpectedPutItemCalls: 3,
 		},
 		{
@@ -643,6 +1168,11 @@ func TestMainFlowSignUpWrongInputs(t *testing.T) {
 					},
 					Error: nil,
 				},
+				{
+					// BlockedPhones empty get response.
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
 			},
 
 			ExpectedTexts: []messaging.TextMessage{
@@ -652,7 +1182,7 @@ func TestMainFlowSignUpWrongInputs(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls:  4,
+			ExpectedGetItemCalls:  5,
 			ExpectedPutItemCalls:  3,
 			ExpectedSendTextCalls: 1,
 		},
@@ -685,6 +1215,11 @@ func TestMainFlowSignUpWrongInputs(t *testing.T) {
 					},
 					Error: nil,
 				},
+				{
+					// BlockedPhones empty get response.
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
 			},
 
 			ExpectedTexts: []messaging.TextMessage{
@@ -694,7 +1229,7 @@ func TestMainFlowSignUpWrongInputs(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls:  4,
+			ExpectedGetItemCalls:  5,
 			ExpectedPutItemCalls:  3,
 			ExpectedSendTextCalls: 1,
 		},
@@ -724,7 +1259,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 
 			InitialMessage: messaging.TextMessage{
 				Body:  "cancel",
-				Phone: "1234567890",
+				Phone: "+11234567890",
 			},
 
 			MockGetItemResults: []struct {
@@ -747,6 +1282,11 @@ func TestMainFlowMemberDelete(t *testing.T) {
 					},
 					Error: nil,
 				},
+				{
+					// BlockedPhones empty get response.
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
 			},
 
 			ExpectedDeleteItems: []struct {
@@ -766,7 +1306,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls:    4,
+			ExpectedGetItemCalls:    5,
 			ExpectedPutItemCalls:    3,
 			ExpectedDeleteItemCalls: 1,
 			ExpectedSendTextCalls:   1,
@@ -801,6 +1341,11 @@ func TestMainFlowMemberDelete(t *testing.T) {
 						},
 					},
 					Error: nil,
+				},
+				{
+					// BlockedPhones empty get response.
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
 				},
 				{
 					// StateTracker empty get response. It would over complicate to test this here.
@@ -849,7 +1394,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls:    6,
+			ExpectedGetItemCalls:    7,
 			ExpectedPutItemCalls:    4,
 			ExpectedDeleteItemCalls: 1,
 			ExpectedSendTextCalls:   1,
@@ -886,6 +1431,11 @@ func TestMainFlowMemberDelete(t *testing.T) {
 						},
 					},
 					Error: nil,
+				},
+				{
+					// BlockedPhones empty get response.
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
 				},
 				{
 					// StateTracker empty get response. It would over complicate to test this here.
@@ -1013,7 +1563,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls:    7,
+			ExpectedGetItemCalls:    8,
 			ExpectedPutItemCalls:    5,
 			ExpectedDeleteItemCalls: 2,
 			ExpectedSendTextCalls:   1,
@@ -1048,6 +1598,11 @@ func TestMainFlowMemberDelete(t *testing.T) {
 					},
 					Error: nil,
 				},
+				{
+					// BlockedPhones empty get response.
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
 			},
 
 			MockDeleteItemResults: []struct {
@@ -1059,7 +1614,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 			},
 
 			ExpectedError:           true,
-			ExpectedGetItemCalls:    4,
+			ExpectedGetItemCalls:    5,
 			ExpectedPutItemCalls:    3,
 			ExpectedDeleteItemCalls: 1,
 		},
@@ -1122,6 +1677,11 @@ func TestMainFlowHelp(t *testing.T) {
 					},
 					Error: nil,
 				},
+				{
+					// BlockedPhones empty get response.
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
 			},
 
 			ExpectedTexts: []messaging.TextMessage{
@@ -1131,7 +1691,7 @@ func TestMainFlowHelp(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls:  4,
+			ExpectedGetItemCalls:  5,
 			ExpectedPutItemCalls:  3,
 			ExpectedSendTextCalls: 1,
 		},
@@ -1163,6 +1723,11 @@ func TestMainFlowHelp(t *testing.T) {
 					},
 					Error: nil,
 				},
+				{
+					// BlockedPhones empty get response.
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
 			},
 
 			ExpectedTexts: []messaging.TextMessage{
@@ -1172,7 +1737,7 @@ func TestMainFlowHelp(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls:  4,
+			ExpectedGetItemCalls:  5,
 			ExpectedPutItemCalls:  3,
 			ExpectedSendTextCalls: 1,
 		},
@@ -1224,6 +1789,11 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 						},
 					},
 					Error: nil,
+				},
+				{
+					// BlockedPhones empty get response.
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
 				},
 				{
 					// StateTracker empty get response. It would over complicate to test this here.
@@ -1365,7 +1935,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls:  9,
+			ExpectedGetItemCalls:  10,
 			ExpectedPutItemCalls:  7,
 			ExpectedSendTextCalls: 3,
 		},
@@ -1397,6 +1967,11 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 					},
 					Error: nil,
 				},
+				{
+					// BlockedPhones empty get response.
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
 			},
 
 			ExpectedTexts: []messaging.TextMessage{
@@ -1406,7 +1981,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls:  4,
+			ExpectedGetItemCalls:  5,
 			ExpectedPutItemCalls:  3,
 			ExpectedSendTextCalls: 1,
 		},
@@ -1438,6 +2013,11 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 					},
 					Error: nil,
 				},
+				{
+					// BlockedPhones empty get response.
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
 			},
 
 			ExpectedTexts: []messaging.TextMessage{
@@ -1447,7 +2027,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls:  4,
+			ExpectedGetItemCalls:  5,
 			ExpectedPutItemCalls:  3,
 			ExpectedSendTextCalls: 1,
 		},
@@ -1478,6 +2058,11 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 						},
 					},
 					Error: nil,
+				},
+				{
+					// BlockedPhones empty get response.
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
 				},
 				{
 					// StateTracker empty get response. It would over complicate to test this here.
@@ -1552,7 +2137,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls: 7,
+			ExpectedGetItemCalls: 8,
 			ExpectedPutItemCalls: 4,
 			ExpectedError:        true,
 		},
@@ -1583,6 +2168,11 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 						},
 					},
 					Error: nil,
+				},
+				{
+					// BlockedPhones empty get response.
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
 				},
 				{
 					// StateTracker empty get response. It would over complicate to test this here.
@@ -1664,7 +2254,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 			},
 
 			ExpectedPrayerQueue:   true,
-			ExpectedGetItemCalls:  9,
+			ExpectedGetItemCalls:  10,
 			ExpectedPutItemCalls:  4,
 			ExpectedSendTextCalls: 1,
 		},
@@ -1695,6 +2285,11 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 						},
 					},
 					Error: nil,
+				},
+				{
+					// BlockedPhones empty get response.
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
 				},
 				{
 					// StateTracker empty get response. It would over complicate to test this here.
@@ -1836,7 +2431,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls:  9,
+			ExpectedGetItemCalls:  10,
 			ExpectedPutItemCalls:  7,
 			ExpectedSendTextCalls: 3,
 		},
@@ -1867,6 +2462,11 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 						},
 					},
 					Error: nil,
+				},
+				{
+					// BlockedPhones empty get response.
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
 				},
 				{
 					// StateTracker empty get response. It would over complicate to test this here.
@@ -2024,7 +2624,7 @@ Reply HELP for help or STOP to cancel.`,
 				},
 			},
 
-			ExpectedGetItemCalls:  9,
+			ExpectedGetItemCalls:  10,
 			ExpectedPutItemCalls:  7,
 			ExpectedSendTextCalls: 3,
 		},
@@ -2783,6 +3383,11 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 					Error: nil,
 				},
 				{
+					// BlockedPhones empty get response.
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
+				{
 					// StateTracker empty get response. It would over complicate to test this here.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
@@ -2852,7 +3457,7 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls:    6,
+			ExpectedGetItemCalls:    7,
 			ExpectedPutItemCalls:    3,
 			ExpectedDeleteItemCalls: 1,
 			ExpectedSendTextCalls:   2,
@@ -2889,6 +3494,11 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 						},
 					},
 					Error: nil,
+				},
+				{
+					// BlockedPhones empty get response.
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
 				},
 				{
 					// StateTracker empty get response. It would over complicate to test this here.
@@ -2944,7 +3554,7 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls:    6,
+			ExpectedGetItemCalls:    7,
 			ExpectedPutItemCalls:    3,
 			ExpectedDeleteItemCalls: 1,
 			ExpectedSendTextCalls:   1,
@@ -2981,6 +3591,11 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 					},
 					Error: nil,
 				},
+				{
+					// BlockedPhones empty get response.
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
+				},
 			},
 
 			ExpectedTexts: []messaging.TextMessage{
@@ -2990,7 +3605,7 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls:  5,
+			ExpectedGetItemCalls:  6,
 			ExpectedPutItemCalls:  3,
 			ExpectedSendTextCalls: 1,
 		},
@@ -3025,6 +3640,11 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 						},
 					},
 					Error: nil,
+				},
+				{
+					// BlockedPhones empty get response.
+					Output: &dynamodb.GetItemOutput{},
+					Error:  nil,
 				},
 				{
 					// StateTracker empty get response. It would over complicate to test this here.
@@ -3084,7 +3704,7 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 			},
 
 			ExpectedError:           true,
-			ExpectedGetItemCalls:    6,
+			ExpectedGetItemCalls:    7,
 			ExpectedPutItemCalls:    3,
 			ExpectedDeleteItemCalls: 1,
 			ExpectedSendTextCalls:   2,

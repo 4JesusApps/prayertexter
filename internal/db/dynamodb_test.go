@@ -25,6 +25,7 @@ func TestDynamoDBOperations(t *testing.T) {
 		{
 			Output: &dynamodb.GetItemOutput{
 				Item: map[string]types.AttributeValue{
+					"Administrator":     &types.AttributeValueMemberBOOL{Value: false},
 					"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
 					"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
 					"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
@@ -33,6 +34,19 @@ func TestDynamoDBOperations(t *testing.T) {
 					"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
 					"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "2025-02-16T23:54:01Z"},
 					"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
+				},
+			},
+			Error: nil,
+		},
+		// BlockedPhones
+		{
+			Output: &dynamodb.GetItemOutput{
+				Item: map[string]types.AttributeValue{
+					"Key": &types.AttributeValueMemberS{Value: object.BlockedPhonesKeyValue},
+					"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
+						&types.AttributeValueMemberS{Value: "+13333333333"},
+						&types.AttributeValueMemberS{Value: "+14444444444"},
+					}},
 				},
 			},
 			Error: nil,
@@ -56,6 +70,7 @@ func TestDynamoDBOperations(t *testing.T) {
 				Item: map[string]types.AttributeValue{
 					"Intercessor": &types.AttributeValueMemberM{
 						Value: map[string]types.AttributeValue{
+							"Administrator":     &types.AttributeValueMemberBOOL{Value: false},
 							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
 							"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
@@ -72,6 +87,7 @@ func TestDynamoDBOperations(t *testing.T) {
 					"Request":          &types.AttributeValueMemberS{Value: "I need prayer for..."},
 					"Requestor": &types.AttributeValueMemberM{
 						Value: map[string]types.AttributeValue{
+							"Administrator":     &types.AttributeValueMemberBOOL{Value: false},
 							"Intercessor":       &types.AttributeValueMemberBOOL{Value: false},
 							"Name":              &types.AttributeValueMemberS{Value: "John Doe"},
 							"Phone":             &types.AttributeValueMemberS{Value: "+11234567890"},
@@ -133,6 +149,7 @@ func TestDynamoDBOperations(t *testing.T) {
 
 	expectedObjects := []any{
 		&object.Member{
+			Administrator:     false,
 			Intercessor:       true,
 			Name:              "Intercessor1",
 			Phone:             "+11111111111",
@@ -141,6 +158,13 @@ func TestDynamoDBOperations(t *testing.T) {
 			SetupStatus:       object.MemberSetupComplete,
 			WeeklyPrayerDate:  "2025-02-16T23:54:01Z",
 			WeeklyPrayerLimit: 5,
+		},
+		&object.BlockedPhones{
+			Key: object.BlockedPhonesKeyValue,
+			Phones: []string{
+				"+13333333333",
+				"+14444444444",
+			},
 		},
 		&object.IntercessorPhones{
 			Key: object.IntercessorPhonesKeyValue,
@@ -151,6 +175,7 @@ func TestDynamoDBOperations(t *testing.T) {
 		},
 		&object.Prayer{
 			Intercessor: object.Member{
+				Administrator:     false,
 				Intercessor:       true,
 				Name:              "Intercessor1",
 				Phone:             "+11111111111",
@@ -165,6 +190,7 @@ func TestDynamoDBOperations(t *testing.T) {
 			ReminderDate:     "2025-02-13T23:54:01Z",
 			Request:          "I need prayer for...",
 			Requestor: object.Member{
+				Administrator:     false,
 				Intercessor:       false,
 				Name:              "John Doe",
 				Phone:             "+11234567890",
@@ -213,6 +239,8 @@ func TestDynamoDBOperations(t *testing.T) {
 				switch o := obj.(type) {
 				case *object.Member:
 					testGetObject(t, ddbMock, o)
+				case *object.BlockedPhones:
+					testGetObject(t, ddbMock, o)
 				case *object.IntercessorPhones:
 					testGetObject(t, ddbMock, o)
 				case *object.Prayer:
@@ -233,6 +261,8 @@ func TestDynamoDBOperations(t *testing.T) {
 			t.Run(fmt.Sprintf("Put %T", obj), func(t *testing.T) {
 				switch o := obj.(type) {
 				case *object.Member:
+					testPutObject(t, ddbMock, o, expectedDdbItems[index])
+				case *object.BlockedPhones:
 					testPutObject(t, ddbMock, o, expectedDdbItems[index])
 				case *object.IntercessorPhones:
 					testPutObject(t, ddbMock, o, expectedDdbItems[index])

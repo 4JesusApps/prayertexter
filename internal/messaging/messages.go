@@ -9,7 +9,7 @@ const (
 	TimeoutConfigPath = "conf.aws.sms.timeout"
 )
 
-// Sign up stage text message content sent by prayertexter.
+// Sign up stage messages.
 const (
 	MsgNameRequest = "Reply with your name, or 2 to stay anonymous."
 	MsgInvalidName = "Sorry, that name is not valid. Please reply with a name that is at least 2 letters long and " +
@@ -28,7 +28,7 @@ const (
 		"number."
 )
 
-// Prayer request stage message content sent by prayertexter.
+// Prayer request stage messages.
 const (
 	MsgInvalidRequest = "Sorry, that request is not valid. Prayer requests must contain at least 5 words."
 	MsgPrayerIntro    = "Hello! Please pray for PLACEHOLDER:\n\n"
@@ -39,11 +39,21 @@ const (
 	MsgPrayerReminder = "This is a friendly reminder to pray for PLACEHOLDER:\n\n"
 )
 
-// Prayer completion stage message content sent by prayertexter.
+// Prayer completion stage messages.
 const (
 	MsgNoActivePrayer     = "You have no active prayers to mark as prayed."
 	MsgPrayerThankYou     = "Thank you for praying! We let the prayer requestor know that you have prayed for them."
 	MsgPrayerConfirmation = "You're prayer request has been prayed for by PLACEHOLDER."
+)
+
+// Block user stage messages.
+const (
+	MsgUnauthorized        = "You are unauthorized to perform this action."
+	MsgInvalidPhone        = "The phone number provided is invalid. Please use this format: 123-456-7890."
+	MsgUserAlreadyBlocked  = "The phone number provided already exists on the block list."
+	MsgSuccessfullyBlocked = "The phone number provided has been successfully added to the block list."
+	MsgBlockedNotification = "You have been blocked from using PrayerTexter. If you feel this is an error, feel free " +
+		"to reach out to us. "
 )
 
 // Other (general) message content sent by prayertexter.

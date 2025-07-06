@@ -11,6 +11,8 @@ import (
 
 // A Member represents someone who has signed up or is in the process of signing up for prayertexter.
 type Member struct {
+	// Administrator shows whether a Member is an administrator.
+	Administrator bool
 	// Intercessor shows whether the Member is an intercessor.
 	Intercessor bool
 	// Name is the Members name.
