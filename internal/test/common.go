@@ -1,7 +1,6 @@
 package test
 
 import (
-	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -29,8 +28,7 @@ type Case struct {
 	ExpectedMembers     []object.Member
 	ExpectedPrayers     []object.Prayer
 	ExpectedTexts       []messaging.TextMessage
-	ExpectedBlockPhones object.BlockedPhones
-	ExpectedIntPhones   object.IntercessorPhones
+	ExpectedPhones      object.IntercessorPhones
 	ExpectedError       bool
 	ExpectedPrayerQueue bool
 
@@ -204,55 +202,34 @@ func replaceReminderDateIfChanged(t *testing.T, actualPryr object.Prayer) object
 }
 
 func ValidatePhones(inputs []dynamodb.PutItemInput, t *testing.T, tc Case) {
-	intIndex := 0
-	blockIndex := 0
+	index := 0
 
 	for _, input := range inputs {
-		// Check if this is a phone-related table (both IntercessorPhones and BlockedPhones use the same table)
 		if *input.TableName != object.DefaultIntercessorPhonesTable {
 			continue
-		}
-
-		// Check if this item has the correct key field
-		val, ok := input.Item[object.IntercessorPhonesKey]
-		if !ok {
+		} else if val, ok := input.Item[object.IntercessorPhonesKey]; !ok {
+			continue
+		} else if stringVal, isString := val.(*types.AttributeValueMemberS); !isString {
+			continue
+		} else if stringVal.Value != object.IntercessorPhonesKeyValue {
 			continue
 		}
 
-		stringVal, isString := val.(*types.AttributeValueMemberS)
-		if !isString {
-			continue
+		if index > 1 {
+			t.Errorf("there are more IntercessorPhones in expected IntercessorPhones than 1 which is not expected")
 		}
 
-		// Handle IntercessorPhones
-		if stringVal.Value == object.IntercessorPhonesKeyValue {
-			validatePhoneType(input, tc.ExpectedIntPhones, &intIndex, t)
+		var actualPhones object.IntercessorPhones
+		if err := attributevalue.UnmarshalMap(input.Item, &actualPhones); err != nil {
+			t.Errorf("failed to unmarshal PutItemInput into IntercessorPhones: %v", err)
 		}
 
-		// Handle BlockedPhones
-		if stringVal.Value == object.BlockedPhonesKeyValue {
-			validatePhoneType(input, tc.ExpectedBlockPhones, &blockIndex, t)
+		if !reflect.DeepEqual(actualPhones, tc.ExpectedPhones) {
+			t.Errorf("expected IntercessorPhones %v, got %v", tc.ExpectedPhones, actualPhones)
 		}
+
+		index++
 	}
-}
-
-func validatePhoneType[T any](input dynamodb.PutItemInput, expected T, index *int, t *testing.T) {
-	typeName := fmt.Sprintf("%T", expected)
-
-	if *index > 0 {
-		t.Errorf("there are more %s in put inputs than 1 which is not expected", typeName)
-	}
-
-	var actual T
-	if err := attributevalue.UnmarshalMap(input.Item, &actual); err != nil {
-		t.Errorf("failed to unmarshal PutItemInput into %s: %v", typeName, err)
-	}
-
-	if !reflect.DeepEqual(actual, expected) {
-		t.Errorf("expected %s %v, got %v", typeName, expected, actual)
-	}
-
-	*index++
 }
 
 func ValidateDeleteItem(inputs []dynamodb.DeleteItemInput, t *testing.T, tc Case) {
