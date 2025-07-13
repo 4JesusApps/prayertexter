@@ -23,7 +23,7 @@ func TestMainFlowBlockUser(t *testing.T) {
 			Description: "Someone tries to block a user but is not an admin",
 
 			InitialMessage: messaging.TextMessage{
-				Body:  "#block 777-777-7777",
+				Body:  "#BLOCK 777-777-7777",
 				Phone: "+11234567890",
 			},
 
@@ -210,6 +210,15 @@ func TestMainFlowBlockUser(t *testing.T) {
 				},
 			},
 
+			ExpectedBlockPhones: object.BlockedPhones{
+				Key: object.BlockedPhonesKeyValue,
+				Phones: []string{
+					"+12222222222",
+					"+13333333333",
+					"+11234567890",
+				},
+			},
+
 			ExpectedTexts: []messaging.TextMessage{
 				{
 					Body:  messaging.MsgRemoveUser,
@@ -226,7 +235,7 @@ func TestMainFlowBlockUser(t *testing.T) {
 			},
 
 			ExpectedGetItemCalls:    6,
-			ExpectedPutItemCalls:    3,
+			ExpectedPutItemCalls:    4,
 			ExpectedDeleteItemCalls: 1,
 			ExpectedSendTextCalls:   3,
 		},
@@ -367,7 +376,7 @@ func TestMainFlowBlockUser(t *testing.T) {
 				},
 			},
 
-			ExpectedPhones: object.IntercessorPhones{
+			ExpectedIntPhones: object.IntercessorPhones{
 				Key: object.IntercessorPhonesKeyValue,
 				Phones: []string{
 					"+11111111111",
@@ -405,6 +414,15 @@ func TestMainFlowBlockUser(t *testing.T) {
 				},
 			},
 
+			ExpectedBlockPhones: object.BlockedPhones{
+				Key: object.BlockedPhonesKeyValue,
+				Phones: []string{
+					"+12222222222",
+					"+13333333333",
+					"+11234567890",
+				},
+			},
+
 			ExpectedTexts: []messaging.TextMessage{
 				{
 					Body:  messaging.MsgRemoveUser,
@@ -421,7 +439,7 @@ func TestMainFlowBlockUser(t *testing.T) {
 			},
 
 			ExpectedGetItemCalls:    9,
-			ExpectedPutItemCalls:    5,
+			ExpectedPutItemCalls:    6,
 			ExpectedDeleteItemCalls: 2,
 			ExpectedSendTextCalls:   3,
 			ExpectedPrayerQueue:     true,
@@ -1004,7 +1022,7 @@ func TestMainFlowSignUp(t *testing.T) {
 				},
 			},
 
-			ExpectedPhones: object.IntercessorPhones{
+			ExpectedIntPhones: object.IntercessorPhones{
 				Key: object.IntercessorPhonesKeyValue,
 				Phones: []string{
 					"+11111111111",
@@ -1368,7 +1386,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 				},
 			},
 
-			ExpectedPhones: object.IntercessorPhones{
+			ExpectedIntPhones: object.IntercessorPhones{
 				Key: object.IntercessorPhonesKeyValue,
 				Phones: []string{
 					"+11111111111",
@@ -1518,7 +1536,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 				},
 			},
 
-			ExpectedPhones: object.IntercessorPhones{
+			ExpectedIntPhones: object.IntercessorPhones{
 				Key: object.IntercessorPhonesKeyValue,
 				Phones: []string{
 					"+11111111111",
