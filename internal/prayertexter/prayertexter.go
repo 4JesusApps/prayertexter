@@ -88,7 +88,7 @@ func MainFlow(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.Te
 
 	// ADD BLOCKED USER STAGE
 	// Adds a user to the blocked users list.
-	case strings.Contains(strings.ToLower(msg.Body), "#block"):
+	case strings.Contains(msg.Body, "#block"):
 		stageErr = executeStage(ctx, ddbClnt, addBlockedUserStage, &state, func() error {
 			return blockUser(ctx, ddbClnt, smsClnt, msg, mem, blockedPhones)
 		})
@@ -213,11 +213,6 @@ func blockUser(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.T
 			return err
 		}
 		return nil
-	}
-
-	blockedPhones.AddPhone(phone)
-	if err = blockedPhones.Put(ctx, ddbClnt); err != nil {
-		return err
 	}
 
 	blockedUser := object.Member{Phone: phone}
