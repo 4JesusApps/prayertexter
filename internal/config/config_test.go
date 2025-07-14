@@ -25,7 +25,6 @@ func TestDefaultConfigValues(t *testing.T) {
 			object.MemberTableConfigPath:            object.DefaultMemberTable,
 			object.ActivePrayersTableConfigPath:     object.DefaultActivePrayersTable,
 			object.QueuedPrayersTableConfigPath:     object.DefaultQueuedPrayersTable,
-			object.StateTrackerTableConfigPath:      object.DefaultStateTrackerTable,
 			messaging.PhonePoolConfigPath:           messaging.DefaultPhonePool,
 			messaging.TimeoutConfigPath:             messaging.DefaultTimeout,
 			object.IntercessorsPerPrayerConfigPath:  object.DefaultIntercessorsPerPrayer,

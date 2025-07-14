@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/4JesusApps/prayertexter/internal/db"
-	"github.com/4JesusApps/prayertexter/internal/messaging"
 	"github.com/4JesusApps/prayertexter/internal/object"
 	"github.com/4JesusApps/prayertexter/internal/test/mock"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
@@ -102,49 +101,6 @@ func TestDynamoDBOperations(t *testing.T) {
 			},
 			Error: nil,
 		},
-		// StateTracker
-		{
-			Output: &dynamodb.GetItemOutput{
-				Item: map[string]types.AttributeValue{
-					"Key": &types.AttributeValueMemberS{Value: object.StateTrackerKeyValue},
-					"States": &types.AttributeValueMemberL{
-						Value: []types.AttributeValue{
-							&types.AttributeValueMemberM{
-								Value: map[string]types.AttributeValue{
-									"Error": &types.AttributeValueMemberS{Value: "sample error text"},
-									"Message": &types.AttributeValueMemberM{
-										Value: map[string]types.AttributeValue{
-											"Body":  &types.AttributeValueMemberS{Value: "sample text message 1"},
-											"Phone": &types.AttributeValueMemberS{Value: "+11234567890"},
-										},
-									},
-									"ID":        &types.AttributeValueMemberS{Value: "67f8ce776cc147c2b8700af909639ba2"},
-									"Stage":     &types.AttributeValueMemberS{Value: "HELP"},
-									"Status":    &types.AttributeValueMemberS{Value: "FAILED"},
-									"TimeStart": &types.AttributeValueMemberS{Value: "2025-02-16T23:54:01Z"},
-								},
-							},
-							&types.AttributeValueMemberM{
-								Value: map[string]types.AttributeValue{
-									"Error": &types.AttributeValueMemberS{Value: ""},
-									"Message": &types.AttributeValueMemberM{
-										Value: map[string]types.AttributeValue{
-											"Body":  &types.AttributeValueMemberS{Value: "sample text message 2"},
-											"Phone": &types.AttributeValueMemberS{Value: "+19987654321"},
-										},
-									},
-									"ID":        &types.AttributeValueMemberS{Value: "19ee2955d41d08325e1a97cbba1e544b"},
-									"Stage":     &types.AttributeValueMemberS{Value: "MEMBER DELETE"},
-									"Status":    &types.AttributeValueMemberS{Value: "IN PROGRESS"},
-									"TimeStart": &types.AttributeValueMemberS{Value: "2025-02-16T23:57:01Z"},
-								},
-							},
-						},
-					},
-				},
-			},
-			Error: nil,
-		},
 	}
 
 	expectedObjects := []any{
@@ -201,33 +157,6 @@ func TestDynamoDBOperations(t *testing.T) {
 				WeeklyPrayerLimit: 0,
 			},
 		},
-		&object.StateTracker{
-			Key: object.StateTrackerKeyValue,
-			States: []object.State{
-				{
-					Error: "sample error text",
-					Message: messaging.TextMessage{
-						Body:  "sample text message 1",
-						Phone: "+11234567890",
-					},
-					ID:        "67f8ce776cc147c2b8700af909639ba2",
-					Stage:     "HELP",
-					Status:    "FAILED",
-					TimeStart: "2025-02-16T23:54:01Z",
-				},
-				{
-					Error: "",
-					Message: messaging.TextMessage{
-						Body:  "sample text message 2",
-						Phone: "+19987654321",
-					},
-					ID:        "19ee2955d41d08325e1a97cbba1e544b",
-					Stage:     "MEMBER DELETE",
-					Status:    "IN PROGRESS",
-					TimeStart: "2025-02-16T23:57:01Z",
-				},
-			},
-		},
 	}
 
 	t.Run("GetDdbObject", func(t *testing.T) {
@@ -244,8 +173,6 @@ func TestDynamoDBOperations(t *testing.T) {
 				case *object.IntercessorPhones:
 					testGetObject(t, ddbMock, o)
 				case *object.Prayer:
-					testGetObject(t, ddbMock, o)
-				case *object.StateTracker:
 					testGetObject(t, ddbMock, o)
 				default:
 					t.Errorf("unexpected object type %T", obj)
@@ -267,8 +194,6 @@ func TestDynamoDBOperations(t *testing.T) {
 				case *object.IntercessorPhones:
 					testPutObject(t, ddbMock, o, expectedDdbItems[index])
 				case *object.Prayer:
-					testPutObject(t, ddbMock, o, expectedDdbItems[index])
-				case *object.StateTracker:
 					testPutObject(t, ddbMock, o, expectedDdbItems[index])
 				default:
 					t.Errorf("unexpected object type %T", obj)

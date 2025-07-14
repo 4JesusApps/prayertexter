@@ -18,7 +18,6 @@ Globals:
         PRAY_CONF_AWS_DB_PRAYER_ACTIVETABLE: !ImportValue db-ActivePrayerTableName
         PRAY_CONF_AWS_DB_BLOCKEDPHONES_TABLE: !ImportValue db-GeneralTableName
         PRAY_CONF_AWS_DB_INTERCESSORPHONES_TABLE: !ImportValue db-GeneralTableName
-        PRAY_CONF_AWS_DB_STATETRACKER_TABLE: !ImportValue db-GeneralTableName
         PRAY_CONF_AWS_DB_MEMBER_TABLE: !ImportValue db-MemberTableName
         PRAY_CONF_AWS_DB_PRAYER_QUEUETABLE: !ImportValue db-QueuedPrayerTableName
         PRAY_CONF_AWS_SMS_PHONEPOOL: !Sub arn:aws:sms-voice:${AWS::Region}:${AWS::AccountId}:pool/${SMSPhonePoolID}

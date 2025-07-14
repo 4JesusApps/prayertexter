@@ -11,7 +11,7 @@ sam validate --lint -t deploy/statecontroller/template.yaml
 On new installations, install stacks in this order:
 1. db
 2. prayertexter
-3. stateresolver
+3. statecontroller
 
 Update/install specific stack:
 ```

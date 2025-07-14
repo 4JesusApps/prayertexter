@@ -32,11 +32,6 @@ func TestMainFlowBlockUser(t *testing.T) {
 				Error  error
 			}{
 				{
-					// StateTracker empty get response. It would over complicate to test this here.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
 							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
@@ -56,8 +51,7 @@ func TestMainFlowBlockUser(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls:  5,
-			ExpectedPutItemCalls:  3,
+			ExpectedGetItemCalls:  2,
 			ExpectedSendTextCalls: 1,
 		},
 		{
@@ -72,11 +66,6 @@ func TestMainFlowBlockUser(t *testing.T) {
 				Output *dynamodb.GetItemOutput
 				Error  error
 			}{
-				{
-					// StateTracker empty get response. It would over complicate to test this here.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
@@ -98,8 +87,7 @@ func TestMainFlowBlockUser(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls:  5,
-			ExpectedPutItemCalls:  3,
+			ExpectedGetItemCalls:  2,
 			ExpectedSendTextCalls: 1,
 		},
 		{
@@ -114,11 +102,6 @@ func TestMainFlowBlockUser(t *testing.T) {
 				Output *dynamodb.GetItemOutput
 				Error  error
 			}{
-				{
-					// StateTracker empty get response. It would over complicate to test this here.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
@@ -153,8 +136,7 @@ func TestMainFlowBlockUser(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls:  5,
-			ExpectedPutItemCalls:  3,
+			ExpectedGetItemCalls:  2,
 			ExpectedSendTextCalls: 1,
 		},
 		{
@@ -169,11 +151,6 @@ func TestMainFlowBlockUser(t *testing.T) {
 				Output *dynamodb.GetItemOutput
 				Error  error
 			}{
-				{
-					// StateTracker empty get response. It would over complicate to test this here.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
@@ -234,8 +211,8 @@ func TestMainFlowBlockUser(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls:    6,
-			ExpectedPutItemCalls:    4,
+			ExpectedGetItemCalls:    3,
+			ExpectedPutItemCalls:    1,
 			ExpectedDeleteItemCalls: 1,
 			ExpectedSendTextCalls:   3,
 		},
@@ -251,11 +228,7 @@ func TestMainFlowBlockUser(t *testing.T) {
 				Output *dynamodb.GetItemOutput
 				Error  error
 			}{
-				{
-					// StateTracker empty get response. It would over complicate to test this here.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
+
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
@@ -279,11 +252,6 @@ func TestMainFlowBlockUser(t *testing.T) {
 						},
 					},
 					Error: nil,
-				},
-				{
-					// StateTracker empty get response. It would over complicate to test this here.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
 				},
 				{
 					Output: &dynamodb.GetItemOutput{
@@ -438,8 +406,8 @@ func TestMainFlowBlockUser(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls:    9,
-			ExpectedPutItemCalls:    6,
+			ExpectedGetItemCalls:    6,
+			ExpectedPutItemCalls:    3,
 			ExpectedDeleteItemCalls: 2,
 			ExpectedSendTextCalls:   3,
 			ExpectedPrayerQueue:     true,
@@ -456,11 +424,6 @@ func TestMainFlowBlockUser(t *testing.T) {
 				Output *dynamodb.GetItemOutput
 				Error  error
 			}{
-				{
-					// StateTracker empty get response. It would over complicate to test this here.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
 				{
 					// Member empty get response.
 					Output: &dynamodb.GetItemOutput{},
@@ -483,8 +446,7 @@ func TestMainFlowBlockUser(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls: 5,
-			ExpectedPutItemCalls: 3,
+			ExpectedGetItemCalls: 2,
 		},
 	}
 
@@ -541,8 +503,8 @@ func TestMainFlowSignUp(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls:  5,
-			ExpectedPutItemCalls:  4,
+			ExpectedGetItemCalls:  2,
+			ExpectedPutItemCalls:  1,
 			ExpectedSendTextCalls: 1,
 		},
 		{
@@ -568,8 +530,8 @@ func TestMainFlowSignUp(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls:  5,
-			ExpectedPutItemCalls:  4,
+			ExpectedGetItemCalls:  2,
+			ExpectedPutItemCalls:  1,
 			ExpectedSendTextCalls: 1,
 		},
 		{
@@ -585,19 +547,13 @@ func TestMainFlowSignUp(t *testing.T) {
 				Error  error
 			}{
 				{
-					// StateTracker empty get response. It would over complicate to test this here.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
 					Output: nil,
 					Error:  errors.New("first get item failure"),
 				},
 			},
 
 			ExpectedError:        true,
-			ExpectedGetItemCalls: 2,
-			ExpectedPutItemCalls: 1,
+			ExpectedGetItemCalls: 1,
 		},
 		{
 			Description: "Sign up stage TWO-A: user texts name",
@@ -611,11 +567,6 @@ func TestMainFlowSignUp(t *testing.T) {
 				Output *dynamodb.GetItemOutput
 				Error  error
 			}{
-				{
-					// StateTracker empty get response. It would over complicate to test this here.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
@@ -649,8 +600,8 @@ func TestMainFlowSignUp(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls:  5,
-			ExpectedPutItemCalls:  4,
+			ExpectedGetItemCalls:  2,
+			ExpectedPutItemCalls:  1,
 			ExpectedSendTextCalls: 1,
 		},
 		{
@@ -665,11 +616,6 @@ func TestMainFlowSignUp(t *testing.T) {
 				Output *dynamodb.GetItemOutput
 				Error  error
 			}{
-				{
-					// StateTracker empty get response. It would over complicate to test this here.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
@@ -694,8 +640,7 @@ func TestMainFlowSignUp(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls:  5,
-			ExpectedPutItemCalls:  3,
+			ExpectedGetItemCalls:  2,
 			ExpectedSendTextCalls: 1,
 		},
 		{
@@ -711,11 +656,6 @@ func TestMainFlowSignUp(t *testing.T) {
 				Error  error
 			}{
 				{
-					// StateTracker empty get response. It would over complicate to test this here.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
 							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
@@ -739,8 +679,7 @@ func TestMainFlowSignUp(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls:  5,
-			ExpectedPutItemCalls:  3,
+			ExpectedGetItemCalls:  2,
 			ExpectedSendTextCalls: 1,
 		},
 		{
@@ -756,11 +695,6 @@ func TestMainFlowSignUp(t *testing.T) {
 				Error  error
 			}{
 				{
-					// StateTracker empty get response. It would over complicate to test this here.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
 							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
@@ -784,8 +718,7 @@ func TestMainFlowSignUp(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls:  5,
-			ExpectedPutItemCalls:  3,
+			ExpectedGetItemCalls:  2,
 			ExpectedSendTextCalls: 1,
 		},
 		{
@@ -800,11 +733,6 @@ func TestMainFlowSignUp(t *testing.T) {
 				Output *dynamodb.GetItemOutput
 				Error  error
 			}{
-				{
-					// StateTracker empty get response. It would over complicate to test this here.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
@@ -838,8 +766,8 @@ func TestMainFlowSignUp(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls:  5,
-			ExpectedPutItemCalls:  4,
+			ExpectedGetItemCalls:  2,
+			ExpectedPutItemCalls:  1,
 			ExpectedSendTextCalls: 1,
 		},
 		{
@@ -855,11 +783,6 @@ func TestMainFlowSignUp(t *testing.T) {
 				Output *dynamodb.GetItemOutput
 				Error  error
 			}{
-				{
-					// StateTracker empty get response. It would over complicate to test this here.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
@@ -895,8 +818,8 @@ func TestMainFlowSignUp(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls:  5,
-			ExpectedPutItemCalls:  4,
+			ExpectedGetItemCalls:  2,
+			ExpectedPutItemCalls:  1,
 			ExpectedSendTextCalls: 1,
 		},
 		{
@@ -911,11 +834,6 @@ func TestMainFlowSignUp(t *testing.T) {
 				Output *dynamodb.GetItemOutput
 				Error  error
 			}{
-				{
-					// StateTracker empty get response. It would over complicate to test this here.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
@@ -951,8 +869,8 @@ func TestMainFlowSignUp(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls:  5,
-			ExpectedPutItemCalls:  4,
+			ExpectedGetItemCalls:  2,
+			ExpectedPutItemCalls:  1,
 			ExpectedSendTextCalls: 1,
 		},
 		{
@@ -969,11 +887,6 @@ func TestMainFlowSignUp(t *testing.T) {
 				Error  error
 			}{
 				{
-					// StateTracker empty get response. It would over complicate to test this here.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
 							"Intercessor": &types.AttributeValueMemberBOOL{Value: true},
@@ -987,11 +900,6 @@ func TestMainFlowSignUp(t *testing.T) {
 				},
 				{
 					// BlockedPhones empty get response.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
-					// StateTracker empty get response. It would over complicate to test this here.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -1040,8 +948,8 @@ func TestMainFlowSignUp(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls:  6,
-			ExpectedPutItemCalls:  5,
+			ExpectedGetItemCalls:  3,
+			ExpectedPutItemCalls:  2,
 			ExpectedSendTextCalls: 1,
 		},
 		{
@@ -1057,11 +965,6 @@ func TestMainFlowSignUp(t *testing.T) {
 				Error  error
 			}{
 				{
-					// StateTracker empty get response. It would over complicate to test this here.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
 							"Intercessor": &types.AttributeValueMemberBOOL{Value: true},
@@ -1075,11 +978,6 @@ func TestMainFlowSignUp(t *testing.T) {
 				},
 				{
 					// BlockedPhones empty get response.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
-					// StateTracker empty get response. It would over complicate to test this here.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -1102,19 +1000,13 @@ func TestMainFlowSignUp(t *testing.T) {
 				Error error
 			}{
 				{
-					Error: nil,
-				},
-				{
-					Error: nil,
-				},
-				{
 					Error: errors.New("third put item failure"),
 				},
 			},
 
 			ExpectedError:        true,
-			ExpectedGetItemCalls: 6,
-			ExpectedPutItemCalls: 4,
+			ExpectedGetItemCalls: 3,
+			ExpectedPutItemCalls: 1,
 		},
 	}
 
@@ -1155,8 +1047,7 @@ func TestMainFlowSignUpWrongInputs(t *testing.T) {
 				Phone: "+11234567890",
 			},
 
-			ExpectedGetItemCalls: 5,
-			ExpectedPutItemCalls: 3,
+			ExpectedGetItemCalls: 2,
 		},
 		{
 			Description: "Sign up stage THREE: did not send 1 or 2 as expected to answer MsgMemberTypeRequest",
@@ -1170,11 +1061,6 @@ func TestMainFlowSignUpWrongInputs(t *testing.T) {
 				Output *dynamodb.GetItemOutput
 				Error  error
 			}{
-				{
-					// StateTracker empty get response. It would over complicate to test this here.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
@@ -1200,8 +1086,7 @@ func TestMainFlowSignUpWrongInputs(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls:  5,
-			ExpectedPutItemCalls:  3,
+			ExpectedGetItemCalls:  2,
 			ExpectedSendTextCalls: 1,
 		},
 		{
@@ -1216,11 +1101,6 @@ func TestMainFlowSignUpWrongInputs(t *testing.T) {
 				Output *dynamodb.GetItemOutput
 				Error  error
 			}{
-				{
-					// StateTracker empty get response. It would over complicate to test this here.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
@@ -1247,8 +1127,7 @@ func TestMainFlowSignUpWrongInputs(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls:  5,
-			ExpectedPutItemCalls:  3,
+			ExpectedGetItemCalls:  2,
 			ExpectedSendTextCalls: 1,
 		},
 	}
@@ -1285,11 +1164,6 @@ func TestMainFlowMemberDelete(t *testing.T) {
 				Error  error
 			}{
 				{
-					// StateTracker empty get response. It would over complicate to test this here.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
 							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
@@ -1324,8 +1198,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls:    5,
-			ExpectedPutItemCalls:    3,
+			ExpectedGetItemCalls:    2,
 			ExpectedDeleteItemCalls: 1,
 			ExpectedSendTextCalls:   1,
 		},
@@ -1342,11 +1215,6 @@ func TestMainFlowMemberDelete(t *testing.T) {
 				Error  error
 			}{
 				{
-					// StateTracker empty get response. It would over complicate to test this here.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
 							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
@@ -1362,11 +1230,6 @@ func TestMainFlowMemberDelete(t *testing.T) {
 				},
 				{
 					// BlockedPhones empty get response.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
-					// StateTracker empty get response. It would over complicate to test this here.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -1412,8 +1275,8 @@ func TestMainFlowMemberDelete(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls:    7,
-			ExpectedPutItemCalls:    4,
+			ExpectedGetItemCalls:    4,
+			ExpectedPutItemCalls:    1,
 			ExpectedDeleteItemCalls: 1,
 			ExpectedSendTextCalls:   1,
 		},
@@ -1431,11 +1294,6 @@ func TestMainFlowMemberDelete(t *testing.T) {
 				Error  error
 			}{
 				{
-					// StateTracker empty get response. It would over complicate to test this here.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
 							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
@@ -1452,11 +1310,6 @@ func TestMainFlowMemberDelete(t *testing.T) {
 				},
 				{
 					// BlockedPhones empty get response.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
-					// StateTracker empty get response. It would over complicate to test this here.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -1581,8 +1434,8 @@ func TestMainFlowMemberDelete(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls:    8,
-			ExpectedPutItemCalls:    5,
+			ExpectedGetItemCalls:    5,
+			ExpectedPutItemCalls:    2,
 			ExpectedDeleteItemCalls: 2,
 			ExpectedSendTextCalls:   1,
 			ExpectedPrayerQueue:     true,
@@ -1599,11 +1452,6 @@ func TestMainFlowMemberDelete(t *testing.T) {
 				Output *dynamodb.GetItemOutput
 				Error  error
 			}{
-				{
-					// StateTracker empty get response. It would over complicate to test this here.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
@@ -1632,8 +1480,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 			},
 
 			ExpectedError:           true,
-			ExpectedGetItemCalls:    5,
-			ExpectedPutItemCalls:    3,
+			ExpectedGetItemCalls:    2,
 			ExpectedDeleteItemCalls: 1,
 		},
 	}
@@ -1680,11 +1527,6 @@ func TestMainFlowHelp(t *testing.T) {
 				Error  error
 			}{
 				{
-					// StateTracker empty get response. It would over complicate to test this here.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
 							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
@@ -1709,8 +1551,7 @@ func TestMainFlowHelp(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls:  5,
-			ExpectedPutItemCalls:  3,
+			ExpectedGetItemCalls:  2,
 			ExpectedSendTextCalls: 1,
 		},
 		{
@@ -1725,11 +1566,6 @@ func TestMainFlowHelp(t *testing.T) {
 				Output *dynamodb.GetItemOutput
 				Error  error
 			}{
-				{
-					// StateTracker empty get response. It would over complicate to test this here.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
@@ -1755,8 +1591,7 @@ func TestMainFlowHelp(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls:  5,
-			ExpectedPutItemCalls:  3,
+			ExpectedGetItemCalls:  2,
 			ExpectedSendTextCalls: 1,
 		},
 	}
@@ -1793,11 +1628,6 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				Error  error
 			}{
 				{
-					// StateTracker empty get response. It would over complicate to test this here.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
 							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
@@ -1810,11 +1640,6 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				},
 				{
 					// BlockedPhones empty get response.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
-					// StateTracker empty get response. It would over complicate to test this here.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -1953,8 +1778,8 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls:  10,
-			ExpectedPutItemCalls:  7,
+			ExpectedGetItemCalls:  7,
+			ExpectedPutItemCalls:  4,
 			ExpectedSendTextCalls: 3,
 		},
 		{
@@ -1969,11 +1794,6 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				Output *dynamodb.GetItemOutput
 				Error  error
 			}{
-				{
-					// StateTracker empty get response. It would over complicate to test this here.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
@@ -1999,8 +1819,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls:  5,
-			ExpectedPutItemCalls:  3,
+			ExpectedGetItemCalls:  2,
 			ExpectedSendTextCalls: 1,
 		},
 		{
@@ -2015,11 +1834,6 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				Output *dynamodb.GetItemOutput
 				Error  error
 			}{
-				{
-					// StateTracker empty get response. It would over complicate to test this here.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
@@ -2045,8 +1859,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls:  5,
-			ExpectedPutItemCalls:  3,
+			ExpectedGetItemCalls:  2,
 			ExpectedSendTextCalls: 1,
 		},
 		{
@@ -2062,11 +1875,6 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				Error  error
 			}{
 				{
-					// StateTracker empty get response. It would over complicate to test this here.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
 							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
@@ -2079,11 +1887,6 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				},
 				{
 					// BlockedPhones empty get response.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
-					// StateTracker empty get response. It would over complicate to test this here.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -2155,8 +1958,8 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls: 8,
-			ExpectedPutItemCalls: 4,
+			ExpectedGetItemCalls: 7,
+			ExpectedPutItemCalls: 3,
 			ExpectedError:        true,
 		},
 		{
@@ -2172,11 +1975,6 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				Error  error
 			}{
 				{
-					// StateTracker empty get response. It would over complicate to test this here.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
 							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
@@ -2189,11 +1987,6 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				},
 				{
 					// BlockedPhones empty get response.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
-					// StateTracker empty get response. It would over complicate to test this here.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -2272,8 +2065,8 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 			},
 
 			ExpectedPrayerQueue:   true,
-			ExpectedGetItemCalls:  10,
-			ExpectedPutItemCalls:  4,
+			ExpectedGetItemCalls:  7,
+			ExpectedPutItemCalls:  1,
 			ExpectedSendTextCalls: 1,
 		},
 		{
@@ -2289,11 +2082,6 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				Error  error
 			}{
 				{
-					// StateTracker empty get response. It would over complicate to test this here.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
 							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
@@ -2306,11 +2094,6 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				},
 				{
 					// BlockedPhones empty get response.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
-					// StateTracker empty get response. It would over complicate to test this here.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -2449,8 +2232,8 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls:  10,
-			ExpectedPutItemCalls:  7,
+			ExpectedGetItemCalls:  7,
+			ExpectedPutItemCalls:  4,
 			ExpectedSendTextCalls: 3,
 		},
 		{
@@ -2466,11 +2249,6 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				Error  error
 			}{
 				{
-					// StateTracker empty get response. It would over complicate to test this here.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
 							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
@@ -2483,11 +2261,6 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				},
 				{
 					// BlockedPhones empty get response.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
-					// StateTracker empty get response. It would over complicate to test this here.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -2642,8 +2415,8 @@ Reply HELP for help or STOP to cancel.`,
 				},
 			},
 
-			ExpectedGetItemCalls:  10,
-			ExpectedPutItemCalls:  7,
+			ExpectedGetItemCalls:  7,
+			ExpectedPutItemCalls:  4,
 			ExpectedSendTextCalls: 3,
 		},
 	}
@@ -3381,11 +3154,6 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 				Error  error
 			}{
 				{
-					// StateTracker empty get response. It would over complicate to test this here.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
 							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
@@ -3402,11 +3170,6 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 				},
 				{
 					// BlockedPhones empty get response.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
-					// StateTracker empty get response. It would over complicate to test this here.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -3475,8 +3238,7 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls:    7,
-			ExpectedPutItemCalls:    3,
+			ExpectedGetItemCalls:    4,
 			ExpectedDeleteItemCalls: 1,
 			ExpectedSendTextCalls:   2,
 		},
@@ -3494,11 +3256,6 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 				Error  error
 			}{
 				{
-					// StateTracker empty get response. It would over complicate to test this here.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
 							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
@@ -3515,11 +3272,6 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 				},
 				{
 					// BlockedPhones empty get response.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
-					// StateTracker empty get response. It would over complicate to test this here.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -3572,8 +3324,7 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls:    7,
-			ExpectedPutItemCalls:    3,
+			ExpectedGetItemCalls:    4,
 			ExpectedDeleteItemCalls: 1,
 			ExpectedSendTextCalls:   1,
 		},
@@ -3589,11 +3340,6 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 				Output *dynamodb.GetItemOutput
 				Error  error
 			}{
-				{
-					// StateTracker empty get response. It would over complicate to test this here.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
@@ -3623,8 +3369,7 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 				},
 			},
 
-			ExpectedGetItemCalls:  6,
-			ExpectedPutItemCalls:  3,
+			ExpectedGetItemCalls:  3,
 			ExpectedSendTextCalls: 1,
 		},
 		{
@@ -3639,11 +3384,6 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 				Output *dynamodb.GetItemOutput
 				Error  error
 			}{
-				{
-					// StateTracker empty get response. It would over complicate to test this here.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
@@ -3661,11 +3401,6 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 				},
 				{
 					// BlockedPhones empty get response.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
-					// StateTracker empty get response. It would over complicate to test this here.
 					Output: &dynamodb.GetItemOutput{},
 					Error:  nil,
 				},
@@ -3722,8 +3457,7 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 			},
 
 			ExpectedError:           true,
-			ExpectedGetItemCalls:    7,
-			ExpectedPutItemCalls:    3,
+			ExpectedGetItemCalls:    4,
 			ExpectedDeleteItemCalls: 1,
 			ExpectedSendTextCalls:   2,
 		},
