@@ -9,6 +9,7 @@ package prayertexter
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"regexp"
 	"slices"
@@ -44,29 +45,13 @@ const (
 func MainFlow(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender, msg messaging.TextMessage) error {
 	config.InitConfig()
 
-	currTime := time.Now().Format(time.RFC3339)
-	id, err := utility.GenerateID()
-	if err != nil {
-		return utility.LogAndWrapError(ctx, err, stageErrPrefix+preStage, "phone", msg.Phone, "msg", msg.Body)
-	}
-
-	state := object.State{}
-	state.Status = object.StateInProgress
-	state.TimeStart = currTime
-	state.ID = id
-	state.Message = msg
-
-	if err = state.Update(ctx, ddbClnt, false); err != nil {
-		return utility.LogAndWrapError(ctx, err, stageErrPrefix+preStage, "phone", msg.Phone, "msg", msg.Body)
-	}
-
 	mem := object.Member{Phone: msg.Phone}
-	if err = mem.Get(ctx, ddbClnt); err != nil {
+	if err := mem.Get(ctx, ddbClnt); err != nil {
 		return utility.LogAndWrapError(ctx, err, stageErrPrefix+preStage, "phone", msg.Phone, "msg", msg.Body)
 	}
 
 	blockedPhones := object.BlockedPhones{}
-	if err = blockedPhones.Get(ctx, ddbClnt); err != nil {
+	if err := blockedPhones.Get(ctx, ddbClnt); err != nil {
 		return utility.LogAndWrapError(ctx, err, stageErrPrefix+preStage, "phone", msg.Phone, "msg", msg.Body)
 	}
 	var isBlocked bool
@@ -82,14 +67,14 @@ func MainFlow(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.Te
 	// Drops messages of all blocked users.
 	case isBlocked:
 		slog.WarnContext(ctx, "blocked user dropping message", "phone", mem.Phone, "msg", msg.Body)
-		stageErr = executeStage(ctx, ddbClnt, blockedUserStage, &state, func() error {
+		stageErr = executeStage(ctx, mem, msg, blockedUserStage, func() error {
 			return nil
 		})
 
 	// ADD BLOCKED USER STAGE
 	// Adds a user to the blocked users list.
 	case strings.Contains(strings.ToLower(msg.Body), "#block"):
-		stageErr = executeStage(ctx, ddbClnt, addBlockedUserStage, &state, func() error {
+		stageErr = executeStage(ctx, mem, msg, addBlockedUserStage, func() error {
 			return blockUser(ctx, ddbClnt, smsClnt, msg, mem, blockedPhones)
 		})
 
@@ -97,21 +82,21 @@ func MainFlow(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.Te
 	// Responds with contact info and is a requirement for the 10DLC phone number provider to get sent to to anyone
 	// regardless whether they are a member or not.
 	case cleanMsg == "help":
-		stageErr = executeStage(ctx, ddbClnt, helpStage, &state, func() error {
+		stageErr = executeStage(ctx, mem, msg, helpStage, func() error {
 			return mem.SendMessage(ctx, smsClnt, messaging.MsgHelp)
 		})
 
 	// MEMBER DELETE STAGE
 	// Removes member from prayertexter.
 	case cleanMsg == "cancel" || cleanMsg == "stop":
-		stageErr = executeStage(ctx, ddbClnt, memberDeleteStage, &state, func() error {
+		stageErr = executeStage(ctx, mem, msg, memberDeleteStage, func() error {
 			return memberDelete(ctx, ddbClnt, smsClnt, mem)
 		})
 
 	// SIGN UP STAGE
 	// Initial member sign up process.
 	case cleanMsg == "pray" || mem.SetupStatus == object.MemberSetupInProgress:
-		stageErr = executeStage(ctx, ddbClnt, signUpStage, &state, func() error {
+		stageErr = executeStage(ctx, mem, msg, signUpStage, func() error {
 			return signUp(ctx, ddbClnt, smsClnt, msg, mem)
 		})
 
@@ -120,7 +105,7 @@ func MainFlow(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.Te
 	// messages of non members (other than help and sign up messages).
 	case mem.SetupStatus == "":
 		slog.WarnContext(ctx, "non registered user dropping message", "phone", mem.Phone, "msg", msg.Body)
-		stageErr = executeStage(ctx, ddbClnt, dropMessageStage, &state, func() error {
+		stageErr = executeStage(ctx, mem, msg, dropMessageStage, func() error {
 			return nil
 		})
 
@@ -128,30 +113,26 @@ func MainFlow(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.Te
 	// Intercessors confirm that they prayed for a prayer, a confirmations is sent out to the prayer requestor, and the
 	// prayer is marked as completed.
 	case cleanMsg == "prayed":
-		stageErr = executeStage(ctx, ddbClnt, completePrayerStage, &state, func() error {
+		stageErr = executeStage(ctx, mem, msg, completePrayerStage, func() error {
 			return completePrayer(ctx, ddbClnt, smsClnt, mem)
 		})
 
 	// PRAYER REQUEST STAGE
 	// Assigns a prayer request to intercessors.
 	case mem.SetupStatus == object.MemberSetupComplete:
-		stageErr = executeStage(ctx, ddbClnt, prayerRequestStage, &state, func() error {
+		stageErr = executeStage(ctx, mem, msg, prayerRequestStage, func() error {
 			return prayerRequest(ctx, ddbClnt, smsClnt, msg, mem)
 		})
 
 	// This should never happen and if it does then it is a bug.
 	default:
-		err = errors.New("unexpected text message input/member status")
+		err := errors.New("unexpected text message input/member status")
 		return utility.LogAndWrapError(ctx, err, "could not satisfy any required conditions", "phone", mem.Phone, "msg",
 			msg.Body)
 	}
 
 	if stageErr != nil {
 		return stageErr
-	}
-
-	if err = state.Update(ctx, ddbClnt, true); err != nil {
-		return utility.LogAndWrapError(ctx, err, stageErrPrefix+postStage, "phone", mem.Phone, "msg", msg.Body)
 	}
 
 	return nil
@@ -169,23 +150,10 @@ func cleanStr(str string) string {
 	return sb.String()
 }
 
-func executeStage(ctx context.Context, ddbClnt db.DDBConnecter, stageName string, state *object.State, stageFunc func() error) error {
-	state.Stage = stageName
-	if err := state.Update(ctx, ddbClnt, false); err != nil {
-		return utility.LogAndWrapError(ctx, err, stageErrPrefix+stageName, "phone", state.Message.Phone, "msg",
-			state.Message.Body)
-	}
-
+func executeStage(ctx context.Context, mem object.Member, msg messaging.TextMessage, stageName string, stageFunc func() error) error {
+	slog.InfoContext(ctx, fmt.Sprintf("Starting stage: %s", stageName), "phone", mem.Phone, "message", msg.Body)
 	if stageErr := stageFunc(); stageErr != nil {
-		state.Error = stageErr.Error()
-		state.Status = object.StateFailed
-		if updateErr := state.Update(ctx, ddbClnt, false); updateErr != nil {
-			return utility.LogAndWrapError(ctx, updateErr, stageErrPrefix+stageName, "stage error", stageErr.Error(),
-				"phone", state.Message.Phone, "msg", state.Message.Body)
-		}
-
-		return utility.LogAndWrapError(ctx, stageErr, stageErrPrefix+stageName, "phone", state.Message.Phone,
-			"msg", state.Message.Body)
+		return utility.LogAndWrapError(ctx, stageErr, stageErrPrefix+stageName, "phone", mem.Phone, "msg", msg.Body)
 	}
 
 	return nil

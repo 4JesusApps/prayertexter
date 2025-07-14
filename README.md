@@ -24,7 +24,7 @@ PrayerTexter is a Go application that lets users submit prayer requests via text
 
 4. **Additional Features**
    • Users can text “help” to receive the phone number’s contact and help information (required by SMS service regulations).
-   • Multiple phone numbers can be assigned to handle announcements or asynchronous tasks (like stateresolver).
+   • Multiple phone numbers can be assigned to handle announcements or asynchronous tasks (like statecontroller).
 
 
 ## Main Technical Flows
@@ -54,11 +54,6 @@ PrayerTexter is a Go application that lets users submit prayer requests via text
    2) They’re removed from “Members,” and if they are an intercessor, from “IntercessorPhones.”
    3) If they had an active prayer assigned, that prayer is changed from active to queued so that future intercessors may cover it.
 
-5. **StateTracker**
-   - Tracks operations (e.g., sign-up or prayer assignment failures) for later recovery.
-   - On success, the state is removed from StateTracker. On failure, it’s stored with the error message.
-
-
 ## Directory and Code Structure
 
 PrayerTexter is structured to separate code for domain logic, AWS integrations, utility helpers, and the actual commands (Lambda entries). Notable directories and files:
@@ -67,7 +62,7 @@ PrayerTexter is structured to separate code for domain logic, AWS integrations, 
    - Each subfolder is a small Lambda function with its own “main.go.”
    - • `prayertexter`: The main function that receives incoming text messages (via API Gateway) and processes them through the “prayertexter” logic.
    - • `announcer`: Intended for sending announcements to all members, e.g., scheduled updates or maintenance.
-   - • `stateresolver`: A scheduled (cron-like) Lambda for tasks such as assigning queued prayers, retrying failed operations, or sending reminders to intercessors.
+   - • `statecontroller`: A scheduled (cron-like) Lambda for tasks such as assigning queued prayers, retrying failed operations, or sending reminders to intercessors.
 
 2. **internal/config**
    - Central place to initialize configuration using Viper.
@@ -90,7 +85,7 @@ PrayerTexter is structured to separate code for domain logic, AWS integrations, 
    - Enables thorough testing without calling real AWS services.
 
 6. **internal/object**
-   - Houses the main domain models (i.e., “Member,” “Prayer,” “IntercessorPhones,” “StateTracker,” etc.).
+   - Houses the main domain models (i.e., “Member,” “Prayer,” “IntercessorPhones,” etc.).
    - Each model has “Get,” “Put,” “Delete,” and specialized logic.
    - Example: “Member” includes fields for phone number, name, prayer count, etc. “Prayer” ties requestors to their assigned intercessors.
 

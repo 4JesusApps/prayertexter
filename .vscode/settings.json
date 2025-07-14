@@ -32,8 +32,6 @@
         "samconfig",
         "sndr",
         "statecontroller",
-        "Stateresolver",
-        "sttrackr",
         "testattr",
         "texter",
         "txtsvc"

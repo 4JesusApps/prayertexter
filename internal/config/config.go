@@ -39,9 +39,6 @@ func setDefaults() {
 					"activetable": object.DefaultActivePrayersTable,
 					"queuetable":  object.DefaultQueuedPrayersTable,
 				},
-				"statetracker": map[string]any{
-					"table": object.DefaultStateTrackerTable,
-				},
 			},
 			"sms": map[string]any{
 				"phonepool": messaging.DefaultPhonePool,

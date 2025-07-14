@@ -10,7 +10,6 @@ Globals:
         # Env variables need to match specific format. See prayertexter config package for details.
         PRAY_CONF_AWS_DB_PRAYER_ACTIVETABLE: !Ref ActivePrayer
         PRAY_CONF_AWS_DB_INTERCESSORPHONES_TABLE: !Ref General
-        PRAY_CONF_AWS_DB_STATETRACKER_TABLE: !Ref General
         PRAY_CONF_AWS_DB_MEMBER_TABLE: !Ref Member
         PRAY_CONF_AWS_DB_PRAYER_QUEUETABLE: !Ref QueuedPrayer
 

@@ -4,8 +4,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/4JesusApps/prayertexter/internal/messaging"
-	"github.com/4JesusApps/prayertexter/internal/object"
 	"github.com/4JesusApps/prayertexter/internal/utility"
 )
 
@@ -33,34 +31,6 @@ func TestRemoveItem(t *testing.T) {
 
 	t.Run("remove integer from empty slice", func(t *testing.T) {
 		testRemoveItem(t, []int{}, 42, []int{})
-	})
-
-	t.Run("remove State from slice", func(t *testing.T) {
-		states := []object.State{
-			{
-				Error: "sample error text",
-				Message: messaging.TextMessage{
-					Body:  "sample text message 1",
-					Phone: "+11234567890",
-				},
-				ID:        "67f8ce776cc147c2b8700af909639ba2",
-				Stage:     "HELP",
-				Status:    "FAILED",
-				TimeStart: "2025-02-16T23:54:01Z",
-			},
-			{
-				Error: "",
-				Message: messaging.TextMessage{
-					Body:  "sample text message 2",
-					Phone: "+19987654321",
-				},
-				ID:        "19ee2955d41d08325e1a97cbba1e544b",
-				Stage:     "MEMBER DELETE",
-				Status:    "IN PROGRESS",
-				TimeStart: "2025-02-16T23:57:01Z",
-			},
-		}
-		testRemoveItem(t, states, states[0], states[1:])
 	})
 }
 
