@@ -111,9 +111,11 @@ func (s *Service) MainFlow(ctx context.Context, msg messaging.TextMessage) error
 		})
 
 	default:
-		err := errors.New("unexpected text message input/member status")
-		return apperrors.LogAndWrapError(ctx, err, "could not satisfy any required conditions", "phone", mem.Phone, "msg",
-			msg.Body)
+		defaultErr := errors.New("unexpected text message input/member status")
+		return apperrors.LogAndWrapError(
+			ctx, defaultErr, "could not satisfy any required conditions",
+			"phone", mem.Phone, "msg", msg.Body,
+		)
 	}
 
 	if stageErr != nil {

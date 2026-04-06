@@ -10,13 +10,14 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/4JesusApps/prayertexter/internal/config"
-	"github.com/4JesusApps/prayertexter/internal/apperrors"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/pinpointsmsvoicev2"
 	"github.com/aws/aws-sdk-go-v2/service/pinpointsmsvoicev2/types"
 	"github.com/aws/smithy-go"
 	"github.com/spf13/viper"
+
+	"github.com/4JesusApps/prayertexter/internal/config"
+	"github.com/4JesusApps/prayertexter/internal/apperrors"
 )
 
 // A TextMessage represents a received text message from a user.

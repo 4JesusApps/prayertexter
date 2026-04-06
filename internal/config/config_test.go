@@ -3,8 +3,9 @@ package config_test
 import (
 	"testing"
 
-	"github.com/4JesusApps/prayertexter/internal/config"
 	"github.com/spf13/viper"
+
+	"github.com/4JesusApps/prayertexter/internal/config"
 )
 
 func TestLoad(t *testing.T) {
@@ -17,18 +18,18 @@ func TestLoad(t *testing.T) {
 			expected any
 		}{
 			{"AWS.Region", cfg.AWS.Region, "us-west-1"},
-			{"AWS.Retry", cfg.AWS.Retry, 5},                                          //nolint:mnd // test default
-			{"AWS.Backoff", cfg.AWS.Backoff, 10},                                      //nolint:mnd // test default
-			{"AWS.DB.Timeout", cfg.AWS.DB.Timeout, 60},                                //nolint:mnd // test default
+			{"AWS.Retry", cfg.AWS.Retry, 5},                                         
+			{"AWS.Backoff", cfg.AWS.Backoff, 10},                                     
+			{"AWS.DB.Timeout", cfg.AWS.DB.Timeout, 60},                               
 			{"AWS.DB.MemberTable", cfg.AWS.DB.MemberTable, "Member"},
 			{"AWS.DB.ActivePrayerTable", cfg.AWS.DB.ActivePrayerTable, "ActivePrayer"},
 			{"AWS.DB.QueuedPrayerTable", cfg.AWS.DB.QueuedPrayerTable, "QueuedPrayer"},
 			{"AWS.DB.IntercessorPhonesTable", cfg.AWS.DB.IntercessorPhonesTable, "General"},
 			{"AWS.DB.BlockedPhonesTable", cfg.AWS.DB.BlockedPhonesTable, "General"},
 			{"SMS.PhonePool", cfg.SMS.PhonePool, "dummy"},
-			{"SMS.Timeout", cfg.SMS.Timeout, 60},                                     //nolint:mnd // test default
-			{"Prayer.IntercessorsPerPrayer", cfg.Prayer.IntercessorsPerPrayer, 2},     //nolint:mnd // test default
-			{"Prayer.ReminderHours", cfg.Prayer.ReminderHours, 3},                     //nolint:mnd // test default
+			{"SMS.Timeout", cfg.SMS.Timeout, 60},                                    
+			{"Prayer.IntercessorsPerPrayer", cfg.Prayer.IntercessorsPerPrayer, 2},    
+			{"Prayer.ReminderHours", cfg.Prayer.ReminderHours, 3},                    
 		}
 
 		for _, c := range checks {
@@ -56,18 +57,18 @@ func TestDefaultConfigValues(t *testing.T) {
 
 		configs := map[string]any{
 			"conf.aws.region":                  "us-west-1",
-			"conf.aws.backoff":                 10,     //nolint:mnd // test default
-			"conf.aws.retry":                   5,      //nolint:mnd // test default
-			"conf.aws.db.timeout":              60,     //nolint:mnd // test default
+			"conf.aws.backoff":                 10,    
+			"conf.aws.retry":                   5,     
+			"conf.aws.db.timeout":              60,    
 			"conf.aws.db.blockedphones.table":  "General",
 			"conf.aws.db.intercessorphones.table": "General",
 			"conf.aws.db.member.table":         "Member",
 			"conf.aws.db.prayer.activetable":   "ActivePrayer",
 			"conf.aws.db.prayer.queuetable":    "QueuedPrayer",
 			"conf.aws.sms.phonepool":           "dummy",
-			"conf.aws.sms.timeout":             60,     //nolint:mnd // test default
-			"conf.intercessorsperprayer":        2,      //nolint:mnd // test default
-			"conf.prayerreminderhours":          3,      //nolint:mnd // test default
+			"conf.aws.sms.timeout":             60,    
+			"conf.intercessorsperprayer":        2,     
+			"conf.prayerreminderhours":          3,     
 		}
 
 		var cfgVal any

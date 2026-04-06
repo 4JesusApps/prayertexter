@@ -26,7 +26,7 @@ func (s *Service) removeIntercessor(ctx context.Context, mem *model.Member) erro
 		return err
 	}
 	phones.RemovePhone(mem.Phone)
-	if err := s.putIntercessorPhones(ctx, phones); err != nil {
+	if err = s.putIntercessorPhones(ctx, phones); err != nil {
 		return err
 	}
 
@@ -39,26 +39,25 @@ func (s *Service) moveActivePrayer(ctx context.Context, mem *model.Member) error
 		return err
 	}
 
-	if isActive {
-		pryr, err := s.getActivePrayer(ctx, mem.Phone)
-		if err != nil {
-			return err
-		}
-
-		if err = s.deleteActivePrayer(ctx, mem.Phone); err != nil {
-			return err
-		}
-
-		var id string
-		id, err = model.GenerateID()
-		if err != nil {
-			return err
-		}
-		pryr.IntercessorPhone = id
-		pryr.Intercessor = model.Member{}
-
-		return s.putQueuedPrayer(ctx, pryr)
+	if !isActive {
+		return nil
 	}
 
-	return nil
+	pryr, err := s.getActivePrayer(ctx, mem.Phone)
+	if err != nil {
+		return err
+	}
+
+	if err = s.deleteActivePrayer(ctx, mem.Phone); err != nil {
+		return err
+	}
+
+	id, err := model.GenerateID()
+	if err != nil {
+		return err
+	}
+	pryr.IntercessorPhone = id
+	pryr.Intercessor = model.Member{}
+
+	return s.putQueuedPrayer(ctx, pryr)
 }

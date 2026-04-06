@@ -47,7 +47,7 @@ func CompleteIntercessor() model.Member {
 		SetupStage:        model.SignUpStepFinal,
 		SetupStatus:       model.SetupComplete,
 		WeeklyPrayerDate:  "2025-02-16T23:54:01Z",
-		WeeklyPrayerLimit: 5,
+		WeeklyPrayerLimit: 5, //nolint:mnd // default test value
 	}
 }
 

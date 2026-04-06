@@ -18,8 +18,12 @@ func NewSMSHandler(svc *service.Service, version string) func(ctx context.Contex
 		slog.InfoContext(ctx, "running prayertexter", "version", version)
 		if len(snsEvent.Records) > 1 {
 			for _, record := range snsEvent.Records {
-				slog.ErrorContext(ctx, "lambda handler: there are more than 1 SNS records! This is unexpected and only "+
-					"the first record will be handled", "message", record.SNS.Message, "messageid", record.SNS.MessageID)
+				slog.ErrorContext(
+					ctx,
+					"lambda handler: more than 1 SNS record, only the first will be handled",
+					"message", record.SNS.Message,
+					"messageid", record.SNS.MessageID,
+				)
 			}
 		}
 

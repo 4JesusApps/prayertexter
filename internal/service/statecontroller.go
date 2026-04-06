@@ -23,12 +23,12 @@ func (s *Service) AssignQueuedPrayers(ctx context.Context) error {
 	for _, pryr := range prayers {
 		queuedPrayerID := pryr.IntercessorPhone
 
-		intercessors, err := s.FindIntercessors(ctx, pryr.Requestor.Phone)
-		if err != nil && errors.Is(err, apperrors.ErrNoAvailableIntercessors) {
+		intercessors, findErr := s.FindIntercessors(ctx, pryr.Requestor.Phone)
+		if findErr != nil && errors.Is(findErr, apperrors.ErrNoAvailableIntercessors) {
 			slog.WarnContext(ctx, "no intercessors available, exiting job")
 			break
-		} else if err != nil {
-			return apperrors.WrapError(err, "failed to find intercessors")
+		} else if findErr != nil {
+			return apperrors.WrapError(findErr, "failed to find intercessors")
 		}
 
 		for i := range intercessors {

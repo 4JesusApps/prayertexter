@@ -14,7 +14,7 @@ func TestGenerateID(t *testing.T) {
 			t.Errorf("unexpected error: %v", err)
 		}
 
-		if len(id) != 32 { //nolint:mnd // 16 bytes = 32 hex chars
+		if len(id) != 32 {
 			t.Errorf("expected string of 32 length, got %v", id)
 		}
 	})

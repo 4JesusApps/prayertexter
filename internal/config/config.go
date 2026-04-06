@@ -29,12 +29,12 @@ type AWSConfig struct {
 
 // DBConfig holds DynamoDB table names and timeout.
 type DBConfig struct {
-	Timeout            int
-	MemberTable        string
-	ActivePrayerTable  string
-	QueuedPrayerTable  string
+	Timeout                int
+	MemberTable            string
+	ActivePrayerTable      string
+	QueuedPrayerTable      string
 	IntercessorPhonesTable string
-	BlockedPhonesTable string
+	BlockedPhonesTable     string
 }
 
 // SMSConfig holds SMS/Pinpoint configuration.
@@ -120,6 +120,7 @@ func Load() *Config {
 }
 
 // InitConfig sets up global Viper configuration for backward compatibility.
+//
 // Deprecated: Use Load() instead to get a typed Config struct.
 func InitConfig() {
 	initViper()

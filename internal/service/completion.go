@@ -16,13 +16,13 @@ func (s *Service) completePrayer(ctx context.Context, mem *model.Member) error {
 	}
 
 	if !pryr.IsActive() {
-		if err := s.sendMessage(ctx, mem.Phone, messaging.MsgNoActivePrayer); err != nil {
-			return err
+		if sendErr := s.sendMessage(ctx, mem.Phone, messaging.MsgNoActivePrayer); sendErr != nil {
+			return sendErr
 		}
 		return nil
 	}
 
-	if err := s.sendMessage(ctx, mem.Phone, messaging.MsgPrayerThankYou); err != nil {
+	if err = s.sendMessage(ctx, mem.Phone, messaging.MsgPrayerThankYou); err != nil {
 		return err
 	}
 
