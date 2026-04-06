@@ -11,6 +11,7 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/4JesusApps/prayertexter/internal/config"
 	"github.com/4JesusApps/prayertexter/internal/db"
 	"github.com/4JesusApps/prayertexter/internal/messaging"
 	"github.com/4JesusApps/prayertexter/internal/statecontroller"
@@ -22,13 +23,16 @@ var version string // do not remove or modify
 
 func handler(ctx context.Context) {
 	slog.InfoContext(ctx, "running statecontroller", "version", version)
-	ddbClnt, err := db.GetDdbClient(ctx)
+
+	cfg := config.Load()
+
+	ddbClnt, err := db.GetDdbClient(ctx, &cfg.AWS)
 	if err != nil {
 		slog.ErrorContext(ctx, "lambda handler: failed to get dynamodb client", "error", err)
 		return
 	}
 
-	smsClnt, err := messaging.GetSmsClient(ctx)
+	smsClnt, err := messaging.GetSmsClient(ctx, &cfg.AWS)
 	if err != nil {
 		slog.ErrorContext(ctx, "lambda handler: failed to get sms client", "error", err)
 		return

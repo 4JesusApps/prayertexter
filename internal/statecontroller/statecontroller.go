@@ -17,25 +17,24 @@ import (
 	"github.com/4JesusApps/prayertexter/internal/object"
 	"github.com/4JesusApps/prayertexter/internal/prayertexter"
 	"github.com/4JesusApps/prayertexter/internal/utility"
-	"github.com/spf13/viper"
 )
 
 // RunJobs will run all of the main statecontroller functions that are meant to be ran as scheduled jobs.
 func RunJobs(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender) {
-	config.InitConfig()
+	cfg := config.Load()
 
 	const (
 		assignQueuedPrayersJob = "Assign Queued Prayers"
 		remindActivePrayersJob = "Remind Intercessors with Active Prayers"
 	)
 
-	if err := AssignQueuedPrayers(ctx, ddbClnt, smsClnt); err != nil {
+	if err := AssignQueuedPrayers(ctx, ddbClnt, smsClnt, cfg.Prayer.IntercessorsPerPrayer); err != nil {
 		utility.LogError(ctx, err, "failed job", "job", assignQueuedPrayersJob)
 	} else {
 		slog.InfoContext(ctx, "finished job", "job", assignQueuedPrayersJob)
 	}
 
-	if err := RemindActiveIntercessors(ctx, ddbClnt, smsClnt); err != nil {
+	if err := RemindActiveIntercessors(ctx, ddbClnt, smsClnt, cfg.Prayer.ReminderHours); err != nil {
 		utility.LogError(ctx, err, "failed job", "job", remindActivePrayersJob)
 	} else {
 		slog.InfoContext(ctx, "finished job", "job", remindActivePrayersJob)
@@ -45,7 +44,7 @@ func RunJobs(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.Tex
 // AssignQueuedPrayers gets all prayers in the queued prayers table if any. It will then attempt to assign each prayer
 // to intercessors if there are any available. If a prayer is assigned successfully, it sends the prayer request to the
 // intercessors as well as sending a confirmation message to the prayer requestor.
-func AssignQueuedPrayers(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender) error {
+func AssignQueuedPrayers(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender, intercessorsPerPrayer int) error {
 	prayers, err := getAllPrayers(ctx, ddbClnt, true)
 	if err != nil {
 		return utility.WrapError(err, "failed to get queued prayers")
@@ -53,7 +52,7 @@ func AssignQueuedPrayers(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt m
 
 	for _, pryr := range prayers {
 		var intercessors []object.Member
-		intercessors, err = prayertexter.FindIntercessors(ctx, ddbClnt, pryr.Requestor.Phone)
+		intercessors, err = prayertexter.FindIntercessors(ctx, ddbClnt, pryr.Requestor.Phone, intercessorsPerPrayer)
 		if err != nil && errors.Is(err, utility.ErrNoAvailableIntercessors) {
 			slog.WarnContext(ctx, "no intercessors available, exiting job")
 			break
@@ -84,8 +83,7 @@ func getAllPrayers(ctx context.Context, ddbClnt db.DDBConnecter, queue bool) ([]
 	return db.GetAllObjects[object.Prayer](ctx, ddbClnt, table)
 }
 
-func RemindActiveIntercessors(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender) error {
-	prayerReminderHours := viper.GetInt(object.PrayerReminderHoursConfigPath)
+func RemindActiveIntercessors(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender, prayerReminderHours int) error {
 
 	prayers, err := getAllPrayers(ctx, ddbClnt, false)
 	if err != nil {

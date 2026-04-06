@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/4JesusApps/prayertexter/internal/config"
 	"github.com/4JesusApps/prayertexter/internal/db"
 	"github.com/4JesusApps/prayertexter/internal/messaging"
 	"github.com/4JesusApps/prayertexter/internal/prayertexter"
@@ -29,13 +30,15 @@ func handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.API
 		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError}, err
 	}
 
-	ddbClnt, err := db.GetDdbClient(ctx)
+	cfg := config.Load()
+
+	ddbClnt, err := db.GetDdbClient(ctx, &cfg.AWS)
 	if err != nil {
 		slog.ErrorContext(ctx, "lambda handler: failed to get dynamodb client", "error", err)
 		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError}, err
 	}
 
-	smsClnt, err := messaging.GetSmsClient(ctx)
+	smsClnt, err := messaging.GetSmsClient(ctx, &cfg.AWS)
 	if err != nil {
 		slog.ErrorContext(ctx, "lambda handler: failed to get sms client", "error", err)
 		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError}, err

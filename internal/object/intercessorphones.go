@@ -76,8 +76,8 @@ func (i *IntercessorPhones) RemovePhone(phone string) {
 }
 
 // GenRandPhones will return a string slice of individual intercessor phone numbers from phone numbers in
-// IntercessorPhones. The number of intercessor phones returned is a configurable number.
-func (i *IntercessorPhones) GenRandPhones() []string {
+// IntercessorPhones. The count parameter determines how many phones to return.
+func (i *IntercessorPhones) GenRandPhones(count int) []string {
 	var selectedPhones []string
 
 	if len(i.Phones) == 0 {
@@ -85,16 +85,14 @@ func (i *IntercessorPhones) GenRandPhones() []string {
 		return nil
 	}
 
-	intercessorsPerPrayer := viper.GetInt(IntercessorsPerPrayerConfigPath)
-
 	// This is needed so it can return some/one phones even if they are less than the desired number of intercessors per
 	// prayer.
-	if len(i.Phones) <= intercessorsPerPrayer {
+	if len(i.Phones) <= count {
 		selectedPhones = append(selectedPhones, i.Phones...)
 		return selectedPhones
 	}
 
-	for len(selectedPhones) < intercessorsPerPrayer {
+	for len(selectedPhones) < count {
 		phone := i.Phones[rand.IntN(len(i.Phones))] //nolint:gosec // this is a false positive
 		if slices.Contains(selectedPhones, phone) {
 			continue

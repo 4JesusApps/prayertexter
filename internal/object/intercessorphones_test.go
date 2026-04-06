@@ -69,7 +69,7 @@ func testGenRandPhones(t *testing.T, i *object.IntercessorPhones) {
 	config.InitConfig()
 	t.Run("returns correct number of phones (NumIntercessorsPerPrayer) when enough phones are in slice",
 		func(t *testing.T) {
-			phones := i.GenRandPhones()
+			phones := i.GenRandPhones(object.DefaultIntercessorsPerPrayer)
 			if len(phones) != object.DefaultIntercessorsPerPrayer {
 				t.Errorf("expected number of phones to be %v, got %v",
 					object.DefaultIntercessorsPerPrayer, len(phones))
@@ -86,7 +86,7 @@ func testGenRandPhones(t *testing.T, i *object.IntercessorPhones) {
 			i.Phones = i.Phones[:len(i.Phones)-1]
 		}
 
-		phones := i.GenRandPhones()
+		phones := i.GenRandPhones(object.DefaultIntercessorsPerPrayer)
 		if len(phones) != object.DefaultIntercessorsPerPrayer-1 {
 			t.Errorf("expected phone list to be len %v, got len: %v phones: %v",
 				object.DefaultIntercessorsPerPrayer-1, len(phones), phones)
@@ -99,7 +99,7 @@ func testGenRandPhones(t *testing.T, i *object.IntercessorPhones) {
 
 	t.Run("returns nil when no phones available", func(t *testing.T) {
 		i.Phones = []string{}
-		phones := i.GenRandPhones()
+		phones := i.GenRandPhones(object.DefaultIntercessorsPerPrayer)
 		if phones != nil {
 			t.Errorf("expected nil return when phone slice is empty, got %v", phones)
 		}

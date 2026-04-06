@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/4JesusApps/prayertexter/internal/config"
 	"github.com/4JesusApps/prayertexter/internal/utility"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
@@ -34,15 +35,15 @@ type DDBConnecter interface {
 }
 
 // GetDdbClient returns a dynamodb client that can be used for various dynamodb operations.
-func GetDdbClient(ctx context.Context) (*dynamodb.Client, error) {
-	cfg, err := utility.GetAwsConfig(ctx)
+func GetDdbClient(ctx context.Context, awsCfg *config.AWSConfig) (*dynamodb.Client, error) {
+	cfg, err := config.GetAwsConfig(ctx, awsCfg)
 	if err != nil {
 		return nil, utility.WrapError(err, "failed to get dynamodb client")
 	}
 
 	var ddbClnt *dynamodb.Client
 
-	if utility.IsAwsLocal() {
+	if config.IsAwsLocal() {
 		ddbClnt = dynamodb.NewFromConfig(cfg, func(o *dynamodb.Options) {
 			o.BaseEndpoint = aws.String("http://dynamodb:8000")
 		})

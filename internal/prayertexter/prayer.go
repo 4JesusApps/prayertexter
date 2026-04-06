@@ -11,10 +11,9 @@ import (
 	"github.com/4JesusApps/prayertexter/internal/messaging"
 	"github.com/4JesusApps/prayertexter/internal/object"
 	"github.com/4JesusApps/prayertexter/internal/utility"
-	"github.com/spf13/viper"
 )
 
-func prayerRequest(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender, msg messaging.TextMessage, mem object.Member, profanityChecker *messaging.ProfanityChecker) error {
+func prayerRequest(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender, msg messaging.TextMessage, mem object.Member, profanityChecker *messaging.ProfanityChecker, intercessorsPerPrayer int) error {
 	hasProfanity, err := checkIfProfanity(ctx, smsClnt, mem, msg, profanityChecker)
 	if err != nil {
 		return err
@@ -31,7 +30,7 @@ func prayerRequest(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messagi
 
 	handleTriggerWords(&msg, &mem)
 
-	intercessors, err := FindIntercessors(ctx, ddbClnt, mem.Phone)
+	intercessors, err := FindIntercessors(ctx, ddbClnt, mem.Phone, intercessorsPerPrayer)
 	if err != nil && errors.Is(err, utility.ErrNoAvailableIntercessors) {
 		slog.WarnContext(ctx, "no intercessors available", "request", msg.Body, "requestor", msg.Phone)
 		if err = queuePrayer(ctx, ddbClnt, smsClnt, msg, mem); err != nil {
@@ -78,17 +77,16 @@ func AssignPrayer(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messagin
 
 // FindIntercessors returns a slice of Member intercessors that are available to be assigned a prayer request. If there
 // are no available intercessors, it will return an error.
-func FindIntercessors(ctx context.Context, ddbClnt db.DDBConnecter, skipPhone string) ([]object.Member, error) {
+func FindIntercessors(ctx context.Context, ddbClnt db.DDBConnecter, skipPhone string, intercessorsPerPrayer int) ([]object.Member, error) {
 	allPhones, err := getAndPreparePhones(ctx, ddbClnt, skipPhone)
 	if err != nil {
 		return nil, err
 	}
 
 	var intercessors []object.Member
-	intercessorsPerPrayer := viper.GetInt(object.IntercessorsPerPrayerConfigPath)
 
 	for len(intercessors) < intercessorsPerPrayer {
-		randPhones := allPhones.GenRandPhones()
+		randPhones := allPhones.GenRandPhones(intercessorsPerPrayer)
 		if randPhones == nil {
 			slog.InfoContext(ctx, "there are no more intercessors left to check")
 			if len(intercessors) > 0 {

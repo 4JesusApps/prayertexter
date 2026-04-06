@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/4JesusApps/prayertexter/internal/config"
 	"github.com/4JesusApps/prayertexter/internal/utility"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/pinpointsmsvoicev2"
@@ -32,8 +33,8 @@ type TextSender interface {
 }
 
 // GetSmsClient returns a pinpoint sms client that can be used for sending text messages.
-func GetSmsClient(ctx context.Context) (*pinpointsmsvoicev2.Client, error) {
-	cfg, err := utility.GetAwsConfig(ctx)
+func GetSmsClient(ctx context.Context, awsCfg *config.AWSConfig) (*pinpointsmsvoicev2.Client, error) {
+	cfg, err := config.GetAwsConfig(ctx, awsCfg)
 	if err != nil {
 		return nil, utility.WrapError(err, "failed to get sms client")
 	}
@@ -49,7 +50,7 @@ func SendText(ctx context.Context, smsClnt TextSender, msg TextMessage) error {
 
 	// This helps with SAM local testing. We don't want to actually send a SMS when doing SAM local tests (for now).
 	// However when unit testing, we can't skip this part since this is mocked and receives inputs.
-	if utility.IsAwsLocal() {
+	if config.IsAwsLocal() {
 		slog.InfoContext(ctx, "sent text message (local)", "phone", msg.Phone, "body", body)
 		return nil
 	}

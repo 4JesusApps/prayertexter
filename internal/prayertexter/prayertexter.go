@@ -42,7 +42,7 @@ var profanityExceptions = []string{"jerk", "ass", "butt"} //nolint:gochecknoglob
 // MainFlow is the start of the prayertexter application. It receives a text message as a parameter and based on the
 // message content and sender phone number, it decides what operations to perform.
 func MainFlow(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.TextSender, msg messaging.TextMessage) error {
-	config.InitConfig()
+	cfg := config.Load()
 
 	profanityChecker := messaging.NewProfanityChecker(profanityExceptions)
 
@@ -98,7 +98,7 @@ func MainFlow(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.Te
 	// Initial member sign up process.
 	case cleanMsg == "pray" || mem.SetupStatus == object.MemberSetupInProgress:
 		stageErr = executeStage(ctx, mem, msg, signUpStage, func() error {
-			return signUp(ctx, ddbClnt, smsClnt, msg, mem, profanityChecker)
+			return signUp(ctx, ddbClnt, smsClnt, msg, mem, profanityChecker) //nolint:wrapcheck // wrapped by executeStage
 		})
 
 	// DROP MESSAGE STAGE
@@ -122,7 +122,7 @@ func MainFlow(ctx context.Context, ddbClnt db.DDBConnecter, smsClnt messaging.Te
 	// Assigns a prayer request to intercessors.
 	case mem.SetupStatus == object.MemberSetupComplete:
 		stageErr = executeStage(ctx, mem, msg, prayerRequestStage, func() error {
-			return prayerRequest(ctx, ddbClnt, smsClnt, msg, mem, profanityChecker)
+			return prayerRequest(ctx, ddbClnt, smsClnt, msg, mem, profanityChecker, cfg.Prayer.IntercessorsPerPrayer)
 		})
 
 	// This should never happen and if it does then it is a bug.

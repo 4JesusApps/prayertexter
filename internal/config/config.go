@@ -1,69 +1,126 @@
 /*
-Package config implements configurable settings that are overridable by environmental variables. These configurations
-span across multiple other packages in prayertexter. If a package decides to expose a configuration, the config package
-can be used for that purpose. All configurations should have a default value which is determined by the user of this
-package. All configuration defaults should be kept up to date inside this package. Configuration defaults should be
-constants or variables and defined inside other packages (not this one). The config package only links the default
-values determined by other packages into this one in order to organize and set defaults.
+Package config implements application configuration. All settings are loaded from environment variables
+with the PRAY_ prefix and fall back to sensible defaults. The typed Config struct provides compile-time
+safe access to configuration values. Viper is used internally for env var binding and MUST NOT be
+accessed outside this package after full migration.
 */
 package config
 
 import (
 	"strings"
 
-	"github.com/4JesusApps/prayertexter/internal/db"
-	"github.com/4JesusApps/prayertexter/internal/messaging"
-	"github.com/4JesusApps/prayertexter/internal/object"
-	"github.com/4JesusApps/prayertexter/internal/utility"
 	"github.com/spf13/viper"
 )
 
-func setDefaults() {
+// Config holds all application configuration.
+type Config struct {
+	AWS    AWSConfig
+	SMS    SMSConfig
+	Prayer PrayerConfig
+}
+
+// AWSConfig holds AWS-related configuration.
+type AWSConfig struct {
+	Region  string
+	Retry   int
+	Backoff int
+	DB      DBConfig
+}
+
+// DBConfig holds DynamoDB table names and timeout.
+type DBConfig struct {
+	Timeout            int
+	MemberTable        string
+	ActivePrayerTable  string
+	QueuedPrayerTable  string
+	IntercessorPhonesTable string
+	BlockedPhonesTable string
+}
+
+// SMSConfig holds SMS/Pinpoint configuration.
+type SMSConfig struct {
+	PhonePool string
+	Timeout   int
+}
+
+// PrayerConfig holds prayer-related business configuration.
+type PrayerConfig struct {
+	IntercessorsPerPrayer int
+	ReminderHours         int
+}
+
+// initViper sets up Viper with defaults and env var binding. This populates the global Viper instance
+// so that code still reading Viper directly (object CRUD methods) continues to work during transition.
+func initViper() {
 	defaults := map[string]any{
 		"aws": map[string]any{
-			"region":  utility.DefaultAwsRegion,
-			"backoff": utility.DefaultAwsSvcMaxBackoff,
-			"retry":   utility.DefaultAwsSvcRetryAttempts,
+			"region":  "us-west-1",
+			"backoff": 10, //nolint:mnd // default AWS backoff seconds
+			"retry":   5,  //nolint:mnd // default AWS retry attempts
 			"db": map[string]any{
-				"timeout": db.DefaultTimeout,
+				"timeout": 60, //nolint:mnd // default DB timeout seconds
 				"blockedphones": map[string]any{
-					"table": object.DefaultBlockedPhonesTable,
+					"table": "General",
 				},
 				"intercessorphones": map[string]any{
-					"table": object.DefaultIntercessorPhonesTable,
+					"table": "General",
 				},
 				"member": map[string]any{
-					"table": object.DefaultMemberTable,
+					"table": "Member",
 				},
 				"prayer": map[string]any{
-					"activetable": object.DefaultActivePrayersTable,
-					"queuetable":  object.DefaultQueuedPrayersTable,
+					"activetable": "ActivePrayer",
+					"queuetable":  "QueuedPrayer",
 				},
 			},
 			"sms": map[string]any{
-				"phonepool": messaging.DefaultPhonePool,
-				"timeout":   messaging.DefaultTimeout,
+				"phonepool": "dummy",
+				"timeout":   60, //nolint:mnd // default SMS timeout seconds
 			},
 		},
-		"intercessorsperprayer": object.DefaultIntercessorsPerPrayer,
-		"prayerreminderhours":   object.DefaultPrayerReminderHours,
+		"intercessorsperprayer": 2, //nolint:mnd // default intercessors per prayer
+		"prayerreminderhours":   3, //nolint:mnd // default prayer reminder hours
 	}
 
 	viper.SetDefault("conf", defaults)
-}
-
-// InitConfig sets the values of all exposed configurations. This creates a global viper instance which contains all
-// configuration values that can be accessed throughout the entire application. It will use default values unless
-// environmental variables are present for a specific configuration, in which case it will use the value set by the
-// environmental variable.
-func InitConfig() {
-	setDefaults()
-
-	// This allows one to overwrite the default configurations with environment variables. For example, to
-	// overwrite the config at path conf.aws.db.timeout, one could have this environmental variable set:
-	// PRAY_CONF_AWS_DB_TIMEOUT=10. PRAY_ is prefixed, everything gets automatically capitalized, and the . delimiter
-	// gets changed to the _ delimiter.
 	viper.SetEnvPrefix("pray")
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()
+}
+
+// Load initializes configuration from environment variables and defaults, returning a typed Config.
+// It also populates the global Viper instance for backward compatibility with code that still reads
+// Viper directly.
+func Load() *Config {
+	initViper()
+
+	return &Config{
+		AWS: AWSConfig{
+			Region:  viper.GetString("conf.aws.region"),
+			Retry:   viper.GetInt("conf.aws.retry"),
+			Backoff: viper.GetInt("conf.aws.backoff"),
+			DB: DBConfig{
+				Timeout:            viper.GetInt("conf.aws.db.timeout"),
+				MemberTable:        viper.GetString("conf.aws.db.member.table"),
+				ActivePrayerTable:  viper.GetString("conf.aws.db.prayer.activetable"),
+				QueuedPrayerTable:  viper.GetString("conf.aws.db.prayer.queuetable"),
+				IntercessorPhonesTable: viper.GetString("conf.aws.db.intercessorphones.table"),
+				BlockedPhonesTable: viper.GetString("conf.aws.db.blockedphones.table"),
+			},
+		},
+		SMS: SMSConfig{
+			PhonePool: viper.GetString("conf.aws.sms.phonepool"),
+			Timeout:   viper.GetInt("conf.aws.sms.timeout"),
+		},
+		Prayer: PrayerConfig{
+			IntercessorsPerPrayer: viper.GetInt("conf.intercessorsperprayer"),
+			ReminderHours:         viper.GetInt("conf.prayerreminderhours"),
+		},
+	}
+}
+
+// InitConfig sets up global Viper configuration for backward compatibility.
+// Deprecated: Use Load() instead to get a typed Config struct.
+func InitConfig() {
+	initViper()
 }

@@ -974,13 +974,13 @@ func TestAssignQueuedPrayers(t *testing.T) {
 
 			if tc.ExpectedError {
 				// Handles failures for error mocks.
-				if err := statecontroller.AssignQueuedPrayers(ctx, ddbMock, txtMock); err == nil {
+				if err := statecontroller.AssignQueuedPrayers(ctx, ddbMock, txtMock, object.DefaultIntercessorsPerPrayer); err == nil {
 					t.Fatalf("expected error, got nil")
 				}
 				test.ValidateNumMethodCalls(ddbMock, txtMock, t, tc)
 			} else {
 				// Handles success test cases.
-				if err := statecontroller.AssignQueuedPrayers(ctx, ddbMock, txtMock); err != nil {
+				if err := statecontroller.AssignQueuedPrayers(ctx, ddbMock, txtMock, object.DefaultIntercessorsPerPrayer); err != nil {
 					t.Fatalf("unexpected error starting MainFlow: %v", err)
 				}
 
@@ -1368,13 +1368,13 @@ func TestRemindActiveIntercessors(t *testing.T) {
 
 			if tc.ExpectedError {
 				// Handles failures for error mocks.
-				if err := statecontroller.RemindActiveIntercessors(ctx, ddbMock, txtMock); err == nil {
+				if err := statecontroller.RemindActiveIntercessors(ctx, ddbMock, txtMock, object.DefaultPrayerReminderHours); err == nil {
 					t.Fatalf("expected error, got nil")
 				}
 				test.ValidateNumMethodCalls(ddbMock, txtMock, t, tc)
 			} else {
 				// Handles success test cases.
-				if err := statecontroller.RemindActiveIntercessors(ctx, ddbMock, txtMock); err != nil {
+				if err := statecontroller.RemindActiveIntercessors(ctx, ddbMock, txtMock, object.DefaultPrayerReminderHours); err != nil {
 					t.Fatalf("unexpected error starting MainFlow: %v", err)
 				}
 

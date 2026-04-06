@@ -3117,14 +3117,14 @@ func TestFindIntercessors(t *testing.T) {
 
 			if tc.ExpectedError {
 				// Handles failures for error mocks.
-				if _, err := prayertexter.FindIntercessors(ctx, ddbMock, "+18888888888"); err == nil {
+				if _, err := prayertexter.FindIntercessors(ctx, ddbMock, "+18888888888", object.DefaultIntercessorsPerPrayer); err == nil {
 					t.Fatalf("expected error, got nil")
 				}
 
 				test.ValidateNumMethodCalls(ddbMock, txtMock, t, tc)
 			} else {
 				// Handles success test cases.
-				_, err := prayertexter.FindIntercessors(ctx, ddbMock, "+18888888888")
+				_, err := prayertexter.FindIntercessors(ctx, ddbMock, "+18888888888", object.DefaultIntercessorsPerPrayer)
 				if err != nil && !errors.Is(err, utility.ErrNoAvailableIntercessors) {
 					// NoAvailableIntercessors is an expected errors that can occur with FindIntercessors. This
 					// error should be handled accordingly by the caller. Since this is expected, it is included
