@@ -1879,7 +1879,11 @@ func TestFindIntercessors(t *testing.T) {
 
 			MockGetItemResults: []testutil.GetItemResult{
 				testutil.IntercessorPhonesItem(
-					testutil.PhoneIntercessor, testutil.PhoneAlt1, testutil.PhoneAlt2, testutil.PhoneAlt3, "+15555555555",
+					testutil.PhoneIntercessor,
+					testutil.PhoneAlt1,
+					testutil.PhoneAlt2,
+					testutil.PhoneAlt3,
+					"+15555555555",
 				),
 				testutil.MemberItem(model.Member{
 					Intercessor:       true,
