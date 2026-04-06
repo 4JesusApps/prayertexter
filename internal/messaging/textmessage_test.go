@@ -87,28 +87,35 @@ func TestSendText(t *testing.T) {
 }
 
 func TestCheckProfanity(t *testing.T) {
-	msg := messaging.TextMessage{Body: "test text message, no profanity"}
+	checker := messaging.NewProfanityChecker([]string{"jerk", "ass", "butt"})
 
 	t.Run("message does not have profanity", func(t *testing.T) {
-		profanity := msg.CheckProfanity()
+		profanity := checker.Check("test text message, no profanity")
 		if profanity != "" {
 			t.Errorf("expected no profanity, got %v", profanity)
 		}
 	})
 
 	t.Run("message has profanity", func(t *testing.T) {
-		msg.Body = "this message contains profanity, sh!t!"
-		profanity := msg.CheckProfanity()
+		profanity := checker.Check("this message contains profanity, sh!t!")
 		if profanity == "" {
 			t.Errorf("expected profanity, got none (empty string): %v", profanity)
 		}
 	})
 
 	t.Run("this should not detect profanity because spaces are added in between words", func(t *testing.T) {
-		msg.Body = "sh it, fu ck"
-		profanity := msg.CheckProfanity()
+		profanity := checker.Check("sh it, fu ck")
 		if profanity != "" {
 			t.Errorf("expected no profanity, got %v", profanity)
+		}
+	})
+
+	t.Run("excluded words should not be detected as profanity", func(t *testing.T) {
+		for _, word := range []string{"jerk", "ass", "butt"} {
+			profanity := checker.Check(word)
+			if profanity != "" {
+				t.Errorf("expected excluded word %q to not be detected, got %v", word, profanity)
+			}
 		}
 	})
 }

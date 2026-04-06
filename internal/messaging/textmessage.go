@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/4JesusApps/prayertexter/internal/utility"
-	goaway "github.com/TwiN/go-away"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/pinpointsmsvoicev2"
 	"github.com/aws/aws-sdk-go-v2/service/pinpointsmsvoicev2/types"
@@ -67,14 +66,14 @@ func SendText(ctx context.Context, smsClnt TextSender, msg TextMessage) error {
 	ctx, cancel := context.WithTimeout(ctx, time.Duration(timeoutSec)*time.Second)
 	defer cancel()
 
-	const maxAttempts = 3
-	const sleepDuration = 500
+	const maxSendAttempts = 3
+	const sendRetryDelayMs = 500
 	var lastErr error
 
 	// Checks if there is a ThrottlingException error and if so, perform small sleep to wait out the AWS throttle
 	// threshold limit. This happens when too many SMS messages are sent per second. AWS will throttle if we go over the
 	// specified amount which could lead to failed SMS message delivery.
-	for attempt := 1; attempt <= maxAttempts; attempt++ {
+	for attempt := 1; attempt <= maxSendAttempts; attempt++ {
 		_, err := smsClnt.SendTextMessage(ctx, input)
 		if err == nil {
 			return nil
@@ -82,9 +81,9 @@ func SendText(ctx context.Context, smsClnt TextSender, msg TextMessage) error {
 		lastErr = err
 
 		var apiErr smithy.APIError
-		if errors.As(err, &apiErr) && apiErr.ErrorCode() == "ThrottlingException" && attempt < maxAttempts {
+		if errors.As(err, &apiErr) && apiErr.ErrorCode() == "ThrottlingException" && attempt < maxSendAttempts {
 			slog.WarnContext(ctx, "throttled by Pinpoint, retrying", "attempt", attempt, "phone", msg.Phone)
-			time.Sleep(sleepDuration * time.Millisecond)
+			time.Sleep(sendRetryDelayMs * time.Millisecond)
 			continue
 		}
 
@@ -95,17 +94,3 @@ func SendText(ctx context.Context, smsClnt TextSender, msg TextMessage) error {
 	return utility.LogAndWrapError(ctx, lastErr, "failed to send text message", "phone", msg.Phone, "msg", msg.Body)
 }
 
-// CheckProfanity returns any detected profanity found inside a string. This will return an empty string if no profanity
-// is detected.
-func (t TextMessage) CheckProfanity() string {
-	// We need to remove some words from the profanity filter because it is too sensitive.
-	profanityDetector := goaway.NewProfanityDetector().WithSanitizeSpaces(false)
-	removedWords := []string{"jerk", "ass", "butt"}
-	profanities := &goaway.DefaultProfanities
-
-	for _, word := range removedWords {
-		utility.RemoveItem(profanities, word)
-	}
-
-	return profanityDetector.ExtractProfanity(t.Body)
-}
