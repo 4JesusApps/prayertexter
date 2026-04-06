@@ -15,56 +15,25 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"log/slog"
 
+	"github.com/4JesusApps/prayertexter/internal/app"
 	"github.com/4JesusApps/prayertexter/internal/config"
-	"github.com/4JesusApps/prayertexter/internal/db"
-	"github.com/4JesusApps/prayertexter/internal/messaging"
-	"github.com/4JesusApps/prayertexter/internal/prayertexter"
-	"github.com/aws/aws-lambda-go/events"
+	"github.com/4JesusApps/prayertexter/internal/handler"
 	"github.com/aws/aws-lambda-go/lambda"
 )
 
 // MUST BE SET by go build -ldflags "-X main.version=999" like 0.6.14-0-g26fe727 or 0.6.14-2-g9118702-dirty.
 var version string // do not remove or modify
 
-func handler(ctx context.Context, snsEvent events.SNSEvent) {
-	slog.InfoContext(ctx, "running prayertexter", "version", version)
-	// According to aws documentation, there should only be 1 record per SNS, however since Records is a slice we are
-	// checking here just to be safe.
-	if len(snsEvent.Records) > 1 {
-		for _, record := range snsEvent.Records {
-			slog.ErrorContext(ctx, "lambda handler: there are more than 1 SNS records! This is unexpected and only "+
-				"the first record will be handled", "message", record.SNS.Message, "messageid", record.SNS.MessageID)
-		}
-	}
-
-	msg := messaging.TextMessage{}
-	if err := json.Unmarshal([]byte(snsEvent.Records[0].SNS.Message), &msg); err != nil {
-		slog.ErrorContext(ctx, "lambda handler: failed to unmarshal api gateway request", "error", err)
-		return
-	}
-
+func main() {
 	cfg := config.Load()
 
-	ddbClnt, err := db.GetDdbClient(ctx, &cfg.AWS)
+	a, err := app.New(context.Background(), cfg)
 	if err != nil {
-		slog.ErrorContext(ctx, "lambda handler: failed to get dynamodb client", "error", err)
+		slog.Error("failed to initialize app", "error", err)
 		return
 	}
 
-	smsClnt, err := messaging.GetSmsClient(ctx, &cfg.AWS)
-	if err != nil {
-		slog.ErrorContext(ctx, "lambda handler: failed to get sms client", "error", err)
-		return
-	}
-
-	if err = prayertexter.MainFlow(ctx, ddbClnt, smsClnt, msg); err != nil {
-		return
-	}
-}
-
-func main() {
-	lambda.Start(handler)
+	lambda.Start(handler.NewSMSHandler(a.Service, version))
 }

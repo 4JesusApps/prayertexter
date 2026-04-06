@@ -1,4 +1,5 @@
-package utility
+// Package apperrors provides application-level error types and error wrapping utilities.
+package apperrors
 
 import (
 	"context"

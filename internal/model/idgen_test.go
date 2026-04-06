@@ -1,20 +1,20 @@
-package utility_test
+package model_test
 
 import (
 	"reflect"
 	"testing"
 
-	"github.com/4JesusApps/prayertexter/internal/utility"
+	"github.com/4JesusApps/prayertexter/internal/model"
 )
 
 func TestGenerateID(t *testing.T) {
 	t.Run("generate id and confirm basic details", func(t *testing.T) {
-		id, err := utility.GenerateID()
+		id, err := model.GenerateID()
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}
 
-		if len(id) != 32 {
+		if len(id) != 32 { //nolint:mnd // 16 bytes = 32 hex chars
 			t.Errorf("expected string of 32 length, got %v", id)
 		}
 	})
@@ -35,7 +35,7 @@ func TestRemoveItem(t *testing.T) {
 }
 
 func testRemoveItem[T comparable](t *testing.T, items []T, target T, expected []T) {
-	utility.RemoveItem(&items, target)
+	model.RemoveItem(&items, target)
 	if items == nil {
 		items = []T{}
 	}

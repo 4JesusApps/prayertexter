@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/4JesusApps/prayertexter/internal/config"
-	"github.com/4JesusApps/prayertexter/internal/utility"
+	"github.com/4JesusApps/prayertexter/internal/apperrors"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/pinpointsmsvoicev2"
 	"github.com/aws/aws-sdk-go-v2/service/pinpointsmsvoicev2/types"
@@ -36,7 +36,7 @@ type TextSender interface {
 func GetSmsClient(ctx context.Context, awsCfg *config.AWSConfig) (*pinpointsmsvoicev2.Client, error) {
 	cfg, err := config.GetAwsConfig(ctx, awsCfg)
 	if err != nil {
-		return nil, utility.WrapError(err, "failed to get sms client")
+		return nil, apperrors.WrapError(err, "failed to get sms client")
 	}
 
 	smsClnt := pinpointsmsvoicev2.NewFromConfig(cfg)
@@ -92,6 +92,6 @@ func SendText(ctx context.Context, smsClnt TextSender, msg TextMessage) error {
 		break
 	}
 
-	return utility.LogAndWrapError(ctx, lastErr, "failed to send text message", "phone", msg.Phone, "msg", msg.Body)
+	return apperrors.LogAndWrapError(ctx, lastErr, "failed to send text message", "phone", msg.Phone, "msg", msg.Body)
 }
 

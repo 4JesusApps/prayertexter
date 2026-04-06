@@ -1,4 +1,4 @@
-package prayertexter_test
+package service_test
 
 import (
 	"context"
@@ -7,12 +7,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/4JesusApps/prayertexter/internal/apperrors"
+	"github.com/4JesusApps/prayertexter/internal/config"
 	"github.com/4JesusApps/prayertexter/internal/messaging"
-	"github.com/4JesusApps/prayertexter/internal/object"
-	"github.com/4JesusApps/prayertexter/internal/prayertexter"
+	"github.com/4JesusApps/prayertexter/internal/model"
+	"github.com/4JesusApps/prayertexter/internal/service"
 	"github.com/4JesusApps/prayertexter/internal/test"
 	"github.com/4JesusApps/prayertexter/internal/test/mock"
-	"github.com/4JesusApps/prayertexter/internal/utility"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
@@ -36,8 +37,8 @@ func TestMainFlowBlockUser(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
 							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupComplete},
 						},
 					},
 					Error: nil,
@@ -72,8 +73,8 @@ func TestMainFlowBlockUser(t *testing.T) {
 							"Administrator": &types.AttributeValueMemberBOOL{Value: true},
 							"Name":          &types.AttributeValueMemberS{Value: "Admin User"},
 							"Phone":         &types.AttributeValueMemberS{Value: "+17777777777"},
-							"SetupStage":    &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-							"SetupStatus":   &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"SetupStage":    &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+							"SetupStatus":   &types.AttributeValueMemberS{Value: model.SetupComplete},
 						},
 					},
 					Error: nil,
@@ -108,8 +109,8 @@ func TestMainFlowBlockUser(t *testing.T) {
 							"Administrator": &types.AttributeValueMemberBOOL{Value: true},
 							"Name":          &types.AttributeValueMemberS{Value: "Admin User"},
 							"Phone":         &types.AttributeValueMemberS{Value: "+17777777777"},
-							"SetupStage":    &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-							"SetupStatus":   &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"SetupStage":    &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+							"SetupStatus":   &types.AttributeValueMemberS{Value: model.SetupComplete},
 						},
 					},
 					Error: nil,
@@ -117,7 +118,7 @@ func TestMainFlowBlockUser(t *testing.T) {
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: object.BlockedPhonesKeyValue},
+							"Key": &types.AttributeValueMemberS{Value: model.BlockedPhonesKeyValue},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
 								&types.AttributeValueMemberS{Value: "+11234567890"},
 								&types.AttributeValueMemberS{Value: "+12222222222"},
@@ -157,8 +158,8 @@ func TestMainFlowBlockUser(t *testing.T) {
 							"Administrator": &types.AttributeValueMemberBOOL{Value: true},
 							"Name":          &types.AttributeValueMemberS{Value: "Admin User"},
 							"Phone":         &types.AttributeValueMemberS{Value: "+17777777777"},
-							"SetupStage":    &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-							"SetupStatus":   &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"SetupStage":    &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+							"SetupStatus":   &types.AttributeValueMemberS{Value: model.SetupComplete},
 						},
 					},
 					Error: nil,
@@ -166,7 +167,7 @@ func TestMainFlowBlockUser(t *testing.T) {
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: object.BlockedPhonesKeyValue},
+							"Key": &types.AttributeValueMemberS{Value: model.BlockedPhonesKeyValue},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
 								&types.AttributeValueMemberS{Value: "+12222222222"},
 								&types.AttributeValueMemberS{Value: "+13333333333"},
@@ -183,12 +184,12 @@ func TestMainFlowBlockUser(t *testing.T) {
 			}{
 				{
 					Key:   "+11234567890",
-					Table: object.DefaultMemberTable,
+					Table: "Member",
 				},
 			},
 
-			ExpectedBlockPhones: object.BlockedPhones{
-				Key: object.BlockedPhonesKeyValue,
+			ExpectedBlockPhones: model.BlockedPhones{
+				Key: model.BlockedPhonesKeyValue,
 				Phones: []string{
 					"+12222222222",
 					"+13333333333",
@@ -235,8 +236,8 @@ func TestMainFlowBlockUser(t *testing.T) {
 							"Administrator": &types.AttributeValueMemberBOOL{Value: true},
 							"Name":          &types.AttributeValueMemberS{Value: "Admin User"},
 							"Phone":         &types.AttributeValueMemberS{Value: "+17777777777"},
-							"SetupStage":    &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-							"SetupStatus":   &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"SetupStage":    &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+							"SetupStatus":   &types.AttributeValueMemberS{Value: model.SetupComplete},
 						},
 					},
 					Error: nil,
@@ -244,7 +245,7 @@ func TestMainFlowBlockUser(t *testing.T) {
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: object.BlockedPhonesKeyValue},
+							"Key": &types.AttributeValueMemberS{Value: model.BlockedPhonesKeyValue},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
 								&types.AttributeValueMemberS{Value: "+12222222222"},
 								&types.AttributeValueMemberS{Value: "+13333333333"},
@@ -260,8 +261,8 @@ func TestMainFlowBlockUser(t *testing.T) {
 							"Name":              &types.AttributeValueMemberS{Value: "Bad User"},
 							"Phone":             &types.AttributeValueMemberS{Value: "+11234567890"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
 							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "dummy date"},
 							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 						},
@@ -271,7 +272,7 @@ func TestMainFlowBlockUser(t *testing.T) {
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKeyValue},
+							"Key": &types.AttributeValueMemberS{Value: model.IntercessorPhonesKeyValue},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
 								&types.AttributeValueMemberS{Value: "+11234567890"},
 								&types.AttributeValueMemberS{Value: "+11111111111"},
@@ -291,8 +292,8 @@ func TestMainFlowBlockUser(t *testing.T) {
 									"Name":              &types.AttributeValueMemberS{Value: "Bad User"},
 									"Phone":             &types.AttributeValueMemberS{Value: "+11234567890"},
 									"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
-									"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-									"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+									"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+									"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
 									"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "dummy date"},
 									"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 								},
@@ -304,8 +305,8 @@ func TestMainFlowBlockUser(t *testing.T) {
 									"Intercessor": &types.AttributeValueMemberBOOL{Value: false},
 									"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
 									"Phone":       &types.AttributeValueMemberS{Value: "+18888888888"},
-									"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-									"SetupStatus": &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+									"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+									"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupComplete},
 								},
 							},
 						},
@@ -321,8 +322,8 @@ func TestMainFlowBlockUser(t *testing.T) {
 									"Name":              &types.AttributeValueMemberS{Value: "Bad User"},
 									"Phone":             &types.AttributeValueMemberS{Value: "+11234567890"},
 									"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
-									"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-									"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+									"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+									"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
 									"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "dummy date"},
 									"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 								},
@@ -334,8 +335,8 @@ func TestMainFlowBlockUser(t *testing.T) {
 									"Intercessor": &types.AttributeValueMemberBOOL{Value: false},
 									"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
 									"Phone":       &types.AttributeValueMemberS{Value: "+18888888888"},
-									"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-									"SetupStatus": &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+									"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+									"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupComplete},
 								},
 							},
 						},
@@ -344,8 +345,8 @@ func TestMainFlowBlockUser(t *testing.T) {
 				},
 			},
 
-			ExpectedIntPhones: object.IntercessorPhones{
-				Key: object.IntercessorPhonesKeyValue,
+			ExpectedIntPhones: model.IntercessorPhones{
+				Key: model.IntercessorPhonesKeyValue,
 				Phones: []string{
 					"+11111111111",
 					"+14444444444",
@@ -353,17 +354,17 @@ func TestMainFlowBlockUser(t *testing.T) {
 				},
 			},
 
-			ExpectedPrayers: []object.Prayer{
+			ExpectedPrayers: []model.Prayer{
 				{
-					Intercessor:      object.Member{},
+					Intercessor:      model.Member{},
 					IntercessorPhone: "dummy ID",
 					Request:          "Please pray me..",
-					Requestor: object.Member{
+					Requestor: model.Member{
 						Intercessor: false,
 						Name:        "John Doe",
 						Phone:       "+18888888888",
-						SetupStage:  object.MemberSignUpStepFinal,
-						SetupStatus: object.MemberSetupComplete,
+						SetupStage:  model.SignUpStepFinal,
+						SetupStatus: model.SetupComplete,
 					},
 				},
 			},
@@ -374,16 +375,16 @@ func TestMainFlowBlockUser(t *testing.T) {
 			}{
 				{
 					Key:   "+11234567890",
-					Table: object.DefaultMemberTable,
+					Table: "Member",
 				},
 				{
 					Key:   "+11234567890",
-					Table: object.DefaultActivePrayersTable,
+					Table: "ActivePrayer",
 				},
 			},
 
-			ExpectedBlockPhones: object.BlockedPhones{
-				Key: object.BlockedPhonesKeyValue,
+			ExpectedBlockPhones: model.BlockedPhones{
+				Key: model.BlockedPhonesKeyValue,
 				Phones: []string{
 					"+12222222222",
 					"+13333333333",
@@ -432,7 +433,7 @@ func TestMainFlowBlockUser(t *testing.T) {
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: object.BlockedPhonesKeyValue},
+							"Key": &types.AttributeValueMemberS{Value: model.BlockedPhonesKeyValue},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
 								&types.AttributeValueMemberS{Value: "+11111111111"},
 								&types.AttributeValueMemberS{Value: "+12222222222"},
@@ -457,17 +458,19 @@ func TestMainFlowBlockUser(t *testing.T) {
 
 		t.Run(tc.Description, func(t *testing.T) {
 			test.SetMocks(ddbMock, txtMock, tc)
+			cfg := config.Load()
+			svc := service.NewService(cfg, ddbMock, txtMock)
 
 			if tc.ExpectedError {
 				// Handles failures for error mocks.
-				if err := prayertexter.MainFlow(ctx, ddbMock, txtMock, tc.InitialMessage); err == nil {
+				if err := svc.MainFlow(ctx, tc.InitialMessage); err == nil {
 					t.Fatalf("expected error, got nil")
 				}
 
 				test.ValidateNumMethodCalls(ddbMock, txtMock, t, tc)
 			} else {
 				// Handles success test cases.
-				if err := prayertexter.MainFlow(ctx, ddbMock, txtMock, tc.InitialMessage); err != nil {
+				if err := svc.MainFlow(ctx, tc.InitialMessage); err != nil {
 					t.Fatalf("unexpected error starting MainFlow: %v", err)
 				}
 
@@ -488,11 +491,11 @@ func TestMainFlowSignUp(t *testing.T) {
 				Phone: "+11234567890",
 			},
 
-			ExpectedMembers: []object.Member{
+			ExpectedMembers: []model.Member{
 				{
 					Phone:       "+11234567890",
-					SetupStage:  object.MemberSignUpStepOne,
-					SetupStatus: object.MemberSetupInProgress,
+					SetupStage:  model.SignUpStepOne,
+					SetupStatus: model.SetupInProgress,
 				},
 			},
 
@@ -515,11 +518,11 @@ func TestMainFlowSignUp(t *testing.T) {
 				Phone: "+11234567890",
 			},
 
-			ExpectedMembers: []object.Member{
+			ExpectedMembers: []model.Member{
 				{
 					Phone:       "+11234567890",
-					SetupStage:  object.MemberSignUpStepOne,
-					SetupStatus: object.MemberSetupInProgress,
+					SetupStage:  model.SignUpStepOne,
+					SetupStatus: model.SetupInProgress,
 				},
 			},
 
@@ -571,8 +574,8 @@ func TestMainFlowSignUp(t *testing.T) {
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
 							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepOne)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: object.MemberSetupInProgress},
+							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepOne)},
+							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupInProgress},
 						},
 					},
 					Error: nil,
@@ -584,12 +587,12 @@ func TestMainFlowSignUp(t *testing.T) {
 				},
 			},
 
-			ExpectedMembers: []object.Member{
+			ExpectedMembers: []model.Member{
 				{
 					Name:        "John Doe",
 					Phone:       "+11234567890",
-					SetupStage:  object.MemberSignUpStepTwo,
-					SetupStatus: object.MemberSetupInProgress,
+					SetupStage:  model.SignUpStepTwo,
+					SetupStatus: model.SetupInProgress,
 				},
 			},
 
@@ -620,8 +623,8 @@ func TestMainFlowSignUp(t *testing.T) {
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
 							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepOne)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: object.MemberSetupInProgress},
+							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepOne)},
+							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupInProgress},
 						},
 					},
 					Error: nil,
@@ -659,8 +662,8 @@ func TestMainFlowSignUp(t *testing.T) {
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
 							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepOne)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: object.MemberSetupInProgress},
+							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepOne)},
+							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupInProgress},
 						},
 					},
 					Error: nil,
@@ -698,8 +701,8 @@ func TestMainFlowSignUp(t *testing.T) {
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
 							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepOne)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: object.MemberSetupInProgress},
+							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepOne)},
+							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupInProgress},
 						},
 					},
 					Error: nil,
@@ -737,8 +740,8 @@ func TestMainFlowSignUp(t *testing.T) {
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
 							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepOne)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: object.MemberSetupInProgress},
+							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepOne)},
+							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupInProgress},
 						},
 					},
 					Error: nil,
@@ -750,12 +753,12 @@ func TestMainFlowSignUp(t *testing.T) {
 				},
 			},
 
-			ExpectedMembers: []object.Member{
+			ExpectedMembers: []model.Member{
 				{
 					Name:        "Anonymous",
 					Phone:       "+11234567890",
-					SetupStage:  object.MemberSignUpStepTwo,
-					SetupStatus: object.MemberSetupInProgress,
+					SetupStage:  model.SignUpStepTwo,
+					SetupStatus: model.SetupInProgress,
 				},
 			},
 
@@ -788,8 +791,8 @@ func TestMainFlowSignUp(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
 							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepTwo)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: object.MemberSetupInProgress},
+							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepTwo)},
+							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupInProgress},
 						},
 					},
 					Error: nil,
@@ -801,13 +804,13 @@ func TestMainFlowSignUp(t *testing.T) {
 				},
 			},
 
-			ExpectedMembers: []object.Member{
+			ExpectedMembers: []model.Member{
 				{
 					Intercessor: false,
 					Name:        "John Doe",
 					Phone:       "+11234567890",
-					SetupStage:  object.MemberSignUpStepFinal,
-					SetupStatus: object.MemberSetupComplete,
+					SetupStage:  model.SignUpStepFinal,
+					SetupStatus: model.SetupComplete,
 				},
 			},
 
@@ -839,8 +842,8 @@ func TestMainFlowSignUp(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
 							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepTwo)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: object.MemberSetupInProgress},
+							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepTwo)},
+							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupInProgress},
 						},
 					},
 					Error: nil,
@@ -852,13 +855,13 @@ func TestMainFlowSignUp(t *testing.T) {
 				},
 			},
 
-			ExpectedMembers: []object.Member{
+			ExpectedMembers: []model.Member{
 				{
 					Intercessor: true,
 					Name:        "John Doe",
 					Phone:       "+11234567890",
-					SetupStage:  object.MemberSignUpStepThree,
-					SetupStatus: object.MemberSetupInProgress,
+					SetupStage:  model.SignUpStepThree,
+					SetupStatus: model.SetupInProgress,
 				},
 			},
 
@@ -892,8 +895,8 @@ func TestMainFlowSignUp(t *testing.T) {
 							"Intercessor": &types.AttributeValueMemberBOOL{Value: true},
 							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
 							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepThree)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: object.MemberSetupInProgress},
+							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepThree)},
+							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupInProgress},
 						},
 					},
 					Error: nil,
@@ -906,7 +909,7 @@ func TestMainFlowSignUp(t *testing.T) {
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKeyValue},
+							"Key": &types.AttributeValueMemberS{Value: model.IntercessorPhonesKeyValue},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
 								&types.AttributeValueMemberS{Value: "+11111111111"},
 								&types.AttributeValueMemberS{Value: "+12222222222"},
@@ -918,20 +921,20 @@ func TestMainFlowSignUp(t *testing.T) {
 				},
 			},
 
-			ExpectedMembers: []object.Member{
+			ExpectedMembers: []model.Member{
 				{
 					Intercessor:       true,
 					Name:              "John Doe",
 					Phone:             "+11234567890",
-					SetupStage:        object.MemberSignUpStepFinal,
-					SetupStatus:       object.MemberSetupComplete,
+					SetupStage:        model.SignUpStepFinal,
+					SetupStatus:       model.SetupComplete,
 					WeeklyPrayerDate:  "dummy date/time",
 					WeeklyPrayerLimit: 9999,
 				},
 			},
 
-			ExpectedIntPhones: object.IntercessorPhones{
-				Key: object.IntercessorPhonesKeyValue,
+			ExpectedIntPhones: model.IntercessorPhones{
+				Key: model.IntercessorPhonesKeyValue,
 				Phones: []string{
 					"+11111111111",
 					"+12222222222",
@@ -970,8 +973,8 @@ func TestMainFlowSignUp(t *testing.T) {
 							"Intercessor": &types.AttributeValueMemberBOOL{Value: true},
 							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
 							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepThree)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: object.MemberSetupInProgress},
+							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepThree)},
+							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupInProgress},
 						},
 					},
 					Error: nil,
@@ -984,7 +987,7 @@ func TestMainFlowSignUp(t *testing.T) {
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKeyValue},
+							"Key": &types.AttributeValueMemberS{Value: model.IntercessorPhonesKeyValue},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
 								&types.AttributeValueMemberS{Value: "+11111111111"},
 								&types.AttributeValueMemberS{Value: "+12222222222"},
@@ -1017,17 +1020,19 @@ func TestMainFlowSignUp(t *testing.T) {
 
 		t.Run(tc.Description, func(t *testing.T) {
 			test.SetMocks(ddbMock, txtMock, tc)
+			cfg := config.Load()
+			svc := service.NewService(cfg, ddbMock, txtMock)
 
 			if tc.ExpectedError {
 				// Handles failures for error mocks.
-				if err := prayertexter.MainFlow(ctx, ddbMock, txtMock, tc.InitialMessage); err == nil {
+				if err := svc.MainFlow(ctx, tc.InitialMessage); err == nil {
 					t.Fatalf("expected error, got nil")
 				}
 
 				test.ValidateNumMethodCalls(ddbMock, txtMock, t, tc)
 			} else {
 				// Handles success test cases.
-				if err := prayertexter.MainFlow(ctx, ddbMock, txtMock, tc.InitialMessage); err != nil {
+				if err := svc.MainFlow(ctx, tc.InitialMessage); err != nil {
 					t.Fatalf("unexpected error starting MainFlow: %v", err)
 				}
 
@@ -1066,8 +1071,8 @@ func TestMainFlowSignUpWrongInputs(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
 							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepTwo)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: object.MemberSetupInProgress},
+							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepTwo)},
+							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupInProgress},
 						},
 					},
 					Error: nil,
@@ -1107,8 +1112,8 @@ func TestMainFlowSignUpWrongInputs(t *testing.T) {
 							"Intercessor": &types.AttributeValueMemberBOOL{Value: true},
 							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
 							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepThree)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: object.MemberSetupInProgress},
+							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepThree)},
+							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupInProgress},
 						},
 					},
 					Error: nil,
@@ -1139,8 +1144,10 @@ func TestMainFlowSignUpWrongInputs(t *testing.T) {
 
 		t.Run(tc.Description, func(t *testing.T) {
 			test.SetMocks(ddbMock, txtMock, tc)
+			cfg := config.Load()
+			svc := service.NewService(cfg, ddbMock, txtMock)
 
-			if err := prayertexter.MainFlow(ctx, ddbMock, txtMock, tc.InitialMessage); err != nil {
+			if err := svc.MainFlow(ctx, tc.InitialMessage); err != nil {
 				t.Fatalf("unexpected error starting MainFlow: %v", err)
 			}
 
@@ -1168,8 +1175,8 @@ func TestMainFlowMemberDelete(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
 							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupComplete},
 						},
 					},
 					Error: nil,
@@ -1187,7 +1194,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 			}{
 				{
 					Key:   "+11234567890",
-					Table: object.DefaultMemberTable,
+					Table: "Member",
 				},
 			},
 
@@ -1220,8 +1227,8 @@ func TestMainFlowMemberDelete(t *testing.T) {
 							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor4"},
 							"Phone":             &types.AttributeValueMemberS{Value: "+14444444444"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
 							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "dummy date"},
 							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 						},
@@ -1236,7 +1243,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKeyValue},
+							"Key": &types.AttributeValueMemberS{Value: model.IntercessorPhonesKeyValue},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
 								&types.AttributeValueMemberS{Value: "+11111111111"},
 								&types.AttributeValueMemberS{Value: "+12222222222"},
@@ -1249,8 +1256,8 @@ func TestMainFlowMemberDelete(t *testing.T) {
 				},
 			},
 
-			ExpectedIntPhones: object.IntercessorPhones{
-				Key: object.IntercessorPhonesKeyValue,
+			ExpectedIntPhones: model.IntercessorPhones{
+				Key: model.IntercessorPhonesKeyValue,
 				Phones: []string{
 					"+11111111111",
 					"+12222222222",
@@ -1264,7 +1271,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 			}{
 				{
 					Key:   "+14444444444",
-					Table: object.DefaultMemberTable,
+					Table: "Member",
 				},
 			},
 
@@ -1300,8 +1307,8 @@ func TestMainFlowMemberDelete(t *testing.T) {
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor4"},
 							"Phone":             &types.AttributeValueMemberS{Value: "+14444444444"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
 							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "dummy date"},
 							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 						},
@@ -1316,7 +1323,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKeyValue},
+							"Key": &types.AttributeValueMemberS{Value: model.IntercessorPhonesKeyValue},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
 								&types.AttributeValueMemberS{Value: "+11111111111"},
 								&types.AttributeValueMemberS{Value: "+12222222222"},
@@ -1336,8 +1343,8 @@ func TestMainFlowMemberDelete(t *testing.T) {
 									"Name":              &types.AttributeValueMemberS{Value: "Intercessor4"},
 									"Phone":             &types.AttributeValueMemberS{Value: "+14444444444"},
 									"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
-									"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-									"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+									"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+									"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
 									"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "dummy date"},
 									"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 								},
@@ -1349,8 +1356,8 @@ func TestMainFlowMemberDelete(t *testing.T) {
 									"Intercessor": &types.AttributeValueMemberBOOL{Value: false},
 									"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
 									"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-									"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-									"SetupStatus": &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+									"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+									"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupComplete},
 								},
 							},
 						},
@@ -1366,8 +1373,8 @@ func TestMainFlowMemberDelete(t *testing.T) {
 									"Name":              &types.AttributeValueMemberS{Value: "Intercessor4"},
 									"Phone":             &types.AttributeValueMemberS{Value: "+14444444444"},
 									"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
-									"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-									"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+									"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+									"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
 									"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "dummy date"},
 									"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 								},
@@ -1379,8 +1386,8 @@ func TestMainFlowMemberDelete(t *testing.T) {
 									"Intercessor": &types.AttributeValueMemberBOOL{Value: false},
 									"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
 									"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-									"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-									"SetupStatus": &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+									"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+									"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupComplete},
 								},
 							},
 						},
@@ -1389,8 +1396,8 @@ func TestMainFlowMemberDelete(t *testing.T) {
 				},
 			},
 
-			ExpectedIntPhones: object.IntercessorPhones{
-				Key: object.IntercessorPhonesKeyValue,
+			ExpectedIntPhones: model.IntercessorPhones{
+				Key: model.IntercessorPhonesKeyValue,
 				Phones: []string{
 					"+11111111111",
 					"+12222222222",
@@ -1398,17 +1405,17 @@ func TestMainFlowMemberDelete(t *testing.T) {
 				},
 			},
 
-			ExpectedPrayers: []object.Prayer{
+			ExpectedPrayers: []model.Prayer{
 				{
-					Intercessor:      object.Member{},
+					Intercessor:      model.Member{},
 					IntercessorPhone: "dummy ID",
 					Request:          "Please pray me..",
-					Requestor: object.Member{
+					Requestor: model.Member{
 						Intercessor: false,
 						Name:        "John Doe",
 						Phone:       "+11234567890",
-						SetupStage:  object.MemberSignUpStepFinal,
-						SetupStatus: object.MemberSetupComplete,
+						SetupStage:  model.SignUpStepFinal,
+						SetupStatus: model.SetupComplete,
 					},
 				},
 			},
@@ -1419,11 +1426,11 @@ func TestMainFlowMemberDelete(t *testing.T) {
 			}{
 				{
 					Key:   "+14444444444",
-					Table: object.DefaultMemberTable,
+					Table: "Member",
 				},
 				{
 					Key:   "+14444444444",
-					Table: object.DefaultActivePrayersTable,
+					Table: "ActivePrayer",
 				},
 			},
 
@@ -1458,8 +1465,8 @@ func TestMainFlowMemberDelete(t *testing.T) {
 							"Intercessor": &types.AttributeValueMemberBOOL{Value: true},
 							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
 							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupComplete},
 						},
 					},
 					Error: nil,
@@ -1492,17 +1499,19 @@ func TestMainFlowMemberDelete(t *testing.T) {
 
 		t.Run(tc.Description, func(t *testing.T) {
 			test.SetMocks(ddbMock, txtMock, tc)
+			cfg := config.Load()
+			svc := service.NewService(cfg, ddbMock, txtMock)
 
 			if tc.ExpectedError {
 				// Handles failures for error mocks.
-				if err := prayertexter.MainFlow(ctx, ddbMock, txtMock, tc.InitialMessage); err == nil {
+				if err := svc.MainFlow(ctx, tc.InitialMessage); err == nil {
 					t.Fatalf("expected error, got nil")
 				}
 
 				test.ValidateNumMethodCalls(ddbMock, txtMock, t, tc)
 			} else {
 				// Handles success test cases.
-				if err := prayertexter.MainFlow(ctx, ddbMock, txtMock, tc.InitialMessage); err != nil {
+				if err := svc.MainFlow(ctx, tc.InitialMessage); err != nil {
 					t.Fatalf("unexpected error starting MainFlow: %v", err)
 				}
 
@@ -1531,8 +1540,8 @@ func TestMainFlowHelp(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
 							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupComplete},
 						},
 					},
 					Error: nil,
@@ -1571,8 +1580,8 @@ func TestMainFlowHelp(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
 							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepOne)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: object.MemberSetupInProgress},
+							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepOne)},
+							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupInProgress},
 						},
 					},
 					Error: nil,
@@ -1603,8 +1612,10 @@ func TestMainFlowHelp(t *testing.T) {
 
 		t.Run(tc.Description, func(t *testing.T) {
 			test.SetMocks(ddbMock, txtMock, tc)
+			cfg := config.Load()
+			svc := service.NewService(cfg, ddbMock, txtMock)
 
-			if err := prayertexter.MainFlow(ctx, ddbMock, txtMock, tc.InitialMessage); err != nil {
+			if err := svc.MainFlow(ctx, tc.InitialMessage); err != nil {
 				t.Fatalf("unexpected error starting MainFlow: %v", err)
 			}
 
@@ -1632,8 +1643,8 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
 							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupComplete},
 						},
 					},
 					Error: nil,
@@ -1646,7 +1657,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKeyValue},
+							"Key": &types.AttributeValueMemberS{Value: model.IntercessorPhonesKeyValue},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
 								&types.AttributeValueMemberS{Value: "+11111111111"},
 								&types.AttributeValueMemberS{Value: "+12222222222"},
@@ -1662,8 +1673,8 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
 							"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "0"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
 							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "2024-12-01T01:00:00Z"},
 							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 						},
@@ -1682,8 +1693,8 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor2"},
 							"Phone":             &types.AttributeValueMemberS{Value: "+12222222222"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "0"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
 							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "2024-12-01T01:00:00Z"},
 							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 						},
@@ -1697,14 +1708,14 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				},
 			},
 
-			ExpectedMembers: []object.Member{
+			ExpectedMembers: []model.Member{
 				{
 					Intercessor:       true,
 					Name:              "Intercessor1",
 					Phone:             "+11111111111",
 					PrayerCount:       1,
-					SetupStage:        object.MemberSignUpStepFinal,
-					SetupStatus:       object.MemberSetupComplete,
+					SetupStage:        model.SignUpStepFinal,
+					SetupStatus:       model.SetupComplete,
 					WeeklyPrayerDate:  "dummy date/time",
 					WeeklyPrayerLimit: 5,
 				},
@@ -1713,52 +1724,52 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 					Name:              "Intercessor2",
 					Phone:             "+12222222222",
 					PrayerCount:       1,
-					SetupStage:        object.MemberSignUpStepFinal,
-					SetupStatus:       object.MemberSetupComplete,
+					SetupStage:        model.SignUpStepFinal,
+					SetupStatus:       model.SetupComplete,
 					WeeklyPrayerDate:  "dummy date/time",
 					WeeklyPrayerLimit: 5,
 				},
 			},
 
-			ExpectedPrayers: []object.Prayer{
+			ExpectedPrayers: []model.Prayer{
 				{
-					Intercessor: object.Member{
+					Intercessor: model.Member{
 						Intercessor:       true,
 						Name:              "Intercessor1",
 						Phone:             "+11111111111",
 						PrayerCount:       1,
-						SetupStage:        object.MemberSignUpStepFinal,
-						SetupStatus:       object.MemberSetupComplete,
+						SetupStage:        model.SignUpStepFinal,
+						SetupStatus:       model.SetupComplete,
 						WeeklyPrayerDate:  "dummy date/time",
 						WeeklyPrayerLimit: 5,
 					},
 					IntercessorPhone: "+11111111111",
 					Request:          "I need prayer for these things...",
-					Requestor: object.Member{
+					Requestor: model.Member{
 						Name:        "John Doe",
 						Phone:       "+11234567890",
-						SetupStage:  object.MemberSignUpStepFinal,
-						SetupStatus: object.MemberSetupComplete,
+						SetupStage:  model.SignUpStepFinal,
+						SetupStatus: model.SetupComplete,
 					},
 				},
 				{
-					Intercessor: object.Member{
+					Intercessor: model.Member{
 						Intercessor:       true,
 						Name:              "Intercessor2",
 						Phone:             "+12222222222",
 						PrayerCount:       1,
-						SetupStage:        object.MemberSignUpStepFinal,
-						SetupStatus:       object.MemberSetupComplete,
+						SetupStage:        model.SignUpStepFinal,
+						SetupStatus:       model.SetupComplete,
 						WeeklyPrayerDate:  "dummy date/time",
 						WeeklyPrayerLimit: 5,
 					},
 					IntercessorPhone: "+12222222222",
 					Request:          "I need prayer for these things...",
-					Requestor: object.Member{
+					Requestor: model.Member{
 						Name:        "John Doe",
 						Phone:       "+11234567890",
-						SetupStage:  object.MemberSignUpStepFinal,
-						SetupStatus: object.MemberSetupComplete,
+						SetupStage:  model.SignUpStepFinal,
+						SetupStatus: model.SetupComplete,
 					},
 				},
 			},
@@ -1799,8 +1810,8 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
 							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupComplete},
 						},
 					},
 					Error: nil,
@@ -1839,8 +1850,8 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
 							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupComplete},
 						},
 					},
 					Error: nil,
@@ -1879,8 +1890,8 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
 							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupComplete},
 						},
 					},
 					Error: nil,
@@ -1893,7 +1904,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKeyValue},
+							"Key": &types.AttributeValueMemberS{Value: model.IntercessorPhonesKeyValue},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
 								&types.AttributeValueMemberS{Value: "+11111111111"},
 								&types.AttributeValueMemberS{Value: "+12222222222"},
@@ -1909,8 +1920,8 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
 							"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "0"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
 							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "2024-12-01T01:00:00Z"},
 							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 						},
@@ -1929,8 +1940,8 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor2"},
 							"Phone":             &types.AttributeValueMemberS{Value: "+12222222222"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "0"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
 							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "2024-12-01T01:00:00Z"},
 							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 						},
@@ -1979,8 +1990,8 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
 							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupComplete},
 						},
 					},
 					Error: nil,
@@ -1993,7 +2004,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKeyValue},
+							"Key": &types.AttributeValueMemberS{Value: model.IntercessorPhonesKeyValue},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
 								&types.AttributeValueMemberS{Value: "+11111111111"},
 								&types.AttributeValueMemberS{Value: "+12222222222"},
@@ -2009,8 +2020,8 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
 							"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "5"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
 							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
 							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 						},
@@ -2029,8 +2040,8 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor2"},
 							"Phone":             &types.AttributeValueMemberS{Value: "+12222222222"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "5"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
 							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
 							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 						},
@@ -2044,15 +2055,15 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				},
 			},
 
-			ExpectedPrayers: []object.Prayer{
+			ExpectedPrayers: []model.Prayer{
 				{
 					IntercessorPhone: "dummy ID",
 					Request:          "I need prayer for these things...",
-					Requestor: object.Member{
+					Requestor: model.Member{
 						Name:        "John Doe",
 						Phone:       "+11234567890",
-						SetupStage:  object.MemberSignUpStepFinal,
-						SetupStatus: object.MemberSetupComplete,
+						SetupStage:  model.SignUpStepFinal,
+						SetupStatus: model.SetupComplete,
 					},
 				},
 			},
@@ -2086,8 +2097,8 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
 							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupComplete},
 						},
 					},
 					Error: nil,
@@ -2100,7 +2111,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKeyValue},
+							"Key": &types.AttributeValueMemberS{Value: model.IntercessorPhonesKeyValue},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
 								&types.AttributeValueMemberS{Value: "+11111111111"},
 								&types.AttributeValueMemberS{Value: "+12222222222"},
@@ -2116,8 +2127,8 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
 							"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "0"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
 							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "2024-12-01T01:00:00Z"},
 							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 						},
@@ -2136,8 +2147,8 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor2"},
 							"Phone":             &types.AttributeValueMemberS{Value: "+12222222222"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "0"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
 							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "2024-12-01T01:00:00Z"},
 							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 						},
@@ -2151,14 +2162,14 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				},
 			},
 
-			ExpectedMembers: []object.Member{
+			ExpectedMembers: []model.Member{
 				{
 					Intercessor:       true,
 					Name:              "Intercessor1",
 					Phone:             "+11111111111",
 					PrayerCount:       1,
-					SetupStage:        object.MemberSignUpStepFinal,
-					SetupStatus:       object.MemberSetupComplete,
+					SetupStage:        model.SignUpStepFinal,
+					SetupStatus:       model.SetupComplete,
 					WeeklyPrayerDate:  "dummy date/time",
 					WeeklyPrayerLimit: 5,
 				},
@@ -2167,52 +2178,52 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 					Name:              "Intercessor2",
 					Phone:             "+12222222222",
 					PrayerCount:       1,
-					SetupStage:        object.MemberSignUpStepFinal,
-					SetupStatus:       object.MemberSetupComplete,
+					SetupStage:        model.SignUpStepFinal,
+					SetupStatus:       model.SetupComplete,
 					WeeklyPrayerDate:  "dummy date/time",
 					WeeklyPrayerLimit: 5,
 				},
 			},
 
-			ExpectedPrayers: []object.Prayer{
+			ExpectedPrayers: []model.Prayer{
 				{
-					Intercessor: object.Member{
+					Intercessor: model.Member{
 						Intercessor:       true,
 						Name:              "Intercessor1",
 						Phone:             "+11111111111",
 						PrayerCount:       1,
-						SetupStage:        object.MemberSignUpStepFinal,
-						SetupStatus:       object.MemberSetupComplete,
+						SetupStage:        model.SignUpStepFinal,
+						SetupStatus:       model.SetupComplete,
 						WeeklyPrayerDate:  "dummy date/time",
 						WeeklyPrayerLimit: 5,
 					},
 					IntercessorPhone: "+11111111111",
 					Request:          "I need prayer for these things...",
-					Requestor: object.Member{
+					Requestor: model.Member{
 						Name:        "Anonymous",
 						Phone:       "+11234567890",
-						SetupStage:  object.MemberSignUpStepFinal,
-						SetupStatus: object.MemberSetupComplete,
+						SetupStage:  model.SignUpStepFinal,
+						SetupStatus: model.SetupComplete,
 					},
 				},
 				{
-					Intercessor: object.Member{
+					Intercessor: model.Member{
 						Intercessor:       true,
 						Name:              "Intercessor2",
 						Phone:             "+12222222222",
 						PrayerCount:       1,
-						SetupStage:        object.MemberSignUpStepFinal,
-						SetupStatus:       object.MemberSetupComplete,
+						SetupStage:        model.SignUpStepFinal,
+						SetupStatus:       model.SetupComplete,
 						WeeklyPrayerDate:  "dummy date/time",
 						WeeklyPrayerLimit: 5,
 					},
 					IntercessorPhone: "+12222222222",
 					Request:          "I need prayer for these things...",
-					Requestor: object.Member{
+					Requestor: model.Member{
 						Name:        "Anonymous",
 						Phone:       "+11234567890",
-						SetupStage:  object.MemberSignUpStepFinal,
-						SetupStatus: object.MemberSetupComplete,
+						SetupStage:  model.SignUpStepFinal,
+						SetupStatus: model.SetupComplete,
 					},
 				},
 			},
@@ -2253,8 +2264,8 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 						Item: map[string]types.AttributeValue{
 							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
 							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupComplete},
 						},
 					},
 					Error: nil,
@@ -2267,7 +2278,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKeyValue},
+							"Key": &types.AttributeValueMemberS{Value: model.IntercessorPhonesKeyValue},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
 								&types.AttributeValueMemberS{Value: "+11111111111"},
 								&types.AttributeValueMemberS{Value: "+12222222222"},
@@ -2283,8 +2294,8 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
 							"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "0"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
 							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "2024-12-01T01:00:00Z"},
 							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 						},
@@ -2303,8 +2314,8 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor2"},
 							"Phone":             &types.AttributeValueMemberS{Value: "+12222222222"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "0"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
 							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "2024-12-01T01:00:00Z"},
 							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 						},
@@ -2318,14 +2329,14 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				},
 			},
 
-			ExpectedMembers: []object.Member{
+			ExpectedMembers: []model.Member{
 				{
 					Intercessor:       true,
 					Name:              "Intercessor1",
 					Phone:             "+11111111111",
 					PrayerCount:       1,
-					SetupStage:        object.MemberSignUpStepFinal,
-					SetupStatus:       object.MemberSetupComplete,
+					SetupStage:        model.SignUpStepFinal,
+					SetupStatus:       model.SetupComplete,
 					WeeklyPrayerDate:  "dummy date/time",
 					WeeklyPrayerLimit: 5,
 				},
@@ -2334,52 +2345,52 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 					Name:              "Intercessor2",
 					Phone:             "+12222222222",
 					PrayerCount:       1,
-					SetupStage:        object.MemberSignUpStepFinal,
-					SetupStatus:       object.MemberSetupComplete,
+					SetupStage:        model.SignUpStepFinal,
+					SetupStatus:       model.SetupComplete,
 					WeeklyPrayerDate:  "dummy date/time",
 					WeeklyPrayerLimit: 5,
 				},
 			},
 
-			ExpectedPrayers: []object.Prayer{
+			ExpectedPrayers: []model.Prayer{
 				{
-					Intercessor: object.Member{
+					Intercessor: model.Member{
 						Intercessor:       true,
 						Name:              "Intercessor1",
 						Phone:             "+11111111111",
 						PrayerCount:       1,
-						SetupStage:        object.MemberSignUpStepFinal,
-						SetupStatus:       object.MemberSetupComplete,
+						SetupStage:        model.SignUpStepFinal,
+						SetupStatus:       model.SetupComplete,
 						WeeklyPrayerDate:  "dummy date/time",
 						WeeklyPrayerLimit: 5,
 					},
 					IntercessorPhone: "+11111111111",
 					Request:          "I need prayer for these things...  please keep this private",
-					Requestor: object.Member{
+					Requestor: model.Member{
 						Name:        "Anonymous",
 						Phone:       "+11234567890",
-						SetupStage:  object.MemberSignUpStepFinal,
-						SetupStatus: object.MemberSetupComplete,
+						SetupStage:  model.SignUpStepFinal,
+						SetupStatus: model.SetupComplete,
 					},
 				},
 				{
-					Intercessor: object.Member{
+					Intercessor: model.Member{
 						Intercessor:       true,
 						Name:              "Intercessor2",
 						Phone:             "+12222222222",
 						PrayerCount:       1,
-						SetupStage:        object.MemberSignUpStepFinal,
-						SetupStatus:       object.MemberSetupComplete,
+						SetupStage:        model.SignUpStepFinal,
+						SetupStatus:       model.SetupComplete,
 						WeeklyPrayerDate:  "dummy date/time",
 						WeeklyPrayerLimit: 5,
 					},
 					IntercessorPhone: "+12222222222",
 					Request:          "I need prayer for these things...  please keep this private",
-					Requestor: object.Member{
+					Requestor: model.Member{
 						Name:        "Anonymous",
 						Phone:       "+11234567890",
-						SetupStage:  object.MemberSignUpStepFinal,
-						SetupStatus: object.MemberSetupComplete,
+						SetupStage:  model.SignUpStepFinal,
+						SetupStatus: model.SetupComplete,
 					},
 				},
 			},
@@ -2428,17 +2439,19 @@ Reply HELP for help or STOP to cancel.`,
 
 		t.Run(tc.Description, func(t *testing.T) {
 			test.SetMocks(ddbMock, txtMock, tc)
+			cfg := config.Load()
+			svc := service.NewService(cfg, ddbMock, txtMock)
 
 			if tc.ExpectedError {
 				// handles failures for error mocks
-				if err := prayertexter.MainFlow(ctx, ddbMock, txtMock, tc.InitialMessage); err == nil {
+				if err := svc.MainFlow(ctx, tc.InitialMessage); err == nil {
 					t.Fatalf("expected error, got nil")
 				}
 
 				test.ValidateNumMethodCalls(ddbMock, txtMock, t, tc)
 			} else {
 				// handles success test cases
-				if err := prayertexter.MainFlow(ctx, ddbMock, txtMock, tc.InitialMessage); err != nil {
+				if err := svc.MainFlow(ctx, tc.InitialMessage); err != nil {
 					t.Fatalf("unexpected error starting MainFlow: %v", err)
 				}
 
@@ -2460,7 +2473,7 @@ func TestFindIntercessors(t *testing.T) {
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKeyValue},
+							"Key": &types.AttributeValueMemberS{Value: model.IntercessorPhonesKeyValue},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
 								&types.AttributeValueMemberS{Value: "+11111111111"},
 								&types.AttributeValueMemberS{Value: "+12222222222"},
@@ -2479,8 +2492,8 @@ func TestFindIntercessors(t *testing.T) {
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
 							"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "5"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
 							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
 							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 						},
@@ -2499,8 +2512,8 @@ func TestFindIntercessors(t *testing.T) {
 							"Name":        &types.AttributeValueMemberS{Value: "Intercessor2"},
 							"Phone":       &types.AttributeValueMemberS{Value: "+12222222222"},
 							"PrayerCount": &types.AttributeValueMemberN{Value: "100"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupComplete},
 							"WeeklyPrayerDate": &types.AttributeValueMemberS{Value: time.Now().AddDate(
 								0, 0, -2).Format(time.RFC3339)},
 							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "100"},
@@ -2520,8 +2533,8 @@ func TestFindIntercessors(t *testing.T) {
 							"Name":        &types.AttributeValueMemberS{Value: "Intercessor3"},
 							"Phone":       &types.AttributeValueMemberS{Value: "+13333333333"},
 							"PrayerCount": &types.AttributeValueMemberN{Value: "15"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupComplete},
 							"WeeklyPrayerDate": &types.AttributeValueMemberS{Value: time.Now().AddDate(
 								0, 0, -8).Format(time.RFC3339)},
 							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "15"},
@@ -2541,8 +2554,8 @@ func TestFindIntercessors(t *testing.T) {
 							"Name":        &types.AttributeValueMemberS{Value: "Intercessor4"},
 							"Phone":       &types.AttributeValueMemberS{Value: "+14444444444"},
 							"PrayerCount": &types.AttributeValueMemberN{Value: "9"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupComplete},
 							"WeeklyPrayerDate": &types.AttributeValueMemberS{Value: time.Now().AddDate(
 								0, 0, -6).Format(time.RFC3339)},
 							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "9"},
@@ -2562,8 +2575,8 @@ func TestFindIntercessors(t *testing.T) {
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor5"},
 							"Phone":             &types.AttributeValueMemberS{Value: "+15555555555"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "4"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
 							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
 							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 						},
@@ -2577,14 +2590,14 @@ func TestFindIntercessors(t *testing.T) {
 				},
 			},
 
-			ExpectedMembers: []object.Member{
+			ExpectedMembers: []model.Member{
 				{
 					Intercessor:       true,
 					Name:              "Intercessor3",
 					Phone:             "+13333333333",
 					PrayerCount:       1,
-					SetupStage:        object.MemberSignUpStepFinal,
-					SetupStatus:       object.MemberSetupComplete,
+					SetupStage:        model.SignUpStepFinal,
+					SetupStatus:       model.SetupComplete,
 					WeeklyPrayerDate:  "dummy date/time",
 					WeeklyPrayerLimit: 15,
 				},
@@ -2593,8 +2606,8 @@ func TestFindIntercessors(t *testing.T) {
 					Name:              "Intercessor5",
 					Phone:             "+15555555555",
 					PrayerCount:       5,
-					SetupStage:        object.MemberSignUpStepFinal,
-					SetupStatus:       object.MemberSetupComplete,
+					SetupStage:        model.SignUpStepFinal,
+					SetupStatus:       model.SetupComplete,
 					WeeklyPrayerDate:  "dummy date/time",
 					WeeklyPrayerLimit: 5,
 				},
@@ -2613,7 +2626,7 @@ func TestFindIntercessors(t *testing.T) {
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKeyValue},
+							"Key": &types.AttributeValueMemberS{Value: model.IntercessorPhonesKeyValue},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
 								&types.AttributeValueMemberS{Value: "+11111111111"},
 								&types.AttributeValueMemberS{Value: "+12222222222"},
@@ -2630,8 +2643,8 @@ func TestFindIntercessors(t *testing.T) {
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
 							"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "5"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
 							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
 							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 						},
@@ -2650,8 +2663,8 @@ func TestFindIntercessors(t *testing.T) {
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor2"},
 							"Phone":             &types.AttributeValueMemberS{Value: "+12222222222"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "5"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
 							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
 							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 						},
@@ -2670,8 +2683,8 @@ func TestFindIntercessors(t *testing.T) {
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor3"},
 							"Phone":             &types.AttributeValueMemberS{Value: "+13333333333"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "4"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
 							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
 							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 						},
@@ -2685,14 +2698,14 @@ func TestFindIntercessors(t *testing.T) {
 				},
 			},
 
-			ExpectedMembers: []object.Member{
+			ExpectedMembers: []model.Member{
 				{
 					Intercessor:       true,
 					Name:              "Intercessor3",
 					Phone:             "+13333333333",
 					PrayerCount:       5,
-					SetupStage:        object.MemberSignUpStepFinal,
-					SetupStatus:       object.MemberSetupComplete,
+					SetupStage:        model.SignUpStepFinal,
+					SetupStatus:       model.SetupComplete,
 					WeeklyPrayerDate:  "dummy date/time",
 					WeeklyPrayerLimit: 5,
 				},
@@ -2714,7 +2727,7 @@ func TestFindIntercessors(t *testing.T) {
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKeyValue},
+							"Key": &types.AttributeValueMemberS{Value: model.IntercessorPhonesKeyValue},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
 								&types.AttributeValueMemberS{Value: "+11111111111"},
 								&types.AttributeValueMemberS{Value: "+18888888888"},
@@ -2730,8 +2743,8 @@ func TestFindIntercessors(t *testing.T) {
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
 							"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
 							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
 							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 						},
@@ -2745,14 +2758,14 @@ func TestFindIntercessors(t *testing.T) {
 				},
 			},
 
-			ExpectedMembers: []object.Member{
+			ExpectedMembers: []model.Member{
 				{
 					Intercessor:       true,
 					Name:              "Intercessor1",
 					Phone:             "+11111111111",
 					PrayerCount:       2,
-					SetupStage:        object.MemberSignUpStepFinal,
-					SetupStatus:       object.MemberSetupComplete,
+					SetupStage:        model.SignUpStepFinal,
+					SetupStatus:       model.SetupComplete,
 					WeeklyPrayerDate:  "dummy date/time",
 					WeeklyPrayerLimit: 5,
 				},
@@ -2772,7 +2785,7 @@ func TestFindIntercessors(t *testing.T) {
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKeyValue},
+							"Key": &types.AttributeValueMemberS{Value: model.IntercessorPhonesKeyValue},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
 								&types.AttributeValueMemberS{Value: "+11111111111"},
 								&types.AttributeValueMemberS{Value: "+12222222222"},
@@ -2788,8 +2801,8 @@ func TestFindIntercessors(t *testing.T) {
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
 							"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "5"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
 							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
 							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 						},
@@ -2808,8 +2821,8 @@ func TestFindIntercessors(t *testing.T) {
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor2"},
 							"Phone":             &types.AttributeValueMemberS{Value: "+12222222222"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "5"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
 							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
 							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 						},
@@ -2838,7 +2851,7 @@ func TestFindIntercessors(t *testing.T) {
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKeyValue},
+							"Key": &types.AttributeValueMemberS{Value: model.IntercessorPhonesKeyValue},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
 								&types.AttributeValueMemberS{Value: "+11111111111"},
 								&types.AttributeValueMemberS{Value: "+12222222222"},
@@ -2855,8 +2868,8 @@ func TestFindIntercessors(t *testing.T) {
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
 							"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
 							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
 							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 						},
@@ -2872,8 +2885,8 @@ func TestFindIntercessors(t *testing.T) {
 									"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
 									"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
 									"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
-									"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-									"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+									"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+									"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
 									"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "dummy date"},
 									"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 								},
@@ -2885,8 +2898,8 @@ func TestFindIntercessors(t *testing.T) {
 									"Intercessor": &types.AttributeValueMemberBOOL{Value: false},
 									"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
 									"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-									"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-									"SetupStatus": &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+									"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+									"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupComplete},
 								},
 							},
 						},
@@ -2900,8 +2913,8 @@ func TestFindIntercessors(t *testing.T) {
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor2"},
 							"Phone":             &types.AttributeValueMemberS{Value: "+12222222222"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
 							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
 							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 						},
@@ -2920,8 +2933,8 @@ func TestFindIntercessors(t *testing.T) {
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor3"},
 							"Phone":             &types.AttributeValueMemberS{Value: "+13333333333"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
 							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
 							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 						},
@@ -2937,8 +2950,8 @@ func TestFindIntercessors(t *testing.T) {
 									"Name":              &types.AttributeValueMemberS{Value: "Intercessor3"},
 									"Phone":             &types.AttributeValueMemberS{Value: "+13333333333"},
 									"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
-									"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-									"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+									"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+									"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
 									"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "dummy date"},
 									"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 								},
@@ -2950,8 +2963,8 @@ func TestFindIntercessors(t *testing.T) {
 									"Intercessor": &types.AttributeValueMemberBOOL{Value: false},
 									"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
 									"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-									"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-									"SetupStatus": &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+									"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+									"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupComplete},
 								},
 							},
 						},
@@ -2960,14 +2973,14 @@ func TestFindIntercessors(t *testing.T) {
 				},
 			},
 
-			ExpectedMembers: []object.Member{
+			ExpectedMembers: []model.Member{
 				{
 					Intercessor:       true,
 					Name:              "Intercessor2",
 					Phone:             "+12222222222",
 					PrayerCount:       2,
-					SetupStage:        object.MemberSignUpStepFinal,
-					SetupStatus:       object.MemberSetupComplete,
+					SetupStage:        model.SignUpStepFinal,
+					SetupStatus:       model.SetupComplete,
 					WeeklyPrayerDate:  "dummy date/time",
 					WeeklyPrayerLimit: 5,
 				},
@@ -2986,7 +2999,7 @@ func TestFindIntercessors(t *testing.T) {
 				{
 					Output: &dynamodb.GetItemOutput{
 						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKeyValue},
+							"Key": &types.AttributeValueMemberS{Value: model.IntercessorPhonesKeyValue},
 							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
 								&types.AttributeValueMemberS{Value: "+11111111111"},
 								&types.AttributeValueMemberS{Value: "+12222222222"},
@@ -3004,8 +3017,8 @@ func TestFindIntercessors(t *testing.T) {
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
 							"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
 							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
 							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 						},
@@ -3024,8 +3037,8 @@ func TestFindIntercessors(t *testing.T) {
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor2"},
 							"Phone":             &types.AttributeValueMemberS{Value: "+12222222222"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "5"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
 							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
 							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 						},
@@ -3044,8 +3057,8 @@ func TestFindIntercessors(t *testing.T) {
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor3"},
 							"Phone":             &types.AttributeValueMemberS{Value: "+13333333333"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
 							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
 							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 						},
@@ -3064,8 +3077,8 @@ func TestFindIntercessors(t *testing.T) {
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor4"},
 							"Phone":             &types.AttributeValueMemberS{Value: "+14444444444"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
 							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
 							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 						},
@@ -3079,14 +3092,14 @@ func TestFindIntercessors(t *testing.T) {
 				},
 			},
 
-			ExpectedMembers: []object.Member{
+			ExpectedMembers: []model.Member{
 				{
 					Intercessor:       true,
 					Name:              "Intercessor1",
 					Phone:             "+11111111111",
 					PrayerCount:       2,
-					SetupStage:        object.MemberSignUpStepFinal,
-					SetupStatus:       object.MemberSetupComplete,
+					SetupStage:        model.SignUpStepFinal,
+					SetupStatus:       model.SetupComplete,
 					WeeklyPrayerDate:  "dummy date/time",
 					WeeklyPrayerLimit: 5,
 				},
@@ -3095,8 +3108,8 @@ func TestFindIntercessors(t *testing.T) {
 					Name:              "Intercessor3",
 					Phone:             "+13333333333",
 					PrayerCount:       2,
-					SetupStage:        object.MemberSignUpStepFinal,
-					SetupStatus:       object.MemberSetupComplete,
+					SetupStage:        model.SignUpStepFinal,
+					SetupStatus:       model.SetupComplete,
 					WeeklyPrayerDate:  "dummy date/time",
 					WeeklyPrayerLimit: 5,
 				},
@@ -3114,18 +3127,20 @@ func TestFindIntercessors(t *testing.T) {
 
 		t.Run(tc.Description, func(t *testing.T) {
 			test.SetMocks(ddbMock, txtMock, tc)
+			cfg := config.Load()
+			svc := service.NewService(cfg, ddbMock, txtMock)
 
 			if tc.ExpectedError {
 				// Handles failures for error mocks.
-				if _, err := prayertexter.FindIntercessors(ctx, ddbMock, "+18888888888", object.DefaultIntercessorsPerPrayer); err == nil {
+				if _, err := svc.FindIntercessors(ctx, "+18888888888"); err == nil {
 					t.Fatalf("expected error, got nil")
 				}
 
 				test.ValidateNumMethodCalls(ddbMock, txtMock, t, tc)
 			} else {
 				// Handles success test cases.
-				_, err := prayertexter.FindIntercessors(ctx, ddbMock, "+18888888888", object.DefaultIntercessorsPerPrayer)
-				if err != nil && !errors.Is(err, utility.ErrNoAvailableIntercessors) {
+				_, err := svc.FindIntercessors(ctx, "+18888888888")
+				if err != nil && !errors.Is(err, apperrors.ErrNoAvailableIntercessors) {
 					// NoAvailableIntercessors is an expected errors that can occur with FindIntercessors. This
 					// error should be handled accordingly by the caller. Since this is expected, it is included
 					// here in the success test cases instead of the error cases.
@@ -3160,8 +3175,8 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
 							"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
 							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "dummy date"},
 							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 						},
@@ -3182,8 +3197,8 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 									"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
 									"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
 									"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
-									"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-									"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+									"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+									"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
 									"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "dummy date"},
 									"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 								},
@@ -3195,8 +3210,8 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 									"Intercessor": &types.AttributeValueMemberBOOL{Value: false},
 									"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
 									"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-									"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-									"SetupStatus": &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+									"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+									"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupComplete},
 								},
 							},
 						},
@@ -3209,8 +3224,8 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 							"Intercessor": &types.AttributeValueMemberBOOL{Value: false},
 							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
 							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupComplete},
 						},
 					},
 					Error: nil,
@@ -3223,7 +3238,7 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 			}{
 				{
 					Key:   "+11111111111",
-					Table: object.DefaultActivePrayersTable,
+					Table: "ActivePrayer",
 				},
 			},
 
@@ -3262,8 +3277,8 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
 							"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
 							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "dummy date"},
 							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 						},
@@ -3284,8 +3299,8 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 									"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
 									"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
 									"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
-									"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-									"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+									"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+									"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
 									"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "dummy date"},
 									"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 								},
@@ -3297,8 +3312,8 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 									"Intercessor": &types.AttributeValueMemberBOOL{Value: false},
 									"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
 									"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-									"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-									"SetupStatus": &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+									"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+									"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupComplete},
 								},
 							},
 						},
@@ -3313,7 +3328,7 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 			}{
 				{
 					Key:   "+11111111111",
-					Table: object.DefaultActivePrayersTable,
+					Table: "ActivePrayer",
 				},
 			},
 
@@ -3347,8 +3362,8 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
 							"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
 							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "dummy date"},
 							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 						},
@@ -3391,8 +3406,8 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
 							"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
 							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "dummy date"},
 							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 						},
@@ -3413,8 +3428,8 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 									"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
 									"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
 									"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
-									"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-									"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+									"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+									"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
 									"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "dummy date"},
 									"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 								},
@@ -3426,8 +3441,8 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 									"Intercessor": &types.AttributeValueMemberBOOL{Value: false},
 									"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
 									"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-									"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-									"SetupStatus": &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+									"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+									"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupComplete},
 								},
 							},
 						},
@@ -3440,8 +3455,8 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 							"Intercessor": &types.AttributeValueMemberBOOL{Value: false},
 							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
 							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupComplete},
 						},
 					},
 					Error: nil,
@@ -3470,17 +3485,19 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 
 		t.Run(tc.Description, func(t *testing.T) {
 			test.SetMocks(ddbMock, txtMock, tc)
+			cfg := config.Load()
+			svc := service.NewService(cfg, ddbMock, txtMock)
 
 			if tc.ExpectedError {
 				// Handles failures for error mocks
-				if err := prayertexter.MainFlow(ctx, ddbMock, txtMock, tc.InitialMessage); err == nil {
+				if err := svc.MainFlow(ctx, tc.InitialMessage); err == nil {
 					t.Fatalf("expected error, got nil")
 				}
 
 				test.ValidateNumMethodCalls(ddbMock, txtMock, t, tc)
 			} else {
 				// Handles success test cases
-				if err := prayertexter.MainFlow(ctx, ddbMock, txtMock, tc.InitialMessage); err != nil {
+				if err := svc.MainFlow(ctx, tc.InitialMessage); err != nil {
 					t.Fatalf("unexpected error starting MainFlow: %v", err)
 				}
 

@@ -4,10 +4,6 @@ import (
 	"testing"
 
 	"github.com/4JesusApps/prayertexter/internal/config"
-	"github.com/4JesusApps/prayertexter/internal/db"
-	"github.com/4JesusApps/prayertexter/internal/messaging"
-	"github.com/4JesusApps/prayertexter/internal/object"
-	"github.com/4JesusApps/prayertexter/internal/utility"
 	"github.com/spf13/viper"
 )
 
@@ -21,18 +17,18 @@ func TestLoad(t *testing.T) {
 			expected any
 		}{
 			{"AWS.Region", cfg.AWS.Region, "us-west-1"},
-			{"AWS.Retry", cfg.AWS.Retry, 5},  //nolint:mnd // test default
-			{"AWS.Backoff", cfg.AWS.Backoff, 10}, //nolint:mnd // test default
-			{"AWS.DB.Timeout", cfg.AWS.DB.Timeout, 60}, //nolint:mnd // test default
+			{"AWS.Retry", cfg.AWS.Retry, 5},                                          //nolint:mnd // test default
+			{"AWS.Backoff", cfg.AWS.Backoff, 10},                                      //nolint:mnd // test default
+			{"AWS.DB.Timeout", cfg.AWS.DB.Timeout, 60},                                //nolint:mnd // test default
 			{"AWS.DB.MemberTable", cfg.AWS.DB.MemberTable, "Member"},
 			{"AWS.DB.ActivePrayerTable", cfg.AWS.DB.ActivePrayerTable, "ActivePrayer"},
 			{"AWS.DB.QueuedPrayerTable", cfg.AWS.DB.QueuedPrayerTable, "QueuedPrayer"},
 			{"AWS.DB.IntercessorPhonesTable", cfg.AWS.DB.IntercessorPhonesTable, "General"},
 			{"AWS.DB.BlockedPhonesTable", cfg.AWS.DB.BlockedPhonesTable, "General"},
 			{"SMS.PhonePool", cfg.SMS.PhonePool, "dummy"},
-			{"SMS.Timeout", cfg.SMS.Timeout, 60}, //nolint:mnd // test default
-			{"Prayer.IntercessorsPerPrayer", cfg.Prayer.IntercessorsPerPrayer, 2}, //nolint:mnd // test default
-			{"Prayer.ReminderHours", cfg.Prayer.ReminderHours, 3}, //nolint:mnd // test default
+			{"SMS.Timeout", cfg.SMS.Timeout, 60},                                     //nolint:mnd // test default
+			{"Prayer.IntercessorsPerPrayer", cfg.Prayer.IntercessorsPerPrayer, 2},     //nolint:mnd // test default
+			{"Prayer.ReminderHours", cfg.Prayer.ReminderHours, 3},                     //nolint:mnd // test default
 		}
 
 		for _, c := range checks {
@@ -54,41 +50,40 @@ func TestLoad(t *testing.T) {
 	})
 }
 
-// TestDefaultConfigValues verifies backward compatibility: InitConfig still populates global Viper.
 func TestDefaultConfigValues(t *testing.T) {
 	t.Run("verify that all default config values get passed through viper as expected", func(t *testing.T) {
 		config.InitConfig()
 
 		configs := map[string]any{
-			utility.AwsRegionConfigPath:             utility.DefaultAwsRegion,
-			utility.AwsSvcMaxBackoffConfigPath:      utility.DefaultAwsSvcMaxBackoff,
-			utility.AwsSvcRetryAttemptsConfigPath:   utility.DefaultAwsSvcRetryAttempts,
-			db.TimeoutConfigPath:                    db.DefaultTimeout,
-			object.BlockedPhonesTableConfigPath:     object.DefaultBlockedPhonesTable,
-			object.IntercessorPhonesTableConfigPath: object.DefaultIntercessorPhonesTable,
-			object.MemberTableConfigPath:            object.DefaultMemberTable,
-			object.ActivePrayersTableConfigPath:     object.DefaultActivePrayersTable,
-			object.QueuedPrayersTableConfigPath:     object.DefaultQueuedPrayersTable,
-			messaging.PhonePoolConfigPath:           messaging.DefaultPhonePool,
-			messaging.TimeoutConfigPath:             messaging.DefaultTimeout,
-			object.IntercessorsPerPrayerConfigPath:  object.DefaultIntercessorsPerPrayer,
-			object.PrayerReminderHoursConfigPath:    object.DefaultPrayerReminderHours,
+			"conf.aws.region":                  "us-west-1",
+			"conf.aws.backoff":                 10,     //nolint:mnd // test default
+			"conf.aws.retry":                   5,      //nolint:mnd // test default
+			"conf.aws.db.timeout":              60,     //nolint:mnd // test default
+			"conf.aws.db.blockedphones.table":  "General",
+			"conf.aws.db.intercessorphones.table": "General",
+			"conf.aws.db.member.table":         "Member",
+			"conf.aws.db.prayer.activetable":   "ActivePrayer",
+			"conf.aws.db.prayer.queuetable":    "QueuedPrayer",
+			"conf.aws.sms.phonepool":           "dummy",
+			"conf.aws.sms.timeout":             60,     //nolint:mnd // test default
+			"conf.intercessorsperprayer":        2,      //nolint:mnd // test default
+			"conf.prayerreminderhours":          3,      //nolint:mnd // test default
 		}
 
-		var config any
+		var cfgVal any
 		for configPath, configValue := range configs {
 			switch configValue.(type) {
 			case int:
-				config = viper.GetInt(configPath)
+				cfgVal = viper.GetInt(configPath)
 			case string:
-				config = viper.GetString(configPath)
+				cfgVal = viper.GetString(configPath)
 			default:
 				t.Errorf("expected type int or string, got %T", configValue)
 				return
 			}
 
-			if config != configValue {
-				t.Errorf("expected value for config path %v to be %v, got %v", configPath, configValue, config)
+			if cfgVal != configValue {
+				t.Errorf("expected value for config path %v to be %v, got %v", configPath, configValue, cfgVal)
 			}
 		}
 	})
@@ -97,13 +92,13 @@ func TestDefaultConfigValues(t *testing.T) {
 func TestEnvironmentalVariableOverride(t *testing.T) {
 	t.Run("verify environmental variables can override default config values", func(t *testing.T) {
 		config.InitConfig()
-		defaultPhone := viper.GetString(messaging.PhonePoolConfigPath)
+		defaultPhone := viper.GetString("conf.aws.sms.phonepool")
 		newPhone := "+17777777777"
 
 		t.Setenv("PRAY_CONF_AWS_SMS_PHONEPOOL", newPhone)
 
 		config.InitConfig()
-		phone := viper.GetString(messaging.PhonePoolConfigPath)
+		phone := viper.GetString("conf.aws.sms.phonepool")
 
 		if phone == defaultPhone {
 			t.Errorf("expected phones to not be equal, got %v for both", phone)

@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/4JesusApps/prayertexter/internal/messaging"
-	"github.com/4JesusApps/prayertexter/internal/object"
+	"github.com/4JesusApps/prayertexter/internal/model"
 	"github.com/4JesusApps/prayertexter/internal/test/mock"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
@@ -26,11 +26,11 @@ type Case struct {
 	ExpectedSendTextCalls   int
 	ExpectedScanCalls       int
 
-	ExpectedMembers     []object.Member
-	ExpectedPrayers     []object.Prayer
+	ExpectedMembers     []model.Member
+	ExpectedPrayers     []model.Prayer
 	ExpectedTexts       []messaging.TextMessage
-	ExpectedBlockPhones object.BlockedPhones
-	ExpectedIntPhones   object.IntercessorPhones
+	ExpectedBlockPhones model.BlockedPhones
+	ExpectedIntPhones   model.IntercessorPhones
 	ExpectedError       bool
 	ExpectedPrayerQueue bool
 
@@ -112,7 +112,7 @@ func ValidateMembers(inputs []dynamodb.PutItemInput, t *testing.T, tc Case) {
 	index := 0
 
 	for _, input := range inputs {
-		if *input.TableName != object.DefaultMemberTable {
+		if *input.TableName != "Member" {
 			continue
 		}
 
@@ -120,7 +120,7 @@ func ValidateMembers(inputs []dynamodb.PutItemInput, t *testing.T, tc Case) {
 			t.Errorf("there are more Members in put inputs than in expected Members")
 		}
 
-		var actualMem object.Member
+		var actualMem model.Member
 		if err := attributevalue.UnmarshalMap(input.Item, &actualMem); err != nil {
 			t.Errorf("failed to unmarshal PutItemInput into Member: %v", err)
 		}
@@ -147,7 +147,10 @@ func ValidatePrayers(inputs []dynamodb.PutItemInput, t *testing.T, tc Case) {
 	// We need to be careful here that inputs (Prayers) are not mixed with active and queued prayers, because this test
 	// function cannot handle that.
 	index := 0
-	expectedTable := object.GetPrayerTable(tc.ExpectedPrayerQueue)
+	expectedTable := "ActivePrayer"
+	if tc.ExpectedPrayerQueue {
+		expectedTable = "QueuedPrayer"
+	}
 
 	for _, input := range inputs {
 		if *input.TableName != expectedTable {
@@ -158,7 +161,7 @@ func ValidatePrayers(inputs []dynamodb.PutItemInput, t *testing.T, tc Case) {
 			t.Errorf("there are more Prayers in put inputs than in expected Prayers of table type: %v", expectedTable)
 		}
 
-		var actualPryr object.Prayer
+		var actualPryr model.Prayer
 		if err := attributevalue.UnmarshalMap(input.Item, &actualPryr); err != nil {
 			t.Errorf("failed to unmarshal PutItemInput into Prayer: %v", err)
 		}
@@ -187,7 +190,7 @@ func ValidatePrayers(inputs []dynamodb.PutItemInput, t *testing.T, tc Case) {
 
 // replaceReminderDateIfChanged replaces date with a testable "date changed" string only if the date is within 1 minute
 // of time.Now(). This at least shows that the date was updated and allows us to test whether it was changed or not.
-func replaceReminderDateIfChanged(t *testing.T, actualPryr object.Prayer) object.Prayer {
+func replaceReminderDateIfChanged(t *testing.T, actualPryr model.Prayer) model.Prayer {
 	if actualPryr.ReminderDate != "" {
 		currentDate := time.Now()
 		reminderDate, err := time.Parse(time.RFC3339, actualPryr.ReminderDate)
@@ -209,12 +212,12 @@ func ValidatePhones(inputs []dynamodb.PutItemInput, t *testing.T, tc Case) {
 
 	for _, input := range inputs {
 		// Check if this is a phone-related table (both IntercessorPhones and BlockedPhones use the same table)
-		if *input.TableName != object.DefaultIntercessorPhonesTable {
+		if *input.TableName != "General" {
 			continue
 		}
 
 		// Check if this item has the correct key field
-		val, ok := input.Item[object.IntercessorPhonesKey]
+		val, ok := input.Item[model.IntercessorPhonesKey]
 		if !ok {
 			continue
 		}
@@ -225,12 +228,12 @@ func ValidatePhones(inputs []dynamodb.PutItemInput, t *testing.T, tc Case) {
 		}
 
 		// Handle IntercessorPhones
-		if stringVal.Value == object.IntercessorPhonesKeyValue {
+		if stringVal.Value == model.IntercessorPhonesKeyValue {
 			validatePhoneType(input, tc.ExpectedIntPhones, &intIndex, t)
 		}
 
 		// Handle BlockedPhones
-		if stringVal.Value == object.BlockedPhonesKeyValue {
+		if stringVal.Value == model.BlockedPhonesKeyValue {
 			validatePhoneType(input, tc.ExpectedBlockPhones, &blockIndex, t)
 		}
 	}
@@ -264,9 +267,9 @@ func ValidateDeleteItem(inputs []dynamodb.DeleteItemInput, t *testing.T, tc Case
 		}
 
 		switch *input.TableName {
-		case object.DefaultMemberTable:
+		case "Member":
 			testDeleteMember(input, &index, t, tc)
-		case object.DefaultActivePrayersTable, object.DefaultQueuedPrayersTable:
+		case "ActivePrayer", "QueuedPrayer":
 			testDeletePrayer(input, &index, t, tc)
 		default:
 			t.Errorf("unexpected table name, got %v", *input.TableName)
@@ -284,7 +287,7 @@ func testDeleteMember(input dynamodb.DeleteItemInput, index *int, t *testing.T, 
 			tc.ExpectedDeleteItems[*index].Table, *input.TableName)
 	}
 
-	mem := object.Member{}
+	mem := model.Member{}
 	if err := attributevalue.UnmarshalMap(input.Key, &mem); err != nil {
 		t.Fatalf("failed to unmarshal to Member: %v", err)
 	}
@@ -303,7 +306,7 @@ func testDeletePrayer(input dynamodb.DeleteItemInput, index *int, t *testing.T, 
 			tc.ExpectedDeleteItems[*index].Table, *input.TableName)
 	}
 
-	pryr := object.Prayer{}
+	pryr := model.Prayer{}
 	if err := attributevalue.UnmarshalMap(input.Key, &pryr); err != nil {
 		t.Fatalf("failed to unmarshal to Prayer: %v", err)
 	}

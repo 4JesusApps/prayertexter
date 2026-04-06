@@ -1,4 +1,4 @@
-package prayertexter
+package service
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"unicode"
 
 	"github.com/4JesusApps/prayertexter/internal/messaging"
-	"github.com/4JesusApps/prayertexter/internal/object"
+	"github.com/4JesusApps/prayertexter/internal/model"
 )
 
 const (
@@ -22,12 +22,11 @@ const (
 	HoursPerDay = 24
 )
 
-// checkIfProfanity reports whether there is profanity in a text message. If there is, it will inform the sender.
-func checkIfProfanity(ctx context.Context, smsClnt messaging.TextSender, mem object.Member, msg messaging.TextMessage, profanityChecker *messaging.ProfanityChecker) (bool, error) {
-	profanity := profanityChecker.Check(msg.Body)
+func (s *Service) checkIfProfanity(ctx context.Context, mem *model.Member, msg messaging.TextMessage) (bool, error) {
+	profanity := s.profanity.Check(msg.Body)
 	if profanity != "" {
-		msg := strings.Replace(messaging.MsgProfanityDetected, "PLACEHOLDER", profanity, 1)
-		if err := mem.SendMessage(ctx, smsClnt, msg); err != nil {
+		notif := strings.Replace(messaging.MsgProfanityDetected, "PLACEHOLDER", profanity, 1)
+		if err := s.sendMessage(ctx, mem.Phone, notif); err != nil {
 			return true, err
 		}
 
@@ -37,9 +36,7 @@ func checkIfProfanity(ctx context.Context, smsClnt messaging.TextSender, mem obj
 	return false, nil
 }
 
-// checkIfNameValid reports whether a name is valid. A valid name is at least 2 characters long and does not contain any
-// numbers. If name is invalid, it will inform the sender.
-func checkIfNameValid(ctx context.Context, smsClnt messaging.TextSender, mem object.Member) (bool, error) {
+func (s *Service) checkIfNameValid(ctx context.Context, mem *model.Member) (bool, error) {
 	letterCount := 0
 	isValid := true
 
@@ -59,7 +56,7 @@ func checkIfNameValid(ctx context.Context, smsClnt messaging.TextSender, mem obj
 	}
 
 	if !isValid {
-		if err := mem.SendMessage(ctx, smsClnt, messaging.MsgInvalidName); err != nil {
+		if err := s.sendMessage(ctx, mem.Phone, messaging.MsgInvalidName); err != nil {
 			return isValid, err
 		}
 
@@ -69,9 +66,9 @@ func checkIfNameValid(ctx context.Context, smsClnt messaging.TextSender, mem obj
 	return isValid, nil
 }
 
-func checkIfRequestValid(ctx context.Context, smsClnt messaging.TextSender, msg messaging.TextMessage, mem object.Member) (bool, error) {
+func (s *Service) checkIfRequestValid(ctx context.Context, msg messaging.TextMessage, mem *model.Member) (bool, error) {
 	if len(strings.Fields(msg.Body)) < MinRequestWords {
-		if err := mem.SendMessage(ctx, smsClnt, messaging.MsgInvalidRequest); err != nil {
+		if err := s.sendMessage(ctx, mem.Phone, messaging.MsgInvalidRequest); err != nil {
 			return false, err
 		}
 
@@ -81,21 +78,17 @@ func checkIfRequestValid(ctx context.Context, smsClnt messaging.TextSender, msg 
 	return true, nil
 }
 
-// handleTriggerWords performs the necessary actions for any trigger words in the message and then removes the trigger
-// words from the message body. Trigger words start with a #.
-func handleTriggerWords(msg *messaging.TextMessage, mem *object.Member) {
+func (s *Service) handleTriggerWords(msg *messaging.TextMessage, mem *model.Member) {
 	//nolint:gocritic // ignoring switch statement warning because this will be expanded in the future
 	switch {
 	case strings.Contains(strings.ToLower(msg.Body), "#anon"):
 		mem.Name = "Anonymous"
 		re := regexp.MustCompile(`(?i)#anon`)
 		msg.Body = strings.TrimSpace(re.ReplaceAllString(msg.Body, ""))
-		// Add future trigger words as new cases
 	}
 }
 
-func canResetPrayerCount(intr object.Member) (bool, error) {
-
+func canResetPrayerCount(intr *model.Member) (bool, error) {
 	currentTime := time.Now()
 	previousTime, err := time.Parse(time.RFC3339, intr.WeeklyPrayerDate)
 	if err != nil {

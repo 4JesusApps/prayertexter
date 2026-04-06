@@ -6,51 +6,25 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"log/slog"
-	"net/http"
 
+	"github.com/4JesusApps/prayertexter/internal/app"
 	"github.com/4JesusApps/prayertexter/internal/config"
-	"github.com/4JesusApps/prayertexter/internal/db"
-	"github.com/4JesusApps/prayertexter/internal/messaging"
-	"github.com/4JesusApps/prayertexter/internal/prayertexter"
-	"github.com/aws/aws-lambda-go/events"
+	"github.com/4JesusApps/prayertexter/internal/handler"
 	"github.com/aws/aws-lambda-go/lambda"
 )
 
 // MUST BE SET by go build -ldflags "-X main.version=999" like 0.6.14-0-g26fe727 or 0.6.14-2-g9118702-dirty.
 var version string // do not remove or modify
 
-func handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	slog.InfoContext(ctx, "running prayertexter", "version", version)
-	msg := messaging.TextMessage{}
-
-	if err := json.Unmarshal([]byte(req.Body), &msg); err != nil {
-		slog.ErrorContext(ctx, "lambda handler: failed to unmarshal api gateway request", "error", err)
-		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError}, err
-	}
-
+func main() {
 	cfg := config.Load()
 
-	ddbClnt, err := db.GetDdbClient(ctx, &cfg.AWS)
+	a, err := app.New(context.Background(), cfg)
 	if err != nil {
-		slog.ErrorContext(ctx, "lambda handler: failed to get dynamodb client", "error", err)
-		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError}, err
+		slog.Error("failed to initialize app", "error", err)
+		return
 	}
 
-	smsClnt, err := messaging.GetSmsClient(ctx, &cfg.AWS)
-	if err != nil {
-		slog.ErrorContext(ctx, "lambda handler: failed to get sms client", "error", err)
-		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError}, err
-	}
-
-	if err = prayertexter.MainFlow(ctx, ddbClnt, smsClnt, msg); err != nil {
-		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError}, err
-	}
-
-	return events.APIGatewayProxyResponse{StatusCode: http.StatusOK, Body: "Success\n"}, nil
-}
-
-func main() {
-	lambda.Start(handler)
+	lambda.Start(handler.NewLocalHandler(a.Service, version))
 }

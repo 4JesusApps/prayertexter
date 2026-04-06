@@ -1,4 +1,4 @@
-package utility_test
+package apperrors_test
 
 import (
 	"bytes"
@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/4JesusApps/prayertexter/internal/utility"
+	"github.com/4JesusApps/prayertexter/internal/apperrors"
 )
 
 func TestErrorOperations(t *testing.T) {
@@ -39,13 +39,13 @@ func TestErrorOperations(t *testing.T) {
 
 func testErr(t *testing.T, origErr error, expectedErrString, newErrorMsg string, nilErr bool) {
 	if nilErr {
-		newErr := utility.WrapError(nil, newErrorMsg)
+		newErr := apperrors.WrapError(nil, newErrorMsg)
 
 		if newErr != nil {
 			t.Errorf("expected nil error, got %v", newErr.Error())
 		}
 	} else {
-		newErr := utility.WrapError(origErr, newErrorMsg)
+		newErr := apperrors.WrapError(origErr, newErrorMsg)
 
 		if newErr.Error() != expectedErrString {
 			t.Errorf("expected error string %v, got %v", expectedErrString, newErr.Error())
@@ -67,7 +67,7 @@ func testErrAndLog(ctx context.Context, t *testing.T, origErr error, expectedErr
 }
 
 func testNilErrorAndLog(ctx context.Context, t *testing.T, newErrorMsg string, buff *bytes.Buffer) {
-	newErr := utility.LogAndWrapError(ctx, nil, newErrorMsg, "testattr1", "1", "testattr2", "2")
+	newErr := apperrors.LogAndWrapError(ctx, nil, newErrorMsg, "testattr1", "1", "testattr2", "2")
 
 	if newErr != nil {
 		t.Errorf("expected nil error, got %v", newErr.Error())
@@ -79,7 +79,7 @@ func testNilErrorAndLog(ctx context.Context, t *testing.T, newErrorMsg string, b
 }
 
 func testActualErrorAndLog(ctx context.Context, t *testing.T, origErr error, newErrorMsg, expectedErrString, expectedLog string, buff *bytes.Buffer) {
-	newErr := utility.LogAndWrapError(ctx, origErr, newErrorMsg, "testattr1", "1", "testattr2", "2")
+	newErr := apperrors.LogAndWrapError(ctx, origErr, newErrorMsg, "testattr1", "1", "testattr2", "2")
 
 	if newErr.Error() != expectedErrString {
 		t.Errorf("expected error string %v, got %v", expectedErrString, newErr.Error())

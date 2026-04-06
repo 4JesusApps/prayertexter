@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/4JesusApps/prayertexter/internal/db"
-	"github.com/4JesusApps/prayertexter/internal/object"
+	"github.com/4JesusApps/prayertexter/internal/model"
 	"github.com/4JesusApps/prayertexter/internal/test/mock"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
@@ -29,8 +29,8 @@ func TestDynamoDBOperations(t *testing.T) {
 					"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
 					"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
 					"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
-					"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-					"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+					"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+					"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
 					"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "2025-02-16T23:54:01Z"},
 					"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 				},
@@ -41,7 +41,7 @@ func TestDynamoDBOperations(t *testing.T) {
 		{
 			Output: &dynamodb.GetItemOutput{
 				Item: map[string]types.AttributeValue{
-					"Key": &types.AttributeValueMemberS{Value: object.BlockedPhonesKeyValue},
+					"Key": &types.AttributeValueMemberS{Value: model.BlockedPhonesKeyValue},
 					"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
 						&types.AttributeValueMemberS{Value: "+13333333333"},
 						&types.AttributeValueMemberS{Value: "+14444444444"},
@@ -54,7 +54,7 @@ func TestDynamoDBOperations(t *testing.T) {
 		{
 			Output: &dynamodb.GetItemOutput{
 				Item: map[string]types.AttributeValue{
-					"Key": &types.AttributeValueMemberS{Value: object.IntercessorPhonesKeyValue},
+					"Key": &types.AttributeValueMemberS{Value: model.IntercessorPhonesKeyValue},
 					"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
 						&types.AttributeValueMemberS{Value: "+11111111111"},
 						&types.AttributeValueMemberS{Value: "+12222222222"},
@@ -74,8 +74,8 @@ func TestDynamoDBOperations(t *testing.T) {
 							"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
 							"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
 							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "2025-02-13T23:54:01Z"},
 							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
 						},
@@ -91,8 +91,8 @@ func TestDynamoDBOperations(t *testing.T) {
 							"Name":              &types.AttributeValueMemberS{Value: "John Doe"},
 							"Phone":             &types.AttributeValueMemberS{Value: "+11234567890"},
 							"PrayerCount":       &types.AttributeValueMemberN{Value: "0"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(object.MemberSignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: object.MemberSetupComplete},
+							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
+							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
 							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: ""},
 							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "0"},
 						},
@@ -104,40 +104,40 @@ func TestDynamoDBOperations(t *testing.T) {
 	}
 
 	expectedObjects := []any{
-		&object.Member{
+		&model.Member{
 			Administrator:     false,
 			Intercessor:       true,
 			Name:              "Intercessor1",
 			Phone:             "+11111111111",
 			PrayerCount:       1,
-			SetupStage:        object.MemberSignUpStepFinal,
-			SetupStatus:       object.MemberSetupComplete,
+			SetupStage:        model.SignUpStepFinal,
+			SetupStatus:       model.SetupComplete,
 			WeeklyPrayerDate:  "2025-02-16T23:54:01Z",
 			WeeklyPrayerLimit: 5,
 		},
-		&object.BlockedPhones{
-			Key: object.BlockedPhonesKeyValue,
+		&model.BlockedPhones{
+			Key: model.BlockedPhonesKeyValue,
 			Phones: []string{
 				"+13333333333",
 				"+14444444444",
 			},
 		},
-		&object.IntercessorPhones{
-			Key: object.IntercessorPhonesKeyValue,
+		&model.IntercessorPhones{
+			Key: model.IntercessorPhonesKeyValue,
 			Phones: []string{
 				"+11111111111",
 				"+12222222222",
 			},
 		},
-		&object.Prayer{
-			Intercessor: object.Member{
+		&model.Prayer{
+			Intercessor: model.Member{
 				Administrator:     false,
 				Intercessor:       true,
 				Name:              "Intercessor1",
 				Phone:             "+11111111111",
 				PrayerCount:       1,
-				SetupStage:        object.MemberSignUpStepFinal,
-				SetupStatus:       object.MemberSetupComplete,
+				SetupStage:        model.SignUpStepFinal,
+				SetupStatus:       model.SetupComplete,
 				WeeklyPrayerDate:  "2025-02-13T23:54:01Z",
 				WeeklyPrayerLimit: 5,
 			},
@@ -145,14 +145,14 @@ func TestDynamoDBOperations(t *testing.T) {
 			ReminderCount:    3,
 			ReminderDate:     "2025-02-13T23:54:01Z",
 			Request:          "I need prayer for...",
-			Requestor: object.Member{
+			Requestor: model.Member{
 				Administrator:     false,
 				Intercessor:       false,
 				Name:              "John Doe",
 				Phone:             "+11234567890",
 				PrayerCount:       0,
-				SetupStage:        object.MemberSignUpStepFinal,
-				SetupStatus:       object.MemberSetupComplete,
+				SetupStage:        model.SignUpStepFinal,
+				SetupStatus:       model.SetupComplete,
 				WeeklyPrayerDate:  "",
 				WeeklyPrayerLimit: 0,
 			},
@@ -166,13 +166,13 @@ func TestDynamoDBOperations(t *testing.T) {
 		for _, obj := range expectedObjects {
 			t.Run(fmt.Sprintf("Get %T", obj), func(t *testing.T) {
 				switch o := obj.(type) {
-				case *object.Member:
+				case *model.Member:
 					testGetObject(t, ddbMock, o)
-				case *object.BlockedPhones:
+				case *model.BlockedPhones:
 					testGetObject(t, ddbMock, o)
-				case *object.IntercessorPhones:
+				case *model.IntercessorPhones:
 					testGetObject(t, ddbMock, o)
-				case *object.Prayer:
+				case *model.Prayer:
 					testGetObject(t, ddbMock, o)
 				default:
 					t.Errorf("unexpected object type %T", obj)
@@ -187,13 +187,13 @@ func TestDynamoDBOperations(t *testing.T) {
 		for index, obj := range expectedObjects {
 			t.Run(fmt.Sprintf("Put %T", obj), func(t *testing.T) {
 				switch o := obj.(type) {
-				case *object.Member:
+				case *model.Member:
 					testPutObject(t, ddbMock, o, expectedDdbItems[index])
-				case *object.BlockedPhones:
+				case *model.BlockedPhones:
 					testPutObject(t, ddbMock, o, expectedDdbItems[index])
-				case *object.IntercessorPhones:
+				case *model.IntercessorPhones:
 					testPutObject(t, ddbMock, o, expectedDdbItems[index])
-				case *object.Prayer:
+				case *model.Prayer:
 					testPutObject(t, ddbMock, o, expectedDdbItems[index])
 				default:
 					t.Errorf("unexpected object type %T", obj)

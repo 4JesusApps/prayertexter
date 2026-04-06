@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/4JesusApps/prayertexter/internal/apperrors"
 	"github.com/4JesusApps/prayertexter/internal/config"
-	"github.com/4JesusApps/prayertexter/internal/utility"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
@@ -38,7 +38,7 @@ type DDBConnecter interface {
 func GetDdbClient(ctx context.Context, awsCfg *config.AWSConfig) (*dynamodb.Client, error) {
 	cfg, err := config.GetAwsConfig(ctx, awsCfg)
 	if err != nil {
-		return nil, utility.WrapError(err, "failed to get dynamodb client")
+		return nil, apperrors.WrapError(err, "failed to get dynamodb client")
 	}
 
 	var ddbClnt *dynamodb.Client
@@ -77,13 +77,13 @@ func getDdbItem(ctx context.Context, ddbClnt DDBConnecter, key, keyVal, table st
 func GetDdbObject[T any](ctx context.Context, ddbClnt DDBConnecter, key, keyVal, table string) (*T, error) {
 	resp, err := getDdbItem(ctx, ddbClnt, key, keyVal, table)
 	if err != nil {
-		return nil, utility.WrapError(err, fmt.Sprintf("failed to get %T from table %s", *new(T), table))
+		return nil, apperrors.WrapError(err, fmt.Sprintf("failed to get %T from table %s", *new(T), table))
 	}
 
 	var object T
 	err = attributevalue.UnmarshalMap(resp.Item, &object)
 
-	return &object, utility.WrapError(err, fmt.Sprintf("failed to unmarshal %T from table %s", *new(T), table))
+	return &object, apperrors.WrapError(err, fmt.Sprintf("failed to unmarshal %T from table %s", *new(T), table))
 }
 
 func putDdbItem(ctx context.Context, ddbClnt DDBConnecter, table string, data map[string]types.AttributeValue) error {
@@ -106,11 +106,11 @@ func putDdbItem(ctx context.Context, ddbClnt DDBConnecter, table string, data ma
 func PutDdbObject[T any](ctx context.Context, ddbClnt DDBConnecter, table string, object *T) error {
 	item, err := attributevalue.MarshalMap(object)
 	if err != nil {
-		return utility.WrapError(err, fmt.Sprintf("failed to marshal %T from table %s", *new(T), table))
+		return apperrors.WrapError(err, fmt.Sprintf("failed to marshal %T from table %s", *new(T), table))
 	}
 
 	if err = putDdbItem(ctx, ddbClnt, table, item); err != nil {
-		return utility.WrapError(err, fmt.Sprintf("failed to put %T from table %s", *new(T), table))
+		return apperrors.WrapError(err, fmt.Sprintf("failed to put %T from table %s", *new(T), table))
 	}
 
 	return nil
@@ -133,7 +133,7 @@ func DelDdbItem(ctx context.Context, ddbClnt DDBConnecter, key, keyVal, table st
 
 	_, err := ddbClnt.DeleteItem(ctx, input)
 
-	return utility.WrapError(err, fmt.Sprintf("failed to delete item from table %s", table))
+	return apperrors.WrapError(err, fmt.Sprintf("failed to delete item from table %s", table))
 }
 
 func getAllItems(ctx context.Context, ddbClnt DDBConnecter, table string) (*dynamodb.ScanOutput, error) {
@@ -161,7 +161,7 @@ func GetAllObjects[T any](ctx context.Context, ddbClnt DDBConnecter, table strin
 	items, err := getAllItems(ctx, ddbClnt, table)
 
 	if err != nil {
-		return nil, utility.WrapError(err, fmt.Sprintf("failed to scan items of %T from table %s", *new(T), table))
+		return nil, apperrors.WrapError(err, fmt.Sprintf("failed to scan items of %T from table %s", *new(T), table))
 	}
 
 	objects := make([]T, 0, len(items.Items))
@@ -169,7 +169,7 @@ func GetAllObjects[T any](ctx context.Context, ddbClnt DDBConnecter, table strin
 	for _, item := range items.Items {
 		var object T
 		if err = attributevalue.UnmarshalMap(item, &object); err != nil {
-			return nil, utility.WrapError(err, fmt.Sprintf("failed to unmarshal %T from table %s", *new(T), table))
+			return nil, apperrors.WrapError(err, fmt.Sprintf("failed to unmarshal %T from table %s", *new(T), table))
 		}
 		objects = append(objects, object)
 	}
