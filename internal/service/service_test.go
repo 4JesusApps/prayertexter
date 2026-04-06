@@ -188,8 +188,7 @@ func TestMainFlowBlockUser(t *testing.T) {
 					WeeklyPrayerLimit: 5,
 				}),
 				testutil.IntercessorPhonesItem(
-					testutil.PhoneMember, testutil.PhoneIntercessor,
-					testutil.PhoneAlt3, testutil.PhoneAdmin,
+					testutil.PhoneMember, testutil.PhoneIntercessor, testutil.PhoneAlt3, testutil.PhoneAdmin,
 				),
 				testutil.PrayerItem(model.Prayer{
 					Intercessor: model.Member{
@@ -313,8 +312,11 @@ func TestMainFlowBlockUser(t *testing.T) {
 				// Member empty get response.
 				testutil.EmptyGetResult(),
 				testutil.BlockedPhonesItem(
-					testutil.PhoneIntercessor, testutil.PhoneAlt1, testutil.PhoneAlt2,
-					testutil.PhoneAlt3, "+19999999999",
+					testutil.PhoneIntercessor,
+					testutil.PhoneAlt1,
+					testutil.PhoneAlt2,
+					testutil.PhoneAlt3,
+					"+19999999999",
 				),
 			},
 
@@ -941,7 +943,12 @@ func TestMainFlowMemberDelete(t *testing.T) {
 				}),
 				// BlockedPhones empty get response.
 				testutil.EmptyGetResult(),
-				testutil.IntercessorPhonesItem(testutil.PhoneIntercessor, testutil.PhoneAlt1, testutil.PhoneAlt2, testutil.PhoneAlt3),
+				testutil.IntercessorPhonesItem(
+					testutil.PhoneIntercessor,
+					testutil.PhoneAlt1,
+					testutil.PhoneAlt2,
+					testutil.PhoneAlt3,
+				),
 			},
 
 			ExpectedIntPhones: model.IntercessorPhones{
@@ -997,7 +1004,12 @@ func TestMainFlowMemberDelete(t *testing.T) {
 				}),
 				// BlockedPhones empty get response.
 				testutil.EmptyGetResult(),
-				testutil.IntercessorPhonesItem(testutil.PhoneIntercessor, testutil.PhoneAlt1, testutil.PhoneAlt2, testutil.PhoneAlt3),
+				testutil.IntercessorPhonesItem(
+					testutil.PhoneIntercessor,
+					testutil.PhoneAlt1,
+					testutil.PhoneAlt2,
+					testutil.PhoneAlt3,
+				),
 				testutil.PrayerItem(model.Prayer{
 					Intercessor: model.Member{
 						Intercessor:       true,
@@ -1866,7 +1878,9 @@ func TestFindIntercessors(t *testing.T) {
 			Description: "This should pick #3 and #5 intercessors based on prayer counts/dates",
 
 			MockGetItemResults: []testutil.GetItemResult{
-				testutil.IntercessorPhonesItem(testutil.PhoneIntercessor, testutil.PhoneAlt1, testutil.PhoneAlt2, testutil.PhoneAlt3, "+15555555555"),
+				testutil.IntercessorPhonesItem(
+					testutil.PhoneIntercessor, testutil.PhoneAlt1, testutil.PhoneAlt2, testutil.PhoneAlt3, "+15555555555",
+				),
 				testutil.MemberItem(model.Member{
 					Intercessor:       true,
 					Name:              "Intercessor1",
@@ -2188,7 +2202,12 @@ func TestFindIntercessors(t *testing.T) {
 			Description: "This should return 2 intercessors even when GenRandPhones returns 3 available intercessors",
 
 			MockGetItemResults: []testutil.GetItemResult{
-				testutil.IntercessorPhonesItem(testutil.PhoneIntercessor, testutil.PhoneAlt1, testutil.PhoneAlt2, testutil.PhoneAlt3),
+				testutil.IntercessorPhonesItem(
+					testutil.PhoneIntercessor,
+					testutil.PhoneAlt1,
+					testutil.PhoneAlt2,
+					testutil.PhoneAlt3,
+				),
 				testutil.MemberItem(model.Member{
 					Intercessor:       true,
 					Name:              "Intercessor1",
