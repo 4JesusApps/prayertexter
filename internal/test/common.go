@@ -2,7 +2,6 @@ package test
 
 import (
 	"fmt"
-	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -14,6 +13,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type Case struct {
@@ -82,30 +83,11 @@ func RunAllCommonTests(ddbMock *mock.DDBConnecter, txtMock *mock.TextSender, t *
 }
 
 func ValidateNumMethodCalls(ddbMock *mock.DDBConnecter, txtMock *mock.TextSender, t *testing.T, tc Case) {
-	if ddbMock.GetItemCalls != tc.ExpectedGetItemCalls {
-		t.Errorf("expected GetItem to be called %v, got %v",
-			tc.ExpectedGetItemCalls, ddbMock.GetItemCalls)
-	}
-
-	if ddbMock.PutItemCalls != tc.ExpectedPutItemCalls {
-		t.Errorf("expected PutItem to be called %v, got %v",
-			tc.ExpectedPutItemCalls, ddbMock.PutItemCalls)
-	}
-
-	if ddbMock.DeleteItemCalls != tc.ExpectedDeleteItemCalls {
-		t.Errorf("expected DeleteItem to be called %v, got %v",
-			tc.ExpectedDeleteItemCalls, ddbMock.DeleteItemCalls)
-	}
-
-	if ddbMock.ScanCalls != tc.ExpectedScanCalls {
-		t.Errorf("expected Scan to be called %v, got %v",
-			tc.ExpectedScanCalls, ddbMock.ScanCalls)
-	}
-
-	if txtMock.SendTextCalls != tc.ExpectedSendTextCalls {
-		t.Errorf("expected SendText to be called %v, got %v",
-			tc.ExpectedSendTextCalls, txtMock.SendTextCalls)
-	}
+	assert.Equal(t, tc.ExpectedGetItemCalls, ddbMock.GetItemCalls, "GetItem call count")
+	assert.Equal(t, tc.ExpectedPutItemCalls, ddbMock.PutItemCalls, "PutItem call count")
+	assert.Equal(t, tc.ExpectedDeleteItemCalls, ddbMock.DeleteItemCalls, "DeleteItem call count")
+	assert.Equal(t, tc.ExpectedScanCalls, ddbMock.ScanCalls, "Scan call count")
+	assert.Equal(t, tc.ExpectedSendTextCalls, txtMock.SendTextCalls, "SendText call count")
 }
 
 func ValidateMembers(inputs []dynamodb.PutItemInput, t *testing.T, tc Case) {
@@ -116,14 +98,12 @@ func ValidateMembers(inputs []dynamodb.PutItemInput, t *testing.T, tc Case) {
 			continue
 		}
 
-		if index >= len(tc.ExpectedMembers) {
-			t.Errorf("there are more Members in put inputs than in expected Members")
-		}
+		require.Less(t, index, len(tc.ExpectedMembers),
+			"there are more Members in put inputs than in expected Members")
 
 		var actualMem model.Member
-		if err := attributevalue.UnmarshalMap(input.Item, &actualMem); err != nil {
-			t.Errorf("failed to unmarshal PutItemInput into Member: %v", err)
-		}
+		err := attributevalue.UnmarshalMap(input.Item, &actualMem)
+		require.NoError(t, err, "failed to unmarshal PutItemInput into Member")
 
 		// Replaces date to make mocking easier.
 		if actualMem.WeeklyPrayerDate != "" {
@@ -131,16 +111,13 @@ func ValidateMembers(inputs []dynamodb.PutItemInput, t *testing.T, tc Case) {
 		}
 
 		expectedMem := tc.ExpectedMembers[index]
-		if actualMem != expectedMem {
-			t.Errorf("expected Member %v, got %v", expectedMem, actualMem)
-		}
+		assert.Equal(t, expectedMem, actualMem, "Member mismatch")
 
 		index++
 	}
 
-	if index < len(tc.ExpectedMembers) {
-		t.Errorf("there are more Members in expected Members than in put inputs")
-	}
+	assert.Equal(t, len(tc.ExpectedMembers), index,
+		"there are more Members in expected Members than in put inputs")
 }
 
 func ValidatePrayers(inputs []dynamodb.PutItemInput, t *testing.T, tc Case) {
@@ -157,14 +134,12 @@ func ValidatePrayers(inputs []dynamodb.PutItemInput, t *testing.T, tc Case) {
 			continue
 		}
 
-		if index >= len(tc.ExpectedPrayers) {
-			t.Errorf("there are more Prayers in put inputs than in expected Prayers of table type: %v", expectedTable)
-		}
+		require.Less(t, index, len(tc.ExpectedPrayers),
+			"there are more Prayers in put inputs than in expected Prayers of table type: %v", expectedTable)
 
 		var actualPryr model.Prayer
-		if err := attributevalue.UnmarshalMap(input.Item, &actualPryr); err != nil {
-			t.Errorf("failed to unmarshal PutItemInput into Prayer: %v", err)
-		}
+		err := attributevalue.UnmarshalMap(input.Item, &actualPryr)
+		require.NoError(t, err, "failed to unmarshal PutItemInput into Prayer")
 
 		// Replaces date and random ID to make mocking easier.
 		if !tc.ExpectedPrayerQueue {
@@ -176,16 +151,13 @@ func ValidatePrayers(inputs []dynamodb.PutItemInput, t *testing.T, tc Case) {
 		actualPryr = replaceReminderDateIfChanged(t, actualPryr)
 
 		expectedPryr := tc.ExpectedPrayers[index]
-		if actualPryr != expectedPryr {
-			t.Errorf("expected Prayer %v, got %v", expectedPryr, actualPryr)
-		}
+		assert.Equal(t, expectedPryr, actualPryr, "Prayer mismatch")
 
 		index++
 	}
 
-	if index < len(tc.ExpectedPrayers) {
-		t.Errorf("there are more Prayers in expected Prayers than in put inputs of table type: %v", expectedTable)
-	}
+	assert.Equal(t, len(tc.ExpectedPrayers), index,
+		"there are more Prayers in expected Prayers than in put inputs of table type: %v", expectedTable)
 }
 
 // replaceReminderDateIfChanged replaces date with a testable "date changed" string only if the date is within 1 minute
@@ -194,9 +166,7 @@ func replaceReminderDateIfChanged(t *testing.T, actualPryr model.Prayer) model.P
 	if actualPryr.ReminderDate != "" {
 		currentDate := time.Now()
 		reminderDate, err := time.Parse(time.RFC3339, actualPryr.ReminderDate)
-		if err != nil {
-			t.Errorf("unexpected error parsing time: %v", err)
-		}
+		require.NoError(t, err, "unexpected error parsing time")
 		diffMins := currentDate.Sub(reminderDate).Minutes()
 		if diffMins < 1 {
 			actualPryr.ReminderDate = "date changed"
@@ -242,18 +212,14 @@ func ValidatePhones(inputs []dynamodb.PutItemInput, t *testing.T, tc Case) {
 func validatePhoneType[T any](input dynamodb.PutItemInput, expected T, index *int, t *testing.T) {
 	typeName := fmt.Sprintf("%T", expected)
 
-	if *index > 0 {
-		t.Errorf("there are more %s in put inputs than 1 which is not expected", typeName)
-	}
+	assert.LessOrEqual(t, *index, 0,
+		"there are more %s in put inputs than 1 which is not expected", typeName)
 
 	var actual T
-	if err := attributevalue.UnmarshalMap(input.Item, &actual); err != nil {
-		t.Errorf("failed to unmarshal PutItemInput into %s: %v", typeName, err)
-	}
+	err := attributevalue.UnmarshalMap(input.Item, &actual)
+	require.NoError(t, err, "failed to unmarshal PutItemInput into %s", typeName)
 
-	if !reflect.DeepEqual(actual, expected) {
-		t.Errorf("expected %s %v, got %v", typeName, expected, actual)
-	}
+	assert.Equal(t, expected, actual, "%s mismatch", typeName)
 
 	*index++
 }
@@ -262,9 +228,8 @@ func ValidateDeleteItem(inputs []dynamodb.DeleteItemInput, t *testing.T, tc Case
 	index := 0
 
 	for _, input := range inputs {
-		if index >= len(tc.ExpectedDeleteItems) {
-			t.Errorf("there are more delete item inputs than expected delete items")
-		}
+		require.Less(t, index, len(tc.ExpectedDeleteItems),
+			"there are more delete item inputs than expected delete items")
 
 		switch *input.TableName {
 		case "Member":
@@ -272,49 +237,34 @@ func ValidateDeleteItem(inputs []dynamodb.DeleteItemInput, t *testing.T, tc Case
 		case "ActivePrayer", "QueuedPrayer":
 			testDeletePrayer(input, &index, t, tc)
 		default:
-			t.Errorf("unexpected table name, got %v", *input.TableName)
+			assert.Fail(t, "unexpected table name", "got %v", *input.TableName)
 		}
 	}
 
-	if index < len(tc.ExpectedDeleteItems) {
-		t.Errorf("there are more expected delete items than delete item inputs")
-	}
+	assert.Equal(t, len(tc.ExpectedDeleteItems), index,
+		"there are more expected delete items than delete item inputs")
 }
 
 func testDeleteMember(input dynamodb.DeleteItemInput, index *int, t *testing.T, tc Case) {
-	if *input.TableName != tc.ExpectedDeleteItems[*index].Table {
-		t.Errorf("expected Member table %v, got %v",
-			tc.ExpectedDeleteItems[*index].Table, *input.TableName)
-	}
+	assert.Equal(t, tc.ExpectedDeleteItems[*index].Table, *input.TableName, "Member table name")
 
 	mem := model.Member{}
-	if err := attributevalue.UnmarshalMap(input.Key, &mem); err != nil {
-		t.Fatalf("failed to unmarshal to Member: %v", err)
-	}
+	err := attributevalue.UnmarshalMap(input.Key, &mem)
+	require.NoError(t, err, "failed to unmarshal to Member")
 
-	if mem.Phone != tc.ExpectedDeleteItems[*index].Key {
-		t.Errorf("expected Member phone %v for delete key, got %v",
-			tc.ExpectedDeleteItems[*index].Key, mem.Phone)
-	}
+	assert.Equal(t, tc.ExpectedDeleteItems[*index].Key, mem.Phone, "Member phone for delete key")
 
 	*index++
 }
 
 func testDeletePrayer(input dynamodb.DeleteItemInput, index *int, t *testing.T, tc Case) {
-	if *input.TableName != tc.ExpectedDeleteItems[*index].Table {
-		t.Errorf("expected Prayer table %v, got %v",
-			tc.ExpectedDeleteItems[*index].Table, *input.TableName)
-	}
+	assert.Equal(t, tc.ExpectedDeleteItems[*index].Table, *input.TableName, "Prayer table name")
 
 	pryr := model.Prayer{}
-	if err := attributevalue.UnmarshalMap(input.Key, &pryr); err != nil {
-		t.Fatalf("failed to unmarshal to Prayer: %v", err)
-	}
+	err := attributevalue.UnmarshalMap(input.Key, &pryr)
+	require.NoError(t, err, "failed to unmarshal to Prayer")
 
-	if pryr.IntercessorPhone != tc.ExpectedDeleteItems[*index].Key {
-		t.Errorf("expected Prayer phone %v for delete key, got %v",
-			tc.ExpectedDeleteItems[*index].Key, pryr.IntercessorPhone)
-	}
+	assert.Equal(t, tc.ExpectedDeleteItems[*index].Key, pryr.IntercessorPhone, "Prayer phone for delete key")
 
 	*index++
 }
@@ -323,9 +273,8 @@ func ValidateTxtMessage(txtMock *mock.TextSender, t *testing.T, tc Case) {
 	index := 0
 
 	for _, input := range txtMock.SendTextInputs {
-		if index >= len(tc.ExpectedTexts) {
-			t.Errorf("there are more text message inputs than expected texts")
-		}
+		require.Less(t, index, len(tc.ExpectedTexts),
+			"there are more text message inputs than expected texts")
 
 		// Some text messages use PLACEHOLDER and replace that with the txt recipients name. Therefor to make testing
 		// easier, the message body is replaced by the msg constant.
@@ -347,22 +296,19 @@ func ValidateTxtMessage(txtMock *mock.TextSender, t *testing.T, tc Case) {
 
 		// This part makes mocking messages less painful. We do not need to worry about new lines, pre, or post
 		// messages. They are removed when messages are tested.
-		for _, t := range []*messaging.TextMessage{&receivedText, &tc.ExpectedTexts[index]} {
+		for _, txt := range []*messaging.TextMessage{&receivedText, &tc.ExpectedTexts[index]} {
 			for _, str := range []string{"\n", messaging.MsgPre, messaging.MsgPost} {
-				t.Body = strings.ReplaceAll(t.Body, str, "")
+				txt.Body = strings.ReplaceAll(txt.Body, str, "")
 			}
 		}
 
-		if receivedText != tc.ExpectedTexts[index] {
-			t.Errorf("expected txt %v, got %v", tc.ExpectedTexts[index], receivedText)
-		}
+		assert.Equal(t, tc.ExpectedTexts[index], receivedText, "text message mismatch")
 
 		index++
 	}
 
-	if index < len(tc.ExpectedTexts) {
-		t.Errorf("there are more expected texts than text message inputs")
-	}
+	assert.Equal(t, len(tc.ExpectedTexts), index,
+		"there are more expected texts than text message inputs")
 }
 
 func ValidateExactMessageMatch(txtMock *mock.TextSender, t *testing.T, tc Case) {
@@ -371,8 +317,7 @@ func ValidateExactMessageMatch(txtMock *mock.TextSender, t *testing.T, tc Case) 
 	}
 
 	for _, match := range tc.ExpectedExactMessageMatch {
-		if *txtMock.SendTextInputs[match.Index].MessageBody != match.Message {
-			t.Errorf("expected message %v, got %v", match.Message, *txtMock.SendTextInputs[match.Index].MessageBody)
-		}
+		assert.Equal(t, match.Message, *txtMock.SendTextInputs[match.Index].MessageBody,
+			"exact message match at index %d", match.Index)
 	}
 }
