@@ -7,6 +7,7 @@ import (
 	"github.com/4JesusApps/prayertexter/internal/model"
 )
 
+//nolint:gocognit // test function with multiple subtests
 func TestIntercessorPhones(t *testing.T) {
 	i := model.IntercessorPhones{
 		Key: model.IntercessorPhonesKeyValue,

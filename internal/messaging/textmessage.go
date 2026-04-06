@@ -16,8 +16,8 @@ import (
 	"github.com/aws/smithy-go"
 	"github.com/spf13/viper"
 
-	"github.com/4JesusApps/prayertexter/internal/config"
 	"github.com/4JesusApps/prayertexter/internal/apperrors"
+	"github.com/4JesusApps/prayertexter/internal/config"
 )
 
 // A TextMessage represents a received text message from a user.
@@ -95,4 +95,3 @@ func SendText(ctx context.Context, smsClnt TextSender, msg TextMessage) error {
 
 	return apperrors.LogAndWrapError(ctx, lastErr, "failed to send text message", "phone", msg.Phone, "msg", msg.Body)
 }
-

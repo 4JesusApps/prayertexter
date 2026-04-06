@@ -187,7 +187,10 @@ func TestMainFlowBlockUser(t *testing.T) {
 					WeeklyPrayerDate:  "dummy date",
 					WeeklyPrayerLimit: 5,
 				}),
-				testutil.IntercessorPhonesItem(testutil.PhoneMember, testutil.PhoneIntercessor, testutil.PhoneAlt3, testutil.PhoneAdmin),
+				testutil.IntercessorPhonesItem(
+					testutil.PhoneMember, testutil.PhoneIntercessor,
+					testutil.PhoneAlt3, testutil.PhoneAdmin,
+				),
 				testutil.PrayerItem(model.Prayer{
 					Intercessor: model.Member{
 						Intercessor:       true,

@@ -11,7 +11,7 @@ import (
 )
 
 func TestSendText(t *testing.T) {
-	config.InitConfig()
+	config.Load()
 	t.Run("send sms and verify inputs are correct", func(t *testing.T) {
 		msg := messaging.TextMessage{
 			Body:  "test text message",

@@ -4,14 +4,14 @@ package model
 
 // A Member represents someone who has signed up or is in the process of signing up for prayertexter.
 type Member struct {
-	Administrator    bool
-	Intercessor      bool
-	Name             string
-	Phone            string
-	PrayerCount      int
-	SetupStage       int
-	SetupStatus      string
-	WeeklyPrayerDate string
+	Administrator     bool
+	Intercessor       bool
+	Name              string
+	Phone             string
+	PrayerCount       int
+	SetupStage        int
+	SetupStatus       string
+	WeeklyPrayerDate  string
 	WeeklyPrayerLimit int
 }
 

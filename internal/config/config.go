@@ -100,12 +100,12 @@ func Load() *Config {
 			Retry:   viper.GetInt("conf.aws.retry"),
 			Backoff: viper.GetInt("conf.aws.backoff"),
 			DB: DBConfig{
-				Timeout:            viper.GetInt("conf.aws.db.timeout"),
-				MemberTable:        viper.GetString("conf.aws.db.member.table"),
-				ActivePrayerTable:  viper.GetString("conf.aws.db.prayer.activetable"),
-				QueuedPrayerTable:  viper.GetString("conf.aws.db.prayer.queuetable"),
+				Timeout:                viper.GetInt("conf.aws.db.timeout"),
+				MemberTable:            viper.GetString("conf.aws.db.member.table"),
+				ActivePrayerTable:      viper.GetString("conf.aws.db.prayer.activetable"),
+				QueuedPrayerTable:      viper.GetString("conf.aws.db.prayer.queuetable"),
 				IntercessorPhonesTable: viper.GetString("conf.aws.db.intercessorphones.table"),
-				BlockedPhonesTable: viper.GetString("conf.aws.db.blockedphones.table"),
+				BlockedPhonesTable:     viper.GetString("conf.aws.db.blockedphones.table"),
 			},
 		},
 		SMS: SMSConfig{
