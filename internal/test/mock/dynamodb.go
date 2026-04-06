@@ -3,6 +3,7 @@ package mock
 import (
 	"context"
 
+	"github.com/4JesusApps/prayertexter/internal/test/testutil"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 )
 
@@ -17,10 +18,7 @@ type DDBConnecter struct {
 	DeleteItemInputs []dynamodb.DeleteItemInput
 	ScanInputs       []dynamodb.ScanInput
 
-	GetItemResults []struct {
-		Output *dynamodb.GetItemOutput
-		Error  error
-	}
+	GetItemResults []testutil.GetItemResult
 	PutItemResults []struct {
 		Error error
 	}

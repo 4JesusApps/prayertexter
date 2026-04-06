@@ -9,6 +9,7 @@ import (
 	"github.com/4JesusApps/prayertexter/internal/messaging"
 	"github.com/4JesusApps/prayertexter/internal/model"
 	"github.com/4JesusApps/prayertexter/internal/test/mock"
+	"github.com/4JesusApps/prayertexter/internal/test/testutil"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
@@ -45,10 +46,7 @@ type Case struct {
 		Table string
 	}
 
-	MockGetItemResults []struct {
-		Output *dynamodb.GetItemOutput
-		Error  error
-	}
+	MockGetItemResults []testutil.GetItemResult
 	MockPutItemResults []struct {
 		Error error
 	}

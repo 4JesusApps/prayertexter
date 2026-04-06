@@ -3,7 +3,6 @@ package service_test
 import (
 	"context"
 	"errors"
-	"strconv"
 	"testing"
 	"time"
 
@@ -14,8 +13,7 @@ import (
 	"github.com/4JesusApps/prayertexter/internal/service"
 	"github.com/4JesusApps/prayertexter/internal/test"
 	"github.com/4JesusApps/prayertexter/internal/test/mock"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/4JesusApps/prayertexter/internal/test/testutil"
 )
 
 func TestMainFlowBlockUser(t *testing.T) {
@@ -25,30 +23,22 @@ func TestMainFlowBlockUser(t *testing.T) {
 
 			InitialMessage: messaging.TextMessage{
 				Body:  "#BLOCK 777-777-7777",
-				Phone: "+11234567890",
+				Phone: testutil.PhoneMember,
 			},
 
-			MockGetItemResults: []struct {
-				Output *dynamodb.GetItemOutput
-				Error  error
-			}{
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
-							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupComplete},
-						},
-					},
-					Error: nil,
-				},
+			MockGetItemResults: []testutil.GetItemResult{
+				testutil.MemberItem(model.Member{
+					Name:        "John Doe",
+					Phone:       testutil.PhoneMember,
+					SetupStage:  model.SignUpStepFinal,
+					SetupStatus: model.SetupComplete,
+				}),
 			},
 
 			ExpectedTexts: []messaging.TextMessage{
 				{
 					Body:  messaging.MsgUnauthorized,
-					Phone: "+11234567890",
+					Phone: testutil.PhoneMember,
 				},
 			},
 
@@ -60,31 +50,23 @@ func TestMainFlowBlockUser(t *testing.T) {
 
 			InitialMessage: messaging.TextMessage{
 				Body:  "#block 123",
-				Phone: "+17777777777",
+				Phone: testutil.PhoneAdmin,
 			},
 
-			MockGetItemResults: []struct {
-				Output *dynamodb.GetItemOutput
-				Error  error
-			}{
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Administrator": &types.AttributeValueMemberBOOL{Value: true},
-							"Name":          &types.AttributeValueMemberS{Value: "Admin User"},
-							"Phone":         &types.AttributeValueMemberS{Value: "+17777777777"},
-							"SetupStage":    &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-							"SetupStatus":   &types.AttributeValueMemberS{Value: model.SetupComplete},
-						},
-					},
-					Error: nil,
-				},
+			MockGetItemResults: []testutil.GetItemResult{
+				testutil.MemberItem(model.Member{
+					Administrator: true,
+					Name:          "Admin User",
+					Phone:         testutil.PhoneAdmin,
+					SetupStage:    model.SignUpStepFinal,
+					SetupStatus:   model.SetupComplete,
+				}),
 			},
 
 			ExpectedTexts: []messaging.TextMessage{
 				{
 					Body:  messaging.MsgInvalidPhone,
-					Phone: "+17777777777",
+					Phone: testutil.PhoneAdmin,
 				},
 			},
 
@@ -96,44 +78,24 @@ func TestMainFlowBlockUser(t *testing.T) {
 
 			InitialMessage: messaging.TextMessage{
 				Body:  "#block 123-456-7890",
-				Phone: "+17777777777",
+				Phone: testutil.PhoneAdmin,
 			},
 
-			MockGetItemResults: []struct {
-				Output *dynamodb.GetItemOutput
-				Error  error
-			}{
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Administrator": &types.AttributeValueMemberBOOL{Value: true},
-							"Name":          &types.AttributeValueMemberS{Value: "Admin User"},
-							"Phone":         &types.AttributeValueMemberS{Value: "+17777777777"},
-							"SetupStage":    &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-							"SetupStatus":   &types.AttributeValueMemberS{Value: model.SetupComplete},
-						},
-					},
-					Error: nil,
-				},
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: model.BlockedPhonesKeyValue},
-							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
-								&types.AttributeValueMemberS{Value: "+11234567890"},
-								&types.AttributeValueMemberS{Value: "+12222222222"},
-								&types.AttributeValueMemberS{Value: "+13333333333"},
-							}},
-						},
-					},
-					Error: nil,
-				},
+			MockGetItemResults: []testutil.GetItemResult{
+				testutil.MemberItem(model.Member{
+					Administrator: true,
+					Name:          "Admin User",
+					Phone:         testutil.PhoneAdmin,
+					SetupStage:    model.SignUpStepFinal,
+					SetupStatus:   model.SetupComplete,
+				}),
+				testutil.BlockedPhonesItem(testutil.PhoneMember, testutil.PhoneAlt1, testutil.PhoneAlt2),
 			},
 
 			ExpectedTexts: []messaging.TextMessage{
 				{
 					Body:  messaging.MsgUserAlreadyBlocked,
-					Phone: "+17777777777",
+					Phone: testutil.PhoneAdmin,
 				},
 			},
 
@@ -145,37 +107,18 @@ func TestMainFlowBlockUser(t *testing.T) {
 
 			InitialMessage: messaging.TextMessage{
 				Body:  "#block 123-456-7890",
-				Phone: "+17777777777",
+				Phone: testutil.PhoneAdmin,
 			},
 
-			MockGetItemResults: []struct {
-				Output *dynamodb.GetItemOutput
-				Error  error
-			}{
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Administrator": &types.AttributeValueMemberBOOL{Value: true},
-							"Name":          &types.AttributeValueMemberS{Value: "Admin User"},
-							"Phone":         &types.AttributeValueMemberS{Value: "+17777777777"},
-							"SetupStage":    &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-							"SetupStatus":   &types.AttributeValueMemberS{Value: model.SetupComplete},
-						},
-					},
-					Error: nil,
-				},
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: model.BlockedPhonesKeyValue},
-							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
-								&types.AttributeValueMemberS{Value: "+12222222222"},
-								&types.AttributeValueMemberS{Value: "+13333333333"},
-							}},
-						},
-					},
-					Error: nil,
-				},
+			MockGetItemResults: []testutil.GetItemResult{
+				testutil.MemberItem(model.Member{
+					Administrator: true,
+					Name:          "Admin User",
+					Phone:         testutil.PhoneAdmin,
+					SetupStage:    model.SignUpStepFinal,
+					SetupStatus:   model.SetupComplete,
+				}),
+				testutil.BlockedPhonesItem(testutil.PhoneAlt1, testutil.PhoneAlt2),
 			},
 
 			ExpectedDeleteItems: []struct {
@@ -183,7 +126,7 @@ func TestMainFlowBlockUser(t *testing.T) {
 				Table string
 			}{
 				{
-					Key:   "+11234567890",
+					Key:   testutil.PhoneMember,
 					Table: "Member",
 				},
 			},
@@ -191,24 +134,24 @@ func TestMainFlowBlockUser(t *testing.T) {
 			ExpectedBlockPhones: model.BlockedPhones{
 				Key: model.BlockedPhonesKeyValue,
 				Phones: []string{
-					"+12222222222",
-					"+13333333333",
-					"+11234567890",
+					testutil.PhoneAlt1,
+					testutil.PhoneAlt2,
+					testutil.PhoneMember,
 				},
 			},
 
 			ExpectedTexts: []messaging.TextMessage{
 				{
 					Body:  messaging.MsgRemoveUser,
-					Phone: "+11234567890",
+					Phone: testutil.PhoneMember,
 				},
 				{
 					Body:  messaging.MsgBlockedNotification + messaging.MsgHelp,
-					Phone: "+11234567890",
+					Phone: testutil.PhoneMember,
 				},
 				{
 					Body:  messaging.MsgSuccessfullyBlocked,
-					Phone: "+17777777777",
+					Phone: testutil.PhoneAdmin,
 				},
 			},
 
@@ -222,135 +165,77 @@ func TestMainFlowBlockUser(t *testing.T) {
 
 			InitialMessage: messaging.TextMessage{
 				Body:  "#block 123-456-7890",
-				Phone: "+17777777777",
+				Phone: testutil.PhoneAdmin,
 			},
 
-			MockGetItemResults: []struct {
-				Output *dynamodb.GetItemOutput
-				Error  error
-			}{
-
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Administrator": &types.AttributeValueMemberBOOL{Value: true},
-							"Name":          &types.AttributeValueMemberS{Value: "Admin User"},
-							"Phone":         &types.AttributeValueMemberS{Value: "+17777777777"},
-							"SetupStage":    &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-							"SetupStatus":   &types.AttributeValueMemberS{Value: model.SetupComplete},
-						},
+			MockGetItemResults: []testutil.GetItemResult{
+				testutil.MemberItem(model.Member{
+					Administrator: true,
+					Name:          "Admin User",
+					Phone:         testutil.PhoneAdmin,
+					SetupStage:    model.SignUpStepFinal,
+					SetupStatus:   model.SetupComplete,
+				}),
+				testutil.BlockedPhonesItem(testutil.PhoneAlt1, testutil.PhoneAlt2),
+				testutil.MemberItem(model.Member{
+					Intercessor:       true,
+					Name:              "Bad User",
+					Phone:             testutil.PhoneMember,
+					PrayerCount:       1,
+					SetupStage:        model.SignUpStepFinal,
+					SetupStatus:       model.SetupComplete,
+					WeeklyPrayerDate:  "dummy date",
+					WeeklyPrayerLimit: 5,
+				}),
+				testutil.IntercessorPhonesItem(testutil.PhoneMember, testutil.PhoneIntercessor, testutil.PhoneAlt3, testutil.PhoneAdmin),
+				testutil.PrayerItem(model.Prayer{
+					Intercessor: model.Member{
+						Intercessor:       true,
+						Name:              "Bad User",
+						Phone:             testutil.PhoneMember,
+						PrayerCount:       1,
+						SetupStage:        model.SignUpStepFinal,
+						SetupStatus:       model.SetupComplete,
+						WeeklyPrayerDate:  "dummy date",
+						WeeklyPrayerLimit: 5,
 					},
-					Error: nil,
-				},
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: model.BlockedPhonesKeyValue},
-							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
-								&types.AttributeValueMemberS{Value: "+12222222222"},
-								&types.AttributeValueMemberS{Value: "+13333333333"},
-							}},
-						},
+					IntercessorPhone: testutil.PhoneMember,
+					Request:          "Please pray me..",
+					Requestor: model.Member{
+						Name:        "John Doe",
+						Phone:       testutil.PhoneAlt4,
+						SetupStage:  model.SignUpStepFinal,
+						SetupStatus: model.SetupComplete,
 					},
-					Error: nil,
-				},
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
-							"Name":              &types.AttributeValueMemberS{Value: "Bad User"},
-							"Phone":             &types.AttributeValueMemberS{Value: "+11234567890"},
-							"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
-							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "dummy date"},
-							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
-						},
+				}),
+				testutil.PrayerItem(model.Prayer{
+					Intercessor: model.Member{
+						Intercessor:       true,
+						Name:              "Bad User",
+						Phone:             testutil.PhoneMember,
+						PrayerCount:       1,
+						SetupStage:        model.SignUpStepFinal,
+						SetupStatus:       model.SetupComplete,
+						WeeklyPrayerDate:  "dummy date",
+						WeeklyPrayerLimit: 5,
 					},
-					Error: nil,
-				},
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: model.IntercessorPhonesKeyValue},
-							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
-								&types.AttributeValueMemberS{Value: "+11234567890"},
-								&types.AttributeValueMemberS{Value: "+11111111111"},
-								&types.AttributeValueMemberS{Value: "+14444444444"},
-								&types.AttributeValueMemberS{Value: "+17777777777"},
-							}},
-						},
+					IntercessorPhone: testutil.PhoneMember,
+					Request:          "Please pray me..",
+					Requestor: model.Member{
+						Name:        "John Doe",
+						Phone:       testutil.PhoneAlt4,
+						SetupStage:  model.SignUpStepFinal,
+						SetupStatus: model.SetupComplete,
 					},
-					Error: nil,
-				},
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Intercessor": &types.AttributeValueMemberM{
-								Value: map[string]types.AttributeValue{
-									"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
-									"Name":              &types.AttributeValueMemberS{Value: "Bad User"},
-									"Phone":             &types.AttributeValueMemberS{Value: "+11234567890"},
-									"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
-									"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-									"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
-									"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "dummy date"},
-									"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
-								},
-							},
-							"IntercessorPhone": &types.AttributeValueMemberS{Value: "+11234567890"},
-							"Request":          &types.AttributeValueMemberS{Value: "Please pray me.."},
-							"Requestor": &types.AttributeValueMemberM{
-								Value: map[string]types.AttributeValue{
-									"Intercessor": &types.AttributeValueMemberBOOL{Value: false},
-									"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
-									"Phone":       &types.AttributeValueMemberS{Value: "+18888888888"},
-									"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-									"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupComplete},
-								},
-							},
-						},
-					},
-					Error: nil,
-				},
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Intercessor": &types.AttributeValueMemberM{
-								Value: map[string]types.AttributeValue{
-									"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
-									"Name":              &types.AttributeValueMemberS{Value: "Bad User"},
-									"Phone":             &types.AttributeValueMemberS{Value: "+11234567890"},
-									"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
-									"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-									"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
-									"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "dummy date"},
-									"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
-								},
-							},
-							"IntercessorPhone": &types.AttributeValueMemberS{Value: "+11234567890"},
-							"Request":          &types.AttributeValueMemberS{Value: "Please pray me.."},
-							"Requestor": &types.AttributeValueMemberM{
-								Value: map[string]types.AttributeValue{
-									"Intercessor": &types.AttributeValueMemberBOOL{Value: false},
-									"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
-									"Phone":       &types.AttributeValueMemberS{Value: "+18888888888"},
-									"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-									"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupComplete},
-								},
-							},
-						},
-					},
-					Error: nil,
-				},
+				}),
 			},
 
 			ExpectedIntPhones: model.IntercessorPhones{
 				Key: model.IntercessorPhonesKeyValue,
 				Phones: []string{
-					"+11111111111",
-					"+14444444444",
-					"+17777777777",
+					testutil.PhoneIntercessor,
+					testutil.PhoneAlt3,
+					testutil.PhoneAdmin,
 				},
 			},
 
@@ -362,7 +247,7 @@ func TestMainFlowBlockUser(t *testing.T) {
 					Requestor: model.Member{
 						Intercessor: false,
 						Name:        "John Doe",
-						Phone:       "+18888888888",
+						Phone:       testutil.PhoneAlt4,
 						SetupStage:  model.SignUpStepFinal,
 						SetupStatus: model.SetupComplete,
 					},
@@ -374,11 +259,11 @@ func TestMainFlowBlockUser(t *testing.T) {
 				Table string
 			}{
 				{
-					Key:   "+11234567890",
+					Key:   testutil.PhoneMember,
 					Table: "Member",
 				},
 				{
-					Key:   "+11234567890",
+					Key:   testutil.PhoneMember,
 					Table: "ActivePrayer",
 				},
 			},
@@ -386,24 +271,24 @@ func TestMainFlowBlockUser(t *testing.T) {
 			ExpectedBlockPhones: model.BlockedPhones{
 				Key: model.BlockedPhonesKeyValue,
 				Phones: []string{
-					"+12222222222",
-					"+13333333333",
-					"+11234567890",
+					testutil.PhoneAlt1,
+					testutil.PhoneAlt2,
+					testutil.PhoneMember,
 				},
 			},
 
 			ExpectedTexts: []messaging.TextMessage{
 				{
 					Body:  messaging.MsgRemoveUser,
-					Phone: "+11234567890",
+					Phone: testutil.PhoneMember,
 				},
 				{
 					Body:  messaging.MsgBlockedNotification + messaging.MsgHelp,
-					Phone: "+11234567890",
+					Phone: testutil.PhoneMember,
 				},
 				{
 					Body:  messaging.MsgSuccessfullyBlocked,
-					Phone: "+17777777777",
+					Phone: testutil.PhoneAdmin,
 				},
 			},
 
@@ -421,30 +306,10 @@ func TestMainFlowBlockUser(t *testing.T) {
 				Phone: "+19999999999",
 			},
 
-			MockGetItemResults: []struct {
-				Output *dynamodb.GetItemOutput
-				Error  error
-			}{
-				{
-					// Member empty get response.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: model.BlockedPhonesKeyValue},
-							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
-								&types.AttributeValueMemberS{Value: "+11111111111"},
-								&types.AttributeValueMemberS{Value: "+12222222222"},
-								&types.AttributeValueMemberS{Value: "+13333333333"},
-								&types.AttributeValueMemberS{Value: "+14444444444"},
-								&types.AttributeValueMemberS{Value: "+19999999999"},
-							}},
-						},
-					},
-					Error: nil,
-				},
+			MockGetItemResults: []testutil.GetItemResult{
+				// Member empty get response.
+				testutil.EmptyGetResult(),
+				testutil.BlockedPhonesItem(testutil.PhoneIntercessor, testutil.PhoneAlt1, testutil.PhoneAlt2, testutil.PhoneAlt3, "+19999999999"),
 			},
 
 			ExpectedGetItemCalls: 2,
@@ -488,12 +353,12 @@ func TestMainFlowSignUp(t *testing.T) {
 
 			InitialMessage: messaging.TextMessage{
 				Body:  "pray./,, ",
-				Phone: "+11234567890",
+				Phone: testutil.PhoneMember,
 			},
 
 			ExpectedMembers: []model.Member{
 				{
-					Phone:       "+11234567890",
+					Phone:       testutil.PhoneMember,
 					SetupStage:  model.SignUpStepOne,
 					SetupStatus: model.SetupInProgress,
 				},
@@ -502,7 +367,7 @@ func TestMainFlowSignUp(t *testing.T) {
 			ExpectedTexts: []messaging.TextMessage{
 				{
 					Body:  messaging.MsgNameRequest,
-					Phone: "+11234567890",
+					Phone: testutil.PhoneMember,
 				},
 			},
 
@@ -515,12 +380,12 @@ func TestMainFlowSignUp(t *testing.T) {
 
 			InitialMessage: messaging.TextMessage{
 				Body:  "Pray",
-				Phone: "+11234567890",
+				Phone: testutil.PhoneMember,
 			},
 
 			ExpectedMembers: []model.Member{
 				{
-					Phone:       "+11234567890",
+					Phone:       testutil.PhoneMember,
 					SetupStage:  model.SignUpStepOne,
 					SetupStatus: model.SetupInProgress,
 				},
@@ -529,7 +394,7 @@ func TestMainFlowSignUp(t *testing.T) {
 			ExpectedTexts: []messaging.TextMessage{
 				{
 					Body:  messaging.MsgNameRequest,
-					Phone: "+11234567890",
+					Phone: testutil.PhoneMember,
 				},
 			},
 
@@ -542,13 +407,10 @@ func TestMainFlowSignUp(t *testing.T) {
 
 			InitialMessage: messaging.TextMessage{
 				Body:  "pray",
-				Phone: "+11234567890",
+				Phone: testutil.PhoneMember,
 			},
 
-			MockGetItemResults: []struct {
-				Output *dynamodb.GetItemOutput
-				Error  error
-			}{
+			MockGetItemResults: []testutil.GetItemResult{
 				{
 					Output: nil,
 					Error:  errors.New("first get item failure"),
@@ -563,34 +425,23 @@ func TestMainFlowSignUp(t *testing.T) {
 
 			InitialMessage: messaging.TextMessage{
 				Body:  "John Doe",
-				Phone: "+11234567890",
+				Phone: testutil.PhoneMember,
 			},
 
-			MockGetItemResults: []struct {
-				Output *dynamodb.GetItemOutput
-				Error  error
-			}{
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepOne)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupInProgress},
-						},
-					},
-					Error: nil,
-				},
-				{
-					// BlockedPhones empty get response.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
+			MockGetItemResults: []testutil.GetItemResult{
+				testutil.MemberItem(model.Member{
+					Phone:       testutil.PhoneMember,
+					SetupStage:  model.SignUpStepOne,
+					SetupStatus: model.SetupInProgress,
+				}),
+				// BlockedPhones empty get response.
+				testutil.EmptyGetResult(),
 			},
 
 			ExpectedMembers: []model.Member{
 				{
 					Name:        "John Doe",
-					Phone:       "+11234567890",
+					Phone:       testutil.PhoneMember,
 					SetupStage:  model.SignUpStepTwo,
 					SetupStatus: model.SetupInProgress,
 				},
@@ -599,7 +450,7 @@ func TestMainFlowSignUp(t *testing.T) {
 			ExpectedTexts: []messaging.TextMessage{
 				{
 					Body:  messaging.MsgMemberTypeRequest,
-					Phone: "+11234567890",
+					Phone: testutil.PhoneMember,
 				},
 			},
 
@@ -612,34 +463,23 @@ func TestMainFlowSignUp(t *testing.T) {
 
 			InitialMessage: messaging.TextMessage{
 				Body:  "Bastard",
-				Phone: "+11234567890",
+				Phone: testutil.PhoneMember,
 			},
 
-			MockGetItemResults: []struct {
-				Output *dynamodb.GetItemOutput
-				Error  error
-			}{
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepOne)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupInProgress},
-						},
-					},
-					Error: nil,
-				},
-				{
-					// BlockedPhones empty get response.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
+			MockGetItemResults: []testutil.GetItemResult{
+				testutil.MemberItem(model.Member{
+					Phone:       testutil.PhoneMember,
+					SetupStage:  model.SignUpStepOne,
+					SetupStatus: model.SetupInProgress,
+				}),
+				// BlockedPhones empty get response.
+				testutil.EmptyGetResult(),
 			},
 
 			ExpectedTexts: []messaging.TextMessage{
 				{
 					Body:  messaging.MsgProfanityDetected,
-					Phone: "+11234567890",
+					Phone: testutil.PhoneMember,
 				},
 			},
 
@@ -651,34 +491,23 @@ func TestMainFlowSignUp(t *testing.T) {
 
 			InitialMessage: messaging.TextMessage{
 				Body:  "A",
-				Phone: "+11234567890",
+				Phone: testutil.PhoneMember,
 			},
 
-			MockGetItemResults: []struct {
-				Output *dynamodb.GetItemOutput
-				Error  error
-			}{
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepOne)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupInProgress},
-						},
-					},
-					Error: nil,
-				},
-				{
-					// BlockedPhones empty get response.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
+			MockGetItemResults: []testutil.GetItemResult{
+				testutil.MemberItem(model.Member{
+					Phone:       testutil.PhoneMember,
+					SetupStage:  model.SignUpStepOne,
+					SetupStatus: model.SetupInProgress,
+				}),
+				// BlockedPhones empty get response.
+				testutil.EmptyGetResult(),
 			},
 
 			ExpectedTexts: []messaging.TextMessage{
 				{
 					Body:  messaging.MsgInvalidName,
-					Phone: "+11234567890",
+					Phone: testutil.PhoneMember,
 				},
 			},
 
@@ -690,34 +519,23 @@ func TestMainFlowSignUp(t *testing.T) {
 
 			InitialMessage: messaging.TextMessage{
 				Body:  "Dude!",
-				Phone: "+11234567890",
+				Phone: testutil.PhoneMember,
 			},
 
-			MockGetItemResults: []struct {
-				Output *dynamodb.GetItemOutput
-				Error  error
-			}{
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepOne)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupInProgress},
-						},
-					},
-					Error: nil,
-				},
-				{
-					// BlockedPhones empty get response.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
+			MockGetItemResults: []testutil.GetItemResult{
+				testutil.MemberItem(model.Member{
+					Phone:       testutil.PhoneMember,
+					SetupStage:  model.SignUpStepOne,
+					SetupStatus: model.SetupInProgress,
+				}),
+				// BlockedPhones empty get response.
+				testutil.EmptyGetResult(),
 			},
 
 			ExpectedTexts: []messaging.TextMessage{
 				{
 					Body:  messaging.MsgInvalidName,
-					Phone: "+11234567890",
+					Phone: testutil.PhoneMember,
 				},
 			},
 
@@ -729,34 +547,23 @@ func TestMainFlowSignUp(t *testing.T) {
 
 			InitialMessage: messaging.TextMessage{
 				Body:  "2",
-				Phone: "+11234567890",
+				Phone: testutil.PhoneMember,
 			},
 
-			MockGetItemResults: []struct {
-				Output *dynamodb.GetItemOutput
-				Error  error
-			}{
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepOne)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupInProgress},
-						},
-					},
-					Error: nil,
-				},
-				{
-					// BlockedPhones empty get response.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
+			MockGetItemResults: []testutil.GetItemResult{
+				testutil.MemberItem(model.Member{
+					Phone:       testutil.PhoneMember,
+					SetupStage:  model.SignUpStepOne,
+					SetupStatus: model.SetupInProgress,
+				}),
+				// BlockedPhones empty get response.
+				testutil.EmptyGetResult(),
 			},
 
 			ExpectedMembers: []model.Member{
 				{
 					Name:        "Anonymous",
-					Phone:       "+11234567890",
+					Phone:       testutil.PhoneMember,
 					SetupStage:  model.SignUpStepTwo,
 					SetupStatus: model.SetupInProgress,
 				},
@@ -765,7 +572,7 @@ func TestMainFlowSignUp(t *testing.T) {
 			ExpectedTexts: []messaging.TextMessage{
 				{
 					Body:  messaging.MsgMemberTypeRequest,
-					Phone: "+11234567890",
+					Phone: testutil.PhoneMember,
 				},
 			},
 
@@ -779,36 +586,25 @@ func TestMainFlowSignUp(t *testing.T) {
 
 			InitialMessage: messaging.TextMessage{
 				Body:  "1 !@#$%^&*() \n \n ",
-				Phone: "+11234567890",
+				Phone: testutil.PhoneMember,
 			},
 
-			MockGetItemResults: []struct {
-				Output *dynamodb.GetItemOutput
-				Error  error
-			}{
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
-							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepTwo)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupInProgress},
-						},
-					},
-					Error: nil,
-				},
-				{
-					// BlockedPhones empty get response.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
+			MockGetItemResults: []testutil.GetItemResult{
+				testutil.MemberItem(model.Member{
+					Name:        "John Doe",
+					Phone:       testutil.PhoneMember,
+					SetupStage:  model.SignUpStepTwo,
+					SetupStatus: model.SetupInProgress,
+				}),
+				// BlockedPhones empty get response.
+				testutil.EmptyGetResult(),
 			},
 
 			ExpectedMembers: []model.Member{
 				{
 					Intercessor: false,
 					Name:        "John Doe",
-					Phone:       "+11234567890",
+					Phone:       testutil.PhoneMember,
 					SetupStage:  model.SignUpStepFinal,
 					SetupStatus: model.SetupComplete,
 				},
@@ -817,7 +613,7 @@ func TestMainFlowSignUp(t *testing.T) {
 			ExpectedTexts: []messaging.TextMessage{
 				{
 					Body:  messaging.MsgPrayerInstructions + "\n\n" + messaging.MsgSignUpConfirmation,
-					Phone: "+11234567890",
+					Phone: testutil.PhoneMember,
 				},
 			},
 
@@ -830,36 +626,25 @@ func TestMainFlowSignUp(t *testing.T) {
 
 			InitialMessage: messaging.TextMessage{
 				Body:  "2",
-				Phone: "+11234567890",
+				Phone: testutil.PhoneMember,
 			},
 
-			MockGetItemResults: []struct {
-				Output *dynamodb.GetItemOutput
-				Error  error
-			}{
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
-							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepTwo)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupInProgress},
-						},
-					},
-					Error: nil,
-				},
-				{
-					// BlockedPhones empty get response.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
+			MockGetItemResults: []testutil.GetItemResult{
+				testutil.MemberItem(model.Member{
+					Name:        "John Doe",
+					Phone:       testutil.PhoneMember,
+					SetupStage:  model.SignUpStepTwo,
+					SetupStatus: model.SetupInProgress,
+				}),
+				// BlockedPhones empty get response.
+				testutil.EmptyGetResult(),
 			},
 
 			ExpectedMembers: []model.Member{
 				{
 					Intercessor: true,
 					Name:        "John Doe",
-					Phone:       "+11234567890",
+					Phone:       testutil.PhoneMember,
 					SetupStage:  model.SignUpStepThree,
 					SetupStatus: model.SetupInProgress,
 				},
@@ -868,7 +653,7 @@ func TestMainFlowSignUp(t *testing.T) {
 			ExpectedTexts: []messaging.TextMessage{
 				{
 					Body:  messaging.MsgPrayerNumRequest,
-					Phone: "+11234567890",
+					Phone: testutil.PhoneMember,
 				},
 			},
 
@@ -882,50 +667,27 @@ func TestMainFlowSignUp(t *testing.T) {
 
 			InitialMessage: messaging.TextMessage{
 				Body:  "9,999",
-				Phone: "+11234567890",
+				Phone: testutil.PhoneMember,
 			},
 
-			MockGetItemResults: []struct {
-				Output *dynamodb.GetItemOutput
-				Error  error
-			}{
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Intercessor": &types.AttributeValueMemberBOOL{Value: true},
-							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
-							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepThree)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupInProgress},
-						},
-					},
-					Error: nil,
-				},
-				{
-					// BlockedPhones empty get response.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: model.IntercessorPhonesKeyValue},
-							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
-								&types.AttributeValueMemberS{Value: "+11111111111"},
-								&types.AttributeValueMemberS{Value: "+12222222222"},
-								&types.AttributeValueMemberS{Value: "+13333333333"},
-							}},
-						},
-					},
-					Error: nil,
-				},
+			MockGetItemResults: []testutil.GetItemResult{
+				testutil.MemberItem(model.Member{
+					Intercessor: true,
+					Name:        "John Doe",
+					Phone:       testutil.PhoneMember,
+					SetupStage:  model.SignUpStepThree,
+					SetupStatus: model.SetupInProgress,
+				}),
+				// BlockedPhones empty get response.
+				testutil.EmptyGetResult(),
+				testutil.IntercessorPhonesItem(testutil.PhoneIntercessor, testutil.PhoneAlt1, testutil.PhoneAlt2),
 			},
 
 			ExpectedMembers: []model.Member{
 				{
 					Intercessor:       true,
 					Name:              "John Doe",
-					Phone:             "+11234567890",
+					Phone:             testutil.PhoneMember,
 					SetupStage:        model.SignUpStepFinal,
 					SetupStatus:       model.SetupComplete,
 					WeeklyPrayerDate:  "dummy date/time",
@@ -936,10 +698,10 @@ func TestMainFlowSignUp(t *testing.T) {
 			ExpectedIntPhones: model.IntercessorPhones{
 				Key: model.IntercessorPhonesKeyValue,
 				Phones: []string{
-					"+11111111111",
-					"+12222222222",
-					"+13333333333",
-					"+11234567890",
+					testutil.PhoneIntercessor,
+					testutil.PhoneAlt1,
+					testutil.PhoneAlt2,
+					testutil.PhoneMember,
 				},
 			},
 
@@ -947,7 +709,7 @@ func TestMainFlowSignUp(t *testing.T) {
 				{
 					Body: messaging.MsgPrayerInstructions + "\n\n" + messaging.MsgIntercessorInstructions + "\n\n" +
 						messaging.MsgSignUpConfirmation,
-					Phone: "+11234567890",
+					Phone: testutil.PhoneMember,
 				},
 			},
 
@@ -960,43 +722,20 @@ func TestMainFlowSignUp(t *testing.T) {
 
 			InitialMessage: messaging.TextMessage{
 				Body:  "10",
-				Phone: "+11234567890",
+				Phone: testutil.PhoneMember,
 			},
 
-			MockGetItemResults: []struct {
-				Output *dynamodb.GetItemOutput
-				Error  error
-			}{
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Intercessor": &types.AttributeValueMemberBOOL{Value: true},
-							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
-							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepThree)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupInProgress},
-						},
-					},
-					Error: nil,
-				},
-				{
-					// BlockedPhones empty get response.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: model.IntercessorPhonesKeyValue},
-							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
-								&types.AttributeValueMemberS{Value: "+11111111111"},
-								&types.AttributeValueMemberS{Value: "+12222222222"},
-								&types.AttributeValueMemberS{Value: "+13333333333"},
-							}},
-						},
-					},
-					Error: nil,
-				},
+			MockGetItemResults: []testutil.GetItemResult{
+				testutil.MemberItem(model.Member{
+					Intercessor: true,
+					Name:        "John Doe",
+					Phone:       testutil.PhoneMember,
+					SetupStage:  model.SignUpStepThree,
+					SetupStatus: model.SetupInProgress,
+				}),
+				// BlockedPhones empty get response.
+				testutil.EmptyGetResult(),
+				testutil.IntercessorPhonesItem(testutil.PhoneIntercessor, testutil.PhoneAlt1, testutil.PhoneAlt2),
 			},
 
 			MockPutItemResults: []struct {
@@ -1049,7 +788,7 @@ func TestMainFlowSignUpWrongInputs(t *testing.T) {
 
 			InitialMessage: messaging.TextMessage{
 				Body:  "prayyy",
-				Phone: "+11234567890",
+				Phone: testutil.PhoneMember,
 			},
 
 			ExpectedGetItemCalls: 2,
@@ -1059,35 +798,24 @@ func TestMainFlowSignUpWrongInputs(t *testing.T) {
 
 			InitialMessage: messaging.TextMessage{
 				Body:  "wrong response to question",
-				Phone: "+11234567890",
+				Phone: testutil.PhoneMember,
 			},
 
-			MockGetItemResults: []struct {
-				Output *dynamodb.GetItemOutput
-				Error  error
-			}{
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
-							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepTwo)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupInProgress},
-						},
-					},
-					Error: nil,
-				},
-				{
-					// BlockedPhones empty get response.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
+			MockGetItemResults: []testutil.GetItemResult{
+				testutil.MemberItem(model.Member{
+					Name:        "John Doe",
+					Phone:       testutil.PhoneMember,
+					SetupStage:  model.SignUpStepTwo,
+					SetupStatus: model.SetupInProgress,
+				}),
+				// BlockedPhones empty get response.
+				testutil.EmptyGetResult(),
 			},
 
 			ExpectedTexts: []messaging.TextMessage{
 				{
 					Body:  messaging.MsgWrongInput,
-					Phone: "+11234567890",
+					Phone: testutil.PhoneMember,
 				},
 			},
 
@@ -1099,36 +827,25 @@ func TestMainFlowSignUpWrongInputs(t *testing.T) {
 
 			InitialMessage: messaging.TextMessage{
 				Body:  "wrong response to question",
-				Phone: "+11234567890",
+				Phone: testutil.PhoneMember,
 			},
 
-			MockGetItemResults: []struct {
-				Output *dynamodb.GetItemOutput
-				Error  error
-			}{
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Intercessor": &types.AttributeValueMemberBOOL{Value: true},
-							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
-							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepThree)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupInProgress},
-						},
-					},
-					Error: nil,
-				},
-				{
-					// BlockedPhones empty get response.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
+			MockGetItemResults: []testutil.GetItemResult{
+				testutil.MemberItem(model.Member{
+					Intercessor: true,
+					Name:        "John Doe",
+					Phone:       testutil.PhoneMember,
+					SetupStage:  model.SignUpStepThree,
+					SetupStatus: model.SetupInProgress,
+				}),
+				// BlockedPhones empty get response.
+				testutil.EmptyGetResult(),
 			},
 
 			ExpectedTexts: []messaging.TextMessage{
 				{
 					Body:  messaging.MsgWrongInput,
-					Phone: "+11234567890",
+					Phone: testutil.PhoneMember,
 				},
 			},
 
@@ -1163,29 +880,18 @@ func TestMainFlowMemberDelete(t *testing.T) {
 
 			InitialMessage: messaging.TextMessage{
 				Body:  "cancel",
-				Phone: "+11234567890",
+				Phone: testutil.PhoneMember,
 			},
 
-			MockGetItemResults: []struct {
-				Output *dynamodb.GetItemOutput
-				Error  error
-			}{
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
-							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupComplete},
-						},
-					},
-					Error: nil,
-				},
-				{
-					// BlockedPhones empty get response.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
+			MockGetItemResults: []testutil.GetItemResult{
+				testutil.MemberItem(model.Member{
+					Name:        "John Doe",
+					Phone:       testutil.PhoneMember,
+					SetupStage:  model.SignUpStepFinal,
+					SetupStatus: model.SetupComplete,
+				}),
+				// BlockedPhones empty get response.
+				testutil.EmptyGetResult(),
 			},
 
 			ExpectedDeleteItems: []struct {
@@ -1193,7 +899,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 				Table string
 			}{
 				{
-					Key:   "+11234567890",
+					Key:   testutil.PhoneMember,
 					Table: "Member",
 				},
 			},
@@ -1201,7 +907,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 			ExpectedTexts: []messaging.TextMessage{
 				{
 					Body:  messaging.MsgRemoveUser,
-					Phone: "+11234567890",
+					Phone: testutil.PhoneMember,
 				},
 			},
 
@@ -1214,54 +920,30 @@ func TestMainFlowMemberDelete(t *testing.T) {
 
 			InitialMessage: messaging.TextMessage{
 				Body:  "STOP",
-				Phone: "+14444444444",
+				Phone: testutil.PhoneAlt3,
 			},
 
-			MockGetItemResults: []struct {
-				Output *dynamodb.GetItemOutput
-				Error  error
-			}{
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
-							"Name":              &types.AttributeValueMemberS{Value: "Intercessor4"},
-							"Phone":             &types.AttributeValueMemberS{Value: "+14444444444"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
-							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "dummy date"},
-							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
-						},
-					},
-					Error: nil,
-				},
-				{
-					// BlockedPhones empty get response.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: model.IntercessorPhonesKeyValue},
-							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
-								&types.AttributeValueMemberS{Value: "+11111111111"},
-								&types.AttributeValueMemberS{Value: "+12222222222"},
-								&types.AttributeValueMemberS{Value: "+13333333333"},
-								&types.AttributeValueMemberS{Value: "+14444444444"},
-							}},
-						},
-					},
-					Error: nil,
-				},
+			MockGetItemResults: []testutil.GetItemResult{
+				testutil.MemberItem(model.Member{
+					Intercessor:       true,
+					Name:              "Intercessor4",
+					Phone:             testutil.PhoneAlt3,
+					SetupStage:        model.SignUpStepFinal,
+					SetupStatus:       model.SetupComplete,
+					WeeklyPrayerDate:  "dummy date",
+					WeeklyPrayerLimit: 5,
+				}),
+				// BlockedPhones empty get response.
+				testutil.EmptyGetResult(),
+				testutil.IntercessorPhonesItem(testutil.PhoneIntercessor, testutil.PhoneAlt1, testutil.PhoneAlt2, testutil.PhoneAlt3),
 			},
 
 			ExpectedIntPhones: model.IntercessorPhones{
 				Key: model.IntercessorPhonesKeyValue,
 				Phones: []string{
-					"+11111111111",
-					"+12222222222",
-					"+13333333333",
+					testutil.PhoneIntercessor,
+					testutil.PhoneAlt1,
+					testutil.PhoneAlt2,
 				},
 			},
 
@@ -1270,7 +952,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 				Table string
 			}{
 				{
-					Key:   "+14444444444",
+					Key:   testutil.PhoneAlt3,
 					Table: "Member",
 				},
 			},
@@ -1278,7 +960,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 			ExpectedTexts: []messaging.TextMessage{
 				{
 					Body:  messaging.MsgRemoveUser,
-					Phone: "+14444444444",
+					Phone: testutil.PhoneAlt3,
 				},
 			},
 
@@ -1293,115 +975,71 @@ func TestMainFlowMemberDelete(t *testing.T) {
 
 			InitialMessage: messaging.TextMessage{
 				Body:  "STOP",
-				Phone: "+14444444444",
+				Phone: testutil.PhoneAlt3,
 			},
 
-			MockGetItemResults: []struct {
-				Output *dynamodb.GetItemOutput
-				Error  error
-			}{
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
-							"Name":              &types.AttributeValueMemberS{Value: "Intercessor4"},
-							"Phone":             &types.AttributeValueMemberS{Value: "+14444444444"},
-							"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
-							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "dummy date"},
-							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
-						},
+			MockGetItemResults: []testutil.GetItemResult{
+				testutil.MemberItem(model.Member{
+					Intercessor:       true,
+					Name:              "Intercessor4",
+					Phone:             testutil.PhoneAlt3,
+					PrayerCount:       1,
+					SetupStage:        model.SignUpStepFinal,
+					SetupStatus:       model.SetupComplete,
+					WeeklyPrayerDate:  "dummy date",
+					WeeklyPrayerLimit: 5,
+				}),
+				// BlockedPhones empty get response.
+				testutil.EmptyGetResult(),
+				testutil.IntercessorPhonesItem(testutil.PhoneIntercessor, testutil.PhoneAlt1, testutil.PhoneAlt2, testutil.PhoneAlt3),
+				testutil.PrayerItem(model.Prayer{
+					Intercessor: model.Member{
+						Intercessor:       true,
+						Name:              "Intercessor4",
+						Phone:             testutil.PhoneAlt3,
+						PrayerCount:       1,
+						SetupStage:        model.SignUpStepFinal,
+						SetupStatus:       model.SetupComplete,
+						WeeklyPrayerDate:  "dummy date",
+						WeeklyPrayerLimit: 5,
 					},
-					Error: nil,
-				},
-				{
-					// BlockedPhones empty get response.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: model.IntercessorPhonesKeyValue},
-							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
-								&types.AttributeValueMemberS{Value: "+11111111111"},
-								&types.AttributeValueMemberS{Value: "+12222222222"},
-								&types.AttributeValueMemberS{Value: "+13333333333"},
-								&types.AttributeValueMemberS{Value: "+14444444444"},
-							}},
-						},
+					IntercessorPhone: testutil.PhoneAlt3,
+					Request:          "Please pray me..",
+					Requestor: model.Member{
+						Name:        "John Doe",
+						Phone:       testutil.PhoneMember,
+						SetupStage:  model.SignUpStepFinal,
+						SetupStatus: model.SetupComplete,
 					},
-					Error: nil,
-				},
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Intercessor": &types.AttributeValueMemberM{
-								Value: map[string]types.AttributeValue{
-									"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
-									"Name":              &types.AttributeValueMemberS{Value: "Intercessor4"},
-									"Phone":             &types.AttributeValueMemberS{Value: "+14444444444"},
-									"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
-									"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-									"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
-									"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "dummy date"},
-									"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
-								},
-							},
-							"IntercessorPhone": &types.AttributeValueMemberS{Value: "+14444444444"},
-							"Request":          &types.AttributeValueMemberS{Value: "Please pray me.."},
-							"Requestor": &types.AttributeValueMemberM{
-								Value: map[string]types.AttributeValue{
-									"Intercessor": &types.AttributeValueMemberBOOL{Value: false},
-									"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
-									"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-									"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-									"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupComplete},
-								},
-							},
-						},
+				}),
+				testutil.PrayerItem(model.Prayer{
+					Intercessor: model.Member{
+						Intercessor:       true,
+						Name:              "Intercessor4",
+						Phone:             testutil.PhoneAlt3,
+						PrayerCount:       1,
+						SetupStage:        model.SignUpStepFinal,
+						SetupStatus:       model.SetupComplete,
+						WeeklyPrayerDate:  "dummy date",
+						WeeklyPrayerLimit: 5,
 					},
-					Error: nil,
-				},
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Intercessor": &types.AttributeValueMemberM{
-								Value: map[string]types.AttributeValue{
-									"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
-									"Name":              &types.AttributeValueMemberS{Value: "Intercessor4"},
-									"Phone":             &types.AttributeValueMemberS{Value: "+14444444444"},
-									"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
-									"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-									"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
-									"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "dummy date"},
-									"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
-								},
-							},
-							"IntercessorPhone": &types.AttributeValueMemberS{Value: "+14444444444"},
-							"Request":          &types.AttributeValueMemberS{Value: "Please pray me.."},
-							"Requestor": &types.AttributeValueMemberM{
-								Value: map[string]types.AttributeValue{
-									"Intercessor": &types.AttributeValueMemberBOOL{Value: false},
-									"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
-									"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-									"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-									"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupComplete},
-								},
-							},
-						},
+					IntercessorPhone: testutil.PhoneAlt3,
+					Request:          "Please pray me..",
+					Requestor: model.Member{
+						Name:        "John Doe",
+						Phone:       testutil.PhoneMember,
+						SetupStage:  model.SignUpStepFinal,
+						SetupStatus: model.SetupComplete,
 					},
-					Error: nil,
-				},
+				}),
 			},
 
 			ExpectedIntPhones: model.IntercessorPhones{
 				Key: model.IntercessorPhonesKeyValue,
 				Phones: []string{
-					"+11111111111",
-					"+12222222222",
-					"+13333333333",
+					testutil.PhoneIntercessor,
+					testutil.PhoneAlt1,
+					testutil.PhoneAlt2,
 				},
 			},
 
@@ -1413,7 +1051,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 					Requestor: model.Member{
 						Intercessor: false,
 						Name:        "John Doe",
-						Phone:       "+11234567890",
+						Phone:       testutil.PhoneMember,
 						SetupStage:  model.SignUpStepFinal,
 						SetupStatus: model.SetupComplete,
 					},
@@ -1425,11 +1063,11 @@ func TestMainFlowMemberDelete(t *testing.T) {
 				Table string
 			}{
 				{
-					Key:   "+14444444444",
+					Key:   testutil.PhoneAlt3,
 					Table: "Member",
 				},
 				{
-					Key:   "+14444444444",
+					Key:   testutil.PhoneAlt3,
 					Table: "ActivePrayer",
 				},
 			},
@@ -1437,7 +1075,7 @@ func TestMainFlowMemberDelete(t *testing.T) {
 			ExpectedTexts: []messaging.TextMessage{
 				{
 					Body:  messaging.MsgRemoveUser,
-					Phone: "+14444444444",
+					Phone: testutil.PhoneAlt3,
 				},
 			},
 
@@ -1452,30 +1090,19 @@ func TestMainFlowMemberDelete(t *testing.T) {
 
 			InitialMessage: messaging.TextMessage{
 				Body:  "cancel",
-				Phone: "+11234567890",
+				Phone: testutil.PhoneMember,
 			},
 
-			MockGetItemResults: []struct {
-				Output *dynamodb.GetItemOutput
-				Error  error
-			}{
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Intercessor": &types.AttributeValueMemberBOOL{Value: true},
-							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
-							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupComplete},
-						},
-					},
-					Error: nil,
-				},
-				{
-					// BlockedPhones empty get response.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
+			MockGetItemResults: []testutil.GetItemResult{
+				testutil.MemberItem(model.Member{
+					Intercessor: true,
+					Name:        "John Doe",
+					Phone:       testutil.PhoneMember,
+					SetupStage:  model.SignUpStepFinal,
+					SetupStatus: model.SetupComplete,
+				}),
+				// BlockedPhones empty get response.
+				testutil.EmptyGetResult(),
 			},
 
 			MockDeleteItemResults: []struct {
@@ -1528,35 +1155,24 @@ func TestMainFlowHelp(t *testing.T) {
 
 			InitialMessage: messaging.TextMessage{
 				Body:  "help",
-				Phone: "+11234567890",
+				Phone: testutil.PhoneMember,
 			},
 
-			MockGetItemResults: []struct {
-				Output *dynamodb.GetItemOutput
-				Error  error
-			}{
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
-							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupComplete},
-						},
-					},
-					Error: nil,
-				},
-				{
-					// BlockedPhones empty get response.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
+			MockGetItemResults: []testutil.GetItemResult{
+				testutil.MemberItem(model.Member{
+					Name:        "John Doe",
+					Phone:       testutil.PhoneMember,
+					SetupStage:  model.SignUpStepFinal,
+					SetupStatus: model.SetupComplete,
+				}),
+				// BlockedPhones empty get response.
+				testutil.EmptyGetResult(),
 			},
 
 			ExpectedTexts: []messaging.TextMessage{
 				{
 					Body:  messaging.MsgHelp,
-					Phone: "+11234567890",
+					Phone: testutil.PhoneMember,
 				},
 			},
 
@@ -1568,35 +1184,24 @@ func TestMainFlowHelp(t *testing.T) {
 
 			InitialMessage: messaging.TextMessage{
 				Body:  "help",
-				Phone: "+11234567890",
+				Phone: testutil.PhoneMember,
 			},
 
-			MockGetItemResults: []struct {
-				Output *dynamodb.GetItemOutput
-				Error  error
-			}{
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
-							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepOne)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupInProgress},
-						},
-					},
-					Error: nil,
-				},
-				{
-					// BlockedPhones empty get response.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
+			MockGetItemResults: []testutil.GetItemResult{
+				testutil.MemberItem(model.Member{
+					Name:        "John Doe",
+					Phone:       testutil.PhoneMember,
+					SetupStage:  model.SignUpStepOne,
+					SetupStatus: model.SetupInProgress,
+				}),
+				// BlockedPhones empty get response.
+				testutil.EmptyGetResult(),
 			},
 
 			ExpectedTexts: []messaging.TextMessage{
 				{
 					Body:  messaging.MsgHelp,
-					Phone: "+11234567890",
+					Phone: testutil.PhoneMember,
 				},
 			},
 
@@ -1631,88 +1236,50 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 
 			InitialMessage: messaging.TextMessage{
 				Body:  "I need prayer for these things...",
-				Phone: "+11234567890",
+				Phone: testutil.PhoneMember,
 			},
 
-			MockGetItemResults: []struct {
-				Output *dynamodb.GetItemOutput
-				Error  error
-			}{
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
-							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupComplete},
-						},
-					},
-					Error: nil,
-				},
-				{
-					// BlockedPhones empty get response.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: model.IntercessorPhonesKeyValue},
-							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
-								&types.AttributeValueMemberS{Value: "+11111111111"},
-								&types.AttributeValueMemberS{Value: "+12222222222"},
-							}},
-						},
-					},
-					Error: nil,
-				},
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
-							"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
-							"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
-							"PrayerCount":       &types.AttributeValueMemberN{Value: "0"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
-							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "2024-12-01T01:00:00Z"},
-							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
-						},
-					},
-					Error: nil,
-				},
-				{
-					// Prayer empty get response because there are no active prayers for this intercessor.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
-							"Name":              &types.AttributeValueMemberS{Value: "Intercessor2"},
-							"Phone":             &types.AttributeValueMemberS{Value: "+12222222222"},
-							"PrayerCount":       &types.AttributeValueMemberN{Value: "0"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
-							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "2024-12-01T01:00:00Z"},
-							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
-						},
-					},
-					Error: nil,
-				},
-				{
-					// Prayer empty get response because there are no active prayers for this intercessor.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
+			MockGetItemResults: []testutil.GetItemResult{
+				testutil.MemberItem(model.Member{
+					Name:        "John Doe",
+					Phone:       testutil.PhoneMember,
+					SetupStage:  model.SignUpStepFinal,
+					SetupStatus: model.SetupComplete,
+				}),
+				// BlockedPhones empty get response.
+				testutil.EmptyGetResult(),
+				testutil.IntercessorPhonesItem(testutil.PhoneIntercessor, testutil.PhoneAlt1),
+				testutil.MemberItem(model.Member{
+					Intercessor:       true,
+					Name:              "Intercessor1",
+					Phone:             testutil.PhoneIntercessor,
+					PrayerCount:       0,
+					SetupStage:        model.SignUpStepFinal,
+					SetupStatus:       model.SetupComplete,
+					WeeklyPrayerDate:  "2024-12-01T01:00:00Z",
+					WeeklyPrayerLimit: 5,
+				}),
+				// Prayer empty get response because there are no active prayers for this intercessor.
+				testutil.EmptyGetResult(),
+				testutil.MemberItem(model.Member{
+					Intercessor:       true,
+					Name:              "Intercessor2",
+					Phone:             testutil.PhoneAlt1,
+					PrayerCount:       0,
+					SetupStage:        model.SignUpStepFinal,
+					SetupStatus:       model.SetupComplete,
+					WeeklyPrayerDate:  "2024-12-01T01:00:00Z",
+					WeeklyPrayerLimit: 5,
+				}),
+				// Prayer empty get response because there are no active prayers for this intercessor.
+				testutil.EmptyGetResult(),
 			},
 
 			ExpectedMembers: []model.Member{
 				{
 					Intercessor:       true,
 					Name:              "Intercessor1",
-					Phone:             "+11111111111",
+					Phone:             testutil.PhoneIntercessor,
 					PrayerCount:       1,
 					SetupStage:        model.SignUpStepFinal,
 					SetupStatus:       model.SetupComplete,
@@ -1722,7 +1289,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				{
 					Intercessor:       true,
 					Name:              "Intercessor2",
-					Phone:             "+12222222222",
+					Phone:             testutil.PhoneAlt1,
 					PrayerCount:       1,
 					SetupStage:        model.SignUpStepFinal,
 					SetupStatus:       model.SetupComplete,
@@ -1736,18 +1303,18 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 					Intercessor: model.Member{
 						Intercessor:       true,
 						Name:              "Intercessor1",
-						Phone:             "+11111111111",
+						Phone:             testutil.PhoneIntercessor,
 						PrayerCount:       1,
 						SetupStage:        model.SignUpStepFinal,
 						SetupStatus:       model.SetupComplete,
 						WeeklyPrayerDate:  "dummy date/time",
 						WeeklyPrayerLimit: 5,
 					},
-					IntercessorPhone: "+11111111111",
+					IntercessorPhone: testutil.PhoneIntercessor,
 					Request:          "I need prayer for these things...",
 					Requestor: model.Member{
 						Name:        "John Doe",
-						Phone:       "+11234567890",
+						Phone:       testutil.PhoneMember,
 						SetupStage:  model.SignUpStepFinal,
 						SetupStatus: model.SetupComplete,
 					},
@@ -1756,18 +1323,18 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 					Intercessor: model.Member{
 						Intercessor:       true,
 						Name:              "Intercessor2",
-						Phone:             "+12222222222",
+						Phone:             testutil.PhoneAlt1,
 						PrayerCount:       1,
 						SetupStage:        model.SignUpStepFinal,
 						SetupStatus:       model.SetupComplete,
 						WeeklyPrayerDate:  "dummy date/time",
 						WeeklyPrayerLimit: 5,
 					},
-					IntercessorPhone: "+12222222222",
+					IntercessorPhone: testutil.PhoneAlt1,
 					Request:          "I need prayer for these things...",
 					Requestor: model.Member{
 						Name:        "John Doe",
-						Phone:       "+11234567890",
+						Phone:       testutil.PhoneMember,
 						SetupStage:  model.SignUpStepFinal,
 						SetupStatus: model.SetupComplete,
 					},
@@ -1777,15 +1344,15 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 			ExpectedTexts: []messaging.TextMessage{
 				{
 					Body:  messaging.MsgPrayerIntro,
-					Phone: "+11111111111",
+					Phone: testutil.PhoneIntercessor,
 				},
 				{
 					Body:  messaging.MsgPrayerIntro,
-					Phone: "+12222222222",
+					Phone: testutil.PhoneAlt1,
 				},
 				{
 					Body:  messaging.MsgPrayerAssigned,
-					Phone: "+11234567890",
+					Phone: testutil.PhoneMember,
 				},
 			},
 
@@ -1798,35 +1365,24 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 
 			InitialMessage: messaging.TextMessage{
 				Body:  "sh!t",
-				Phone: "+11234567890",
+				Phone: testutil.PhoneMember,
 			},
 
-			MockGetItemResults: []struct {
-				Output *dynamodb.GetItemOutput
-				Error  error
-			}{
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
-							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupComplete},
-						},
-					},
-					Error: nil,
-				},
-				{
-					// BlockedPhones empty get response.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
+			MockGetItemResults: []testutil.GetItemResult{
+				testutil.MemberItem(model.Member{
+					Name:        "John Doe",
+					Phone:       testutil.PhoneMember,
+					SetupStage:  model.SignUpStepFinal,
+					SetupStatus: model.SetupComplete,
+				}),
+				// BlockedPhones empty get response.
+				testutil.EmptyGetResult(),
 			},
 
 			ExpectedTexts: []messaging.TextMessage{
 				{
 					Body:  messaging.MsgProfanityDetected,
-					Phone: "+11234567890",
+					Phone: testutil.PhoneMember,
 				},
 			},
 
@@ -1838,35 +1394,24 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 
 			InitialMessage: messaging.TextMessage{
 				Body:  "this is four words",
-				Phone: "+11234567890",
+				Phone: testutil.PhoneMember,
 			},
 
-			MockGetItemResults: []struct {
-				Output *dynamodb.GetItemOutput
-				Error  error
-			}{
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
-							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupComplete},
-						},
-					},
-					Error: nil,
-				},
-				{
-					// BlockedPhones empty get response.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
+			MockGetItemResults: []testutil.GetItemResult{
+				testutil.MemberItem(model.Member{
+					Name:        "John Doe",
+					Phone:       testutil.PhoneMember,
+					SetupStage:  model.SignUpStepFinal,
+					SetupStatus: model.SetupComplete,
+				}),
+				// BlockedPhones empty get response.
+				testutil.EmptyGetResult(),
 			},
 
 			ExpectedTexts: []messaging.TextMessage{
 				{
 					Body:  messaging.MsgInvalidRequest,
-					Phone: "+11234567890",
+					Phone: testutil.PhoneMember,
 				},
 			},
 
@@ -1878,81 +1423,43 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 
 			InitialMessage: messaging.TextMessage{
 				Body:  "I need prayer for these things...",
-				Phone: "+11234567890",
+				Phone: testutil.PhoneMember,
 			},
 
-			MockGetItemResults: []struct {
-				Output *dynamodb.GetItemOutput
-				Error  error
-			}{
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
-							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupComplete},
-						},
-					},
-					Error: nil,
-				},
-				{
-					// BlockedPhones empty get response.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: model.IntercessorPhonesKeyValue},
-							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
-								&types.AttributeValueMemberS{Value: "+11111111111"},
-								&types.AttributeValueMemberS{Value: "+12222222222"},
-							}},
-						},
-					},
-					Error: nil,
-				},
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
-							"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
-							"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
-							"PrayerCount":       &types.AttributeValueMemberN{Value: "0"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
-							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "2024-12-01T01:00:00Z"},
-							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
-						},
-					},
-					Error: nil,
-				},
-				{
-					// Prayer empty get response because there are no active prayers for this intercessor.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
-							"Name":              &types.AttributeValueMemberS{Value: "Intercessor2"},
-							"Phone":             &types.AttributeValueMemberS{Value: "+12222222222"},
-							"PrayerCount":       &types.AttributeValueMemberN{Value: "0"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
-							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "2024-12-01T01:00:00Z"},
-							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
-						},
-					},
-					Error: nil,
-				},
-				{
-					// Prayer empty get response because there are no active prayers for this intercessor.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
+			MockGetItemResults: []testutil.GetItemResult{
+				testutil.MemberItem(model.Member{
+					Name:        "John Doe",
+					Phone:       testutil.PhoneMember,
+					SetupStage:  model.SignUpStepFinal,
+					SetupStatus: model.SetupComplete,
+				}),
+				// BlockedPhones empty get response.
+				testutil.EmptyGetResult(),
+				testutil.IntercessorPhonesItem(testutil.PhoneIntercessor, testutil.PhoneAlt1),
+				testutil.MemberItem(model.Member{
+					Intercessor:       true,
+					Name:              "Intercessor1",
+					Phone:             testutil.PhoneIntercessor,
+					PrayerCount:       0,
+					SetupStage:        model.SignUpStepFinal,
+					SetupStatus:       model.SetupComplete,
+					WeeklyPrayerDate:  "2024-12-01T01:00:00Z",
+					WeeklyPrayerLimit: 5,
+				}),
+				// Prayer empty get response because there are no active prayers for this intercessor.
+				testutil.EmptyGetResult(),
+				testutil.MemberItem(model.Member{
+					Intercessor:       true,
+					Name:              "Intercessor2",
+					Phone:             testutil.PhoneAlt1,
+					PrayerCount:       0,
+					SetupStage:        model.SignUpStepFinal,
+					SetupStatus:       model.SetupComplete,
+					WeeklyPrayerDate:  "2024-12-01T01:00:00Z",
+					WeeklyPrayerLimit: 5,
+				}),
+				// Prayer empty get response because there are no active prayers for this intercessor.
+				testutil.EmptyGetResult(),
 			},
 
 			MockPutItemResults: []struct {
@@ -1978,81 +1485,43 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 
 			InitialMessage: messaging.TextMessage{
 				Body:  "I need prayer for these things...",
-				Phone: "+11234567890",
+				Phone: testutil.PhoneMember,
 			},
 
-			MockGetItemResults: []struct {
-				Output *dynamodb.GetItemOutput
-				Error  error
-			}{
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
-							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupComplete},
-						},
-					},
-					Error: nil,
-				},
-				{
-					// BlockedPhones empty get response.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: model.IntercessorPhonesKeyValue},
-							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
-								&types.AttributeValueMemberS{Value: "+11111111111"},
-								&types.AttributeValueMemberS{Value: "+12222222222"},
-							}},
-						},
-					},
-					Error: nil,
-				},
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
-							"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
-							"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
-							"PrayerCount":       &types.AttributeValueMemberN{Value: "5"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
-							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
-							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
-						},
-					},
-					Error: nil,
-				},
-				{
-					// Prayer empty get response because there are no active prayers for this intercessor.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
-							"Name":              &types.AttributeValueMemberS{Value: "Intercessor2"},
-							"Phone":             &types.AttributeValueMemberS{Value: "+12222222222"},
-							"PrayerCount":       &types.AttributeValueMemberN{Value: "5"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
-							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
-							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
-						},
-					},
-					Error: nil,
-				},
-				{
-					// Prayer empty get response because there are no active prayers for this intercessor.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
+			MockGetItemResults: []testutil.GetItemResult{
+				testutil.MemberItem(model.Member{
+					Name:        "John Doe",
+					Phone:       testutil.PhoneMember,
+					SetupStage:  model.SignUpStepFinal,
+					SetupStatus: model.SetupComplete,
+				}),
+				// BlockedPhones empty get response.
+				testutil.EmptyGetResult(),
+				testutil.IntercessorPhonesItem(testutil.PhoneIntercessor, testutil.PhoneAlt1),
+				testutil.MemberItem(model.Member{
+					Intercessor:       true,
+					Name:              "Intercessor1",
+					Phone:             testutil.PhoneIntercessor,
+					PrayerCount:       5,
+					SetupStage:        model.SignUpStepFinal,
+					SetupStatus:       model.SetupComplete,
+					WeeklyPrayerDate:  time.Now().Format(time.RFC3339),
+					WeeklyPrayerLimit: 5,
+				}),
+				// Prayer empty get response because there are no active prayers for this intercessor.
+				testutil.EmptyGetResult(),
+				testutil.MemberItem(model.Member{
+					Intercessor:       true,
+					Name:              "Intercessor2",
+					Phone:             testutil.PhoneAlt1,
+					PrayerCount:       5,
+					SetupStage:        model.SignUpStepFinal,
+					SetupStatus:       model.SetupComplete,
+					WeeklyPrayerDate:  time.Now().Format(time.RFC3339),
+					WeeklyPrayerLimit: 5,
+				}),
+				// Prayer empty get response because there are no active prayers for this intercessor.
+				testutil.EmptyGetResult(),
 			},
 
 			ExpectedPrayers: []model.Prayer{
@@ -2061,7 +1530,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 					Request:          "I need prayer for these things...",
 					Requestor: model.Member{
 						Name:        "John Doe",
-						Phone:       "+11234567890",
+						Phone:       testutil.PhoneMember,
 						SetupStage:  model.SignUpStepFinal,
 						SetupStatus: model.SetupComplete,
 					},
@@ -2071,7 +1540,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 			ExpectedTexts: []messaging.TextMessage{
 				{
 					Body:  messaging.MsgPrayerQueued,
-					Phone: "+11234567890",
+					Phone: testutil.PhoneMember,
 				},
 			},
 
@@ -2085,88 +1554,50 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 
 			InitialMessage: messaging.TextMessage{
 				Body:  "#anon I need prayer for these things...",
-				Phone: "+11234567890",
+				Phone: testutil.PhoneMember,
 			},
 
-			MockGetItemResults: []struct {
-				Output *dynamodb.GetItemOutput
-				Error  error
-			}{
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
-							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupComplete},
-						},
-					},
-					Error: nil,
-				},
-				{
-					// BlockedPhones empty get response.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: model.IntercessorPhonesKeyValue},
-							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
-								&types.AttributeValueMemberS{Value: "+11111111111"},
-								&types.AttributeValueMemberS{Value: "+12222222222"},
-							}},
-						},
-					},
-					Error: nil,
-				},
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
-							"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
-							"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
-							"PrayerCount":       &types.AttributeValueMemberN{Value: "0"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
-							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "2024-12-01T01:00:00Z"},
-							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
-						},
-					},
-					Error: nil,
-				},
-				{
-					// Prayer empty get response because there are no active prayers for this intercessor.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
-							"Name":              &types.AttributeValueMemberS{Value: "Intercessor2"},
-							"Phone":             &types.AttributeValueMemberS{Value: "+12222222222"},
-							"PrayerCount":       &types.AttributeValueMemberN{Value: "0"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
-							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "2024-12-01T01:00:00Z"},
-							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
-						},
-					},
-					Error: nil,
-				},
-				{
-					// Prayer empty get response because there are no active prayers for this intercessor.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
+			MockGetItemResults: []testutil.GetItemResult{
+				testutil.MemberItem(model.Member{
+					Name:        "John Doe",
+					Phone:       testutil.PhoneMember,
+					SetupStage:  model.SignUpStepFinal,
+					SetupStatus: model.SetupComplete,
+				}),
+				// BlockedPhones empty get response.
+				testutil.EmptyGetResult(),
+				testutil.IntercessorPhonesItem(testutil.PhoneIntercessor, testutil.PhoneAlt1),
+				testutil.MemberItem(model.Member{
+					Intercessor:       true,
+					Name:              "Intercessor1",
+					Phone:             testutil.PhoneIntercessor,
+					PrayerCount:       0,
+					SetupStage:        model.SignUpStepFinal,
+					SetupStatus:       model.SetupComplete,
+					WeeklyPrayerDate:  "2024-12-01T01:00:00Z",
+					WeeklyPrayerLimit: 5,
+				}),
+				// Prayer empty get response because there are no active prayers for this intercessor.
+				testutil.EmptyGetResult(),
+				testutil.MemberItem(model.Member{
+					Intercessor:       true,
+					Name:              "Intercessor2",
+					Phone:             testutil.PhoneAlt1,
+					PrayerCount:       0,
+					SetupStage:        model.SignUpStepFinal,
+					SetupStatus:       model.SetupComplete,
+					WeeklyPrayerDate:  "2024-12-01T01:00:00Z",
+					WeeklyPrayerLimit: 5,
+				}),
+				// Prayer empty get response because there are no active prayers for this intercessor.
+				testutil.EmptyGetResult(),
 			},
 
 			ExpectedMembers: []model.Member{
 				{
 					Intercessor:       true,
 					Name:              "Intercessor1",
-					Phone:             "+11111111111",
+					Phone:             testutil.PhoneIntercessor,
 					PrayerCount:       1,
 					SetupStage:        model.SignUpStepFinal,
 					SetupStatus:       model.SetupComplete,
@@ -2176,7 +1607,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				{
 					Intercessor:       true,
 					Name:              "Intercessor2",
-					Phone:             "+12222222222",
+					Phone:             testutil.PhoneAlt1,
 					PrayerCount:       1,
 					SetupStage:        model.SignUpStepFinal,
 					SetupStatus:       model.SetupComplete,
@@ -2190,18 +1621,18 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 					Intercessor: model.Member{
 						Intercessor:       true,
 						Name:              "Intercessor1",
-						Phone:             "+11111111111",
+						Phone:             testutil.PhoneIntercessor,
 						PrayerCount:       1,
 						SetupStage:        model.SignUpStepFinal,
 						SetupStatus:       model.SetupComplete,
 						WeeklyPrayerDate:  "dummy date/time",
 						WeeklyPrayerLimit: 5,
 					},
-					IntercessorPhone: "+11111111111",
+					IntercessorPhone: testutil.PhoneIntercessor,
 					Request:          "I need prayer for these things...",
 					Requestor: model.Member{
 						Name:        "Anonymous",
-						Phone:       "+11234567890",
+						Phone:       testutil.PhoneMember,
 						SetupStage:  model.SignUpStepFinal,
 						SetupStatus: model.SetupComplete,
 					},
@@ -2210,18 +1641,18 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 					Intercessor: model.Member{
 						Intercessor:       true,
 						Name:              "Intercessor2",
-						Phone:             "+12222222222",
+						Phone:             testutil.PhoneAlt1,
 						PrayerCount:       1,
 						SetupStage:        model.SignUpStepFinal,
 						SetupStatus:       model.SetupComplete,
 						WeeklyPrayerDate:  "dummy date/time",
 						WeeklyPrayerLimit: 5,
 					},
-					IntercessorPhone: "+12222222222",
+					IntercessorPhone: testutil.PhoneAlt1,
 					Request:          "I need prayer for these things...",
 					Requestor: model.Member{
 						Name:        "Anonymous",
-						Phone:       "+11234567890",
+						Phone:       testutil.PhoneMember,
 						SetupStage:  model.SignUpStepFinal,
 						SetupStatus: model.SetupComplete,
 					},
@@ -2231,15 +1662,15 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 			ExpectedTexts: []messaging.TextMessage{
 				{
 					Body:  messaging.MsgPrayerIntro,
-					Phone: "+11111111111",
+					Phone: testutil.PhoneIntercessor,
 				},
 				{
 					Body:  messaging.MsgPrayerIntro,
-					Phone: "+12222222222",
+					Phone: testutil.PhoneAlt1,
 				},
 				{
 					Body:  messaging.MsgPrayerAssigned,
-					Phone: "+11234567890",
+					Phone: testutil.PhoneMember,
 				},
 			},
 
@@ -2252,88 +1683,50 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 
 			InitialMessage: messaging.TextMessage{
 				Body:  "I need prayer for these things... #ANON please keep this private",
-				Phone: "+11234567890",
+				Phone: testutil.PhoneMember,
 			},
 
-			MockGetItemResults: []struct {
-				Output *dynamodb.GetItemOutput
-				Error  error
-			}{
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
-							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupComplete},
-						},
-					},
-					Error: nil,
-				},
-				{
-					// BlockedPhones empty get response.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: model.IntercessorPhonesKeyValue},
-							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
-								&types.AttributeValueMemberS{Value: "+11111111111"},
-								&types.AttributeValueMemberS{Value: "+12222222222"},
-							}},
-						},
-					},
-					Error: nil,
-				},
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
-							"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
-							"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
-							"PrayerCount":       &types.AttributeValueMemberN{Value: "0"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
-							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "2024-12-01T01:00:00Z"},
-							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
-						},
-					},
-					Error: nil,
-				},
-				{
-					// Prayer empty get response because there are no active prayers for this intercessor.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
-							"Name":              &types.AttributeValueMemberS{Value: "Intercessor2"},
-							"Phone":             &types.AttributeValueMemberS{Value: "+12222222222"},
-							"PrayerCount":       &types.AttributeValueMemberN{Value: "0"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
-							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "2024-12-01T01:00:00Z"},
-							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
-						},
-					},
-					Error: nil,
-				},
-				{
-					// Prayer empty get response because there are no active prayers for this intercessor.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
+			MockGetItemResults: []testutil.GetItemResult{
+				testutil.MemberItem(model.Member{
+					Name:        "John Doe",
+					Phone:       testutil.PhoneMember,
+					SetupStage:  model.SignUpStepFinal,
+					SetupStatus: model.SetupComplete,
+				}),
+				// BlockedPhones empty get response.
+				testutil.EmptyGetResult(),
+				testutil.IntercessorPhonesItem(testutil.PhoneIntercessor, testutil.PhoneAlt1),
+				testutil.MemberItem(model.Member{
+					Intercessor:       true,
+					Name:              "Intercessor1",
+					Phone:             testutil.PhoneIntercessor,
+					PrayerCount:       0,
+					SetupStage:        model.SignUpStepFinal,
+					SetupStatus:       model.SetupComplete,
+					WeeklyPrayerDate:  "2024-12-01T01:00:00Z",
+					WeeklyPrayerLimit: 5,
+				}),
+				// Prayer empty get response because there are no active prayers for this intercessor.
+				testutil.EmptyGetResult(),
+				testutil.MemberItem(model.Member{
+					Intercessor:       true,
+					Name:              "Intercessor2",
+					Phone:             testutil.PhoneAlt1,
+					PrayerCount:       0,
+					SetupStage:        model.SignUpStepFinal,
+					SetupStatus:       model.SetupComplete,
+					WeeklyPrayerDate:  "2024-12-01T01:00:00Z",
+					WeeklyPrayerLimit: 5,
+				}),
+				// Prayer empty get response because there are no active prayers for this intercessor.
+				testutil.EmptyGetResult(),
 			},
 
 			ExpectedMembers: []model.Member{
 				{
 					Intercessor:       true,
 					Name:              "Intercessor1",
-					Phone:             "+11111111111",
+					Phone:             testutil.PhoneIntercessor,
 					PrayerCount:       1,
 					SetupStage:        model.SignUpStepFinal,
 					SetupStatus:       model.SetupComplete,
@@ -2343,7 +1736,7 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 				{
 					Intercessor:       true,
 					Name:              "Intercessor2",
-					Phone:             "+12222222222",
+					Phone:             testutil.PhoneAlt1,
 					PrayerCount:       1,
 					SetupStage:        model.SignUpStepFinal,
 					SetupStatus:       model.SetupComplete,
@@ -2357,18 +1750,18 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 					Intercessor: model.Member{
 						Intercessor:       true,
 						Name:              "Intercessor1",
-						Phone:             "+11111111111",
+						Phone:             testutil.PhoneIntercessor,
 						PrayerCount:       1,
 						SetupStage:        model.SignUpStepFinal,
 						SetupStatus:       model.SetupComplete,
 						WeeklyPrayerDate:  "dummy date/time",
 						WeeklyPrayerLimit: 5,
 					},
-					IntercessorPhone: "+11111111111",
+					IntercessorPhone: testutil.PhoneIntercessor,
 					Request:          "I need prayer for these things...  please keep this private",
 					Requestor: model.Member{
 						Name:        "Anonymous",
-						Phone:       "+11234567890",
+						Phone:       testutil.PhoneMember,
 						SetupStage:  model.SignUpStepFinal,
 						SetupStatus: model.SetupComplete,
 					},
@@ -2377,18 +1770,18 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 					Intercessor: model.Member{
 						Intercessor:       true,
 						Name:              "Intercessor2",
-						Phone:             "+12222222222",
+						Phone:             testutil.PhoneAlt1,
 						PrayerCount:       1,
 						SetupStage:        model.SignUpStepFinal,
 						SetupStatus:       model.SetupComplete,
 						WeeklyPrayerDate:  "dummy date/time",
 						WeeklyPrayerLimit: 5,
 					},
-					IntercessorPhone: "+12222222222",
+					IntercessorPhone: testutil.PhoneAlt1,
 					Request:          "I need prayer for these things...  please keep this private",
 					Requestor: model.Member{
 						Name:        "Anonymous",
-						Phone:       "+11234567890",
+						Phone:       testutil.PhoneMember,
 						SetupStage:  model.SignUpStepFinal,
 						SetupStatus: model.SetupComplete,
 					},
@@ -2398,15 +1791,15 @@ func TestMainFlowPrayerRequest(t *testing.T) {
 			ExpectedTexts: []messaging.TextMessage{
 				{
 					Body:  messaging.MsgPrayerIntro,
-					Phone: "+11111111111",
+					Phone: testutil.PhoneIntercessor,
 				},
 				{
 					Body:  messaging.MsgPrayerIntro,
-					Phone: "+12222222222",
+					Phone: testutil.PhoneAlt1,
 				},
 				{
 					Body:  messaging.MsgPrayerAssigned,
-					Phone: "+11234567890",
+					Phone: testutil.PhoneMember,
 				},
 			},
 
@@ -2466,135 +1859,75 @@ func TestFindIntercessors(t *testing.T) {
 		{
 			Description: "This should pick #3 and #5 intercessors based on prayer counts/dates",
 
-			MockGetItemResults: []struct {
-				Output *dynamodb.GetItemOutput
-				Error  error
-			}{
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: model.IntercessorPhonesKeyValue},
-							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
-								&types.AttributeValueMemberS{Value: "+11111111111"},
-								&types.AttributeValueMemberS{Value: "+12222222222"},
-								&types.AttributeValueMemberS{Value: "+13333333333"},
-								&types.AttributeValueMemberS{Value: "+14444444444"},
-								&types.AttributeValueMemberS{Value: "+15555555555"},
-							}},
-						},
-					},
-					Error: nil,
-				},
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
-							"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
-							"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
-							"PrayerCount":       &types.AttributeValueMemberN{Value: "5"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
-							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
-							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
-						},
-					},
-					Error: nil,
-				},
-				{
-					// Prayer empty get response because there are no active prayers for this intercessor.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Intercessor": &types.AttributeValueMemberBOOL{Value: true},
-							"Name":        &types.AttributeValueMemberS{Value: "Intercessor2"},
-							"Phone":       &types.AttributeValueMemberS{Value: "+12222222222"},
-							"PrayerCount": &types.AttributeValueMemberN{Value: "100"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupComplete},
-							"WeeklyPrayerDate": &types.AttributeValueMemberS{Value: time.Now().AddDate(
-								0, 0, -2).Format(time.RFC3339)},
-							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "100"},
-						},
-					},
-					Error: nil,
-				},
-				{
-					// Prayer empty get response because there are no active prayers for this intercessor.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Intercessor": &types.AttributeValueMemberBOOL{Value: true},
-							"Name":        &types.AttributeValueMemberS{Value: "Intercessor3"},
-							"Phone":       &types.AttributeValueMemberS{Value: "+13333333333"},
-							"PrayerCount": &types.AttributeValueMemberN{Value: "15"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupComplete},
-							"WeeklyPrayerDate": &types.AttributeValueMemberS{Value: time.Now().AddDate(
-								0, 0, -8).Format(time.RFC3339)},
-							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "15"},
-						},
-					},
-					Error: nil,
-				},
-				{
-					// Prayer empty get response because there are no active prayers for this intercessor.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Intercessor": &types.AttributeValueMemberBOOL{Value: true},
-							"Name":        &types.AttributeValueMemberS{Value: "Intercessor4"},
-							"Phone":       &types.AttributeValueMemberS{Value: "+14444444444"},
-							"PrayerCount": &types.AttributeValueMemberN{Value: "9"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupComplete},
-							"WeeklyPrayerDate": &types.AttributeValueMemberS{Value: time.Now().AddDate(
-								0, 0, -6).Format(time.RFC3339)},
-							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "9"},
-						},
-					},
-					Error: nil,
-				},
-				{
-					// Prayer empty get response because there are no active prayers for this intercessor.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
-							"Name":              &types.AttributeValueMemberS{Value: "Intercessor5"},
-							"Phone":             &types.AttributeValueMemberS{Value: "+15555555555"},
-							"PrayerCount":       &types.AttributeValueMemberN{Value: "4"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
-							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
-							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
-						},
-					},
-					Error: nil,
-				},
-				{
-					// Prayer empty get response because there are no active prayers for this intercessor.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
+			MockGetItemResults: []testutil.GetItemResult{
+				testutil.IntercessorPhonesItem(testutil.PhoneIntercessor, testutil.PhoneAlt1, testutil.PhoneAlt2, testutil.PhoneAlt3, "+15555555555"),
+				testutil.MemberItem(model.Member{
+					Intercessor:       true,
+					Name:              "Intercessor1",
+					Phone:             testutil.PhoneIntercessor,
+					PrayerCount:       5,
+					SetupStage:        model.SignUpStepFinal,
+					SetupStatus:       model.SetupComplete,
+					WeeklyPrayerDate:  time.Now().Format(time.RFC3339),
+					WeeklyPrayerLimit: 5,
+				}),
+				// Prayer empty get response because there are no active prayers for this intercessor.
+				testutil.EmptyGetResult(),
+				testutil.MemberItem(model.Member{
+					Intercessor:       true,
+					Name:              "Intercessor2",
+					Phone:             testutil.PhoneAlt1,
+					PrayerCount:       100,
+					SetupStage:        model.SignUpStepFinal,
+					SetupStatus:       model.SetupComplete,
+					WeeklyPrayerDate:  time.Now().AddDate(0, 0, -2).Format(time.RFC3339),
+					WeeklyPrayerLimit: 100,
+				}),
+				// Prayer empty get response because there are no active prayers for this intercessor.
+				testutil.EmptyGetResult(),
+				testutil.MemberItem(model.Member{
+					Intercessor:       true,
+					Name:              "Intercessor3",
+					Phone:             testutil.PhoneAlt2,
+					PrayerCount:       15,
+					SetupStage:        model.SignUpStepFinal,
+					SetupStatus:       model.SetupComplete,
+					WeeklyPrayerDate:  time.Now().AddDate(0, 0, -8).Format(time.RFC3339),
+					WeeklyPrayerLimit: 15,
+				}),
+				// Prayer empty get response because there are no active prayers for this intercessor.
+				testutil.EmptyGetResult(),
+				testutil.MemberItem(model.Member{
+					Intercessor:       true,
+					Name:              "Intercessor4",
+					Phone:             testutil.PhoneAlt3,
+					PrayerCount:       9,
+					SetupStage:        model.SignUpStepFinal,
+					SetupStatus:       model.SetupComplete,
+					WeeklyPrayerDate:  time.Now().AddDate(0, 0, -6).Format(time.RFC3339),
+					WeeklyPrayerLimit: 9,
+				}),
+				// Prayer empty get response because there are no active prayers for this intercessor.
+				testutil.EmptyGetResult(),
+				testutil.MemberItem(model.Member{
+					Intercessor:       true,
+					Name:              "Intercessor5",
+					Phone:             "+15555555555",
+					PrayerCount:       4,
+					SetupStage:        model.SignUpStepFinal,
+					SetupStatus:       model.SetupComplete,
+					WeeklyPrayerDate:  time.Now().Format(time.RFC3339),
+					WeeklyPrayerLimit: 5,
+				}),
+				// Prayer empty get response because there are no active prayers for this intercessor.
+				testutil.EmptyGetResult(),
 			},
 
 			ExpectedMembers: []model.Member{
 				{
 					Intercessor:       true,
 					Name:              "Intercessor3",
-					Phone:             "+13333333333",
+					Phone:             testutil.PhoneAlt2,
 					PrayerCount:       1,
 					SetupStage:        model.SignUpStepFinal,
 					SetupStatus:       model.SetupComplete,
@@ -2619,90 +1952,51 @@ func TestFindIntercessors(t *testing.T) {
 		{
 			Description: "This should return a single intercessor because only one does not have maxed out prayers",
 
-			MockGetItemResults: []struct {
-				Output *dynamodb.GetItemOutput
-				Error  error
-			}{
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: model.IntercessorPhonesKeyValue},
-							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
-								&types.AttributeValueMemberS{Value: "+11111111111"},
-								&types.AttributeValueMemberS{Value: "+12222222222"},
-								&types.AttributeValueMemberS{Value: "+13333333333"},
-							}},
-						},
-					},
-					Error: nil,
-				},
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
-							"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
-							"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
-							"PrayerCount":       &types.AttributeValueMemberN{Value: "5"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
-							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
-							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
-						},
-					},
-					Error: nil,
-				},
-				{
-					// Prayer empty get response because there are no active prayers for this intercessor.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
-							"Name":              &types.AttributeValueMemberS{Value: "Intercessor2"},
-							"Phone":             &types.AttributeValueMemberS{Value: "+12222222222"},
-							"PrayerCount":       &types.AttributeValueMemberN{Value: "5"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
-							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
-							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
-						},
-					},
-					Error: nil,
-				},
-				{
-					// Prayer empty get response because there are no active prayers for this intercessor.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
-							"Name":              &types.AttributeValueMemberS{Value: "Intercessor3"},
-							"Phone":             &types.AttributeValueMemberS{Value: "+13333333333"},
-							"PrayerCount":       &types.AttributeValueMemberN{Value: "4"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
-							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
-							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
-						},
-					},
-					Error: nil,
-				},
-				{
-					// Prayer empty get response because there are no active prayers for this intercessor.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
+			MockGetItemResults: []testutil.GetItemResult{
+				testutil.IntercessorPhonesItem(testutil.PhoneIntercessor, testutil.PhoneAlt1, testutil.PhoneAlt2),
+				testutil.MemberItem(model.Member{
+					Intercessor:       true,
+					Name:              "Intercessor1",
+					Phone:             testutil.PhoneIntercessor,
+					PrayerCount:       5,
+					SetupStage:        model.SignUpStepFinal,
+					SetupStatus:       model.SetupComplete,
+					WeeklyPrayerDate:  time.Now().Format(time.RFC3339),
+					WeeklyPrayerLimit: 5,
+				}),
+				// Prayer empty get response because there are no active prayers for this intercessor.
+				testutil.EmptyGetResult(),
+				testutil.MemberItem(model.Member{
+					Intercessor:       true,
+					Name:              "Intercessor2",
+					Phone:             testutil.PhoneAlt1,
+					PrayerCount:       5,
+					SetupStage:        model.SignUpStepFinal,
+					SetupStatus:       model.SetupComplete,
+					WeeklyPrayerDate:  time.Now().Format(time.RFC3339),
+					WeeklyPrayerLimit: 5,
+				}),
+				// Prayer empty get response because there are no active prayers for this intercessor.
+				testutil.EmptyGetResult(),
+				testutil.MemberItem(model.Member{
+					Intercessor:       true,
+					Name:              "Intercessor3",
+					Phone:             testutil.PhoneAlt2,
+					PrayerCount:       4,
+					SetupStage:        model.SignUpStepFinal,
+					SetupStatus:       model.SetupComplete,
+					WeeklyPrayerDate:  time.Now().Format(time.RFC3339),
+					WeeklyPrayerLimit: 5,
+				}),
+				// Prayer empty get response because there are no active prayers for this intercessor.
+				testutil.EmptyGetResult(),
 			},
 
 			ExpectedMembers: []model.Member{
 				{
 					Intercessor:       true,
 					Name:              "Intercessor3",
-					Phone:             "+13333333333",
+					Phone:             testutil.PhoneAlt2,
 					PrayerCount:       5,
 					SetupStage:        model.SignUpStepFinal,
 					SetupStatus:       model.SetupComplete,
@@ -2720,49 +2014,27 @@ func TestFindIntercessors(t *testing.T) {
 			// FindIntercessors has a parameter for skipping a phone number. We are using 888-888-8888 for this, which
 			// is set permanently in the main testing logic for this section.
 
-			MockGetItemResults: []struct {
-				Output *dynamodb.GetItemOutput
-				Error  error
-			}{
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: model.IntercessorPhonesKeyValue},
-							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
-								&types.AttributeValueMemberS{Value: "+11111111111"},
-								&types.AttributeValueMemberS{Value: "+18888888888"},
-							}},
-						},
-					},
-					Error: nil,
-				},
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
-							"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
-							"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
-							"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
-							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
-							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
-						},
-					},
-					Error: nil,
-				},
-				{
-					// Prayer empty get response because there are no active prayers for this intercessor.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
+			MockGetItemResults: []testutil.GetItemResult{
+				testutil.IntercessorPhonesItem(testutil.PhoneIntercessor, testutil.PhoneAlt4),
+				testutil.MemberItem(model.Member{
+					Intercessor:       true,
+					Name:              "Intercessor1",
+					Phone:             testutil.PhoneIntercessor,
+					PrayerCount:       1,
+					SetupStage:        model.SignUpStepFinal,
+					SetupStatus:       model.SetupComplete,
+					WeeklyPrayerDate:  time.Now().Format(time.RFC3339),
+					WeeklyPrayerLimit: 5,
+				}),
+				// Prayer empty get response because there are no active prayers for this intercessor.
+				testutil.EmptyGetResult(),
 			},
 
 			ExpectedMembers: []model.Member{
 				{
 					Intercessor:       true,
 					Name:              "Intercessor1",
-					Phone:             "+11111111111",
+					Phone:             testutil.PhoneIntercessor,
 					PrayerCount:       2,
 					SetupStage:        model.SignUpStepFinal,
 					SetupStatus:       model.SetupComplete,
@@ -2778,62 +2050,32 @@ func TestFindIntercessors(t *testing.T) {
 			Description: "This should return the error NoAvailableIntercessors because all intercessors are maxed " +
 				"out on prayer requests",
 
-			MockGetItemResults: []struct {
-				Output *dynamodb.GetItemOutput
-				Error  error
-			}{
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: model.IntercessorPhonesKeyValue},
-							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
-								&types.AttributeValueMemberS{Value: "+11111111111"},
-								&types.AttributeValueMemberS{Value: "+12222222222"},
-							}},
-						},
-					},
-					Error: nil,
-				},
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
-							"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
-							"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
-							"PrayerCount":       &types.AttributeValueMemberN{Value: "5"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
-							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
-							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
-						},
-					},
-					Error: nil,
-				},
-				{
-					// Prayer empty get response because there are no active prayers for this intercessor.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
-							"Name":              &types.AttributeValueMemberS{Value: "Intercessor2"},
-							"Phone":             &types.AttributeValueMemberS{Value: "+12222222222"},
-							"PrayerCount":       &types.AttributeValueMemberN{Value: "5"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
-							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
-							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
-						},
-					},
-					Error: nil,
-				},
-				{
-					// Prayer empty get response because there are no active prayers for this intercessor.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
+			MockGetItemResults: []testutil.GetItemResult{
+				testutil.IntercessorPhonesItem(testutil.PhoneIntercessor, testutil.PhoneAlt1),
+				testutil.MemberItem(model.Member{
+					Intercessor:       true,
+					Name:              "Intercessor1",
+					Phone:             testutil.PhoneIntercessor,
+					PrayerCount:       5,
+					SetupStage:        model.SignUpStepFinal,
+					SetupStatus:       model.SetupComplete,
+					WeeklyPrayerDate:  time.Now().Format(time.RFC3339),
+					WeeklyPrayerLimit: 5,
+				}),
+				// Prayer empty get response because there are no active prayers for this intercessor.
+				testutil.EmptyGetResult(),
+				testutil.MemberItem(model.Member{
+					Intercessor:       true,
+					Name:              "Intercessor2",
+					Phone:             testutil.PhoneAlt1,
+					PrayerCount:       5,
+					SetupStage:        model.SignUpStepFinal,
+					SetupStatus:       model.SetupComplete,
+					WeeklyPrayerDate:  time.Now().Format(time.RFC3339),
+					WeeklyPrayerLimit: 5,
+				}),
+				// Prayer empty get response because there are no active prayers for this intercessor.
+				testutil.EmptyGetResult(),
 			},
 
 			ExpectedMembers: nil,
@@ -2844,140 +2086,87 @@ func TestFindIntercessors(t *testing.T) {
 			Description: "This should return a single intercessor because, while they all are not maxed out on" +
 				"prayers, 2 of them already have active prayers",
 
-			MockGetItemResults: []struct {
-				Output *dynamodb.GetItemOutput
-				Error  error
-			}{
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: model.IntercessorPhonesKeyValue},
-							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
-								&types.AttributeValueMemberS{Value: "+11111111111"},
-								&types.AttributeValueMemberS{Value: "+12222222222"},
-								&types.AttributeValueMemberS{Value: "+13333333333"},
-							}},
-						},
+			MockGetItemResults: []testutil.GetItemResult{
+				testutil.IntercessorPhonesItem(testutil.PhoneIntercessor, testutil.PhoneAlt1, testutil.PhoneAlt2),
+				testutil.MemberItem(model.Member{
+					Intercessor:       true,
+					Name:              "Intercessor1",
+					Phone:             testutil.PhoneIntercessor,
+					PrayerCount:       1,
+					SetupStage:        model.SignUpStepFinal,
+					SetupStatus:       model.SetupComplete,
+					WeeklyPrayerDate:  time.Now().Format(time.RFC3339),
+					WeeklyPrayerLimit: 5,
+				}),
+				testutil.PrayerItem(model.Prayer{
+					Intercessor: model.Member{
+						Intercessor:       true,
+						Name:              "Intercessor1",
+						Phone:             testutil.PhoneIntercessor,
+						PrayerCount:       1,
+						SetupStage:        model.SignUpStepFinal,
+						SetupStatus:       model.SetupComplete,
+						WeeklyPrayerDate:  "dummy date",
+						WeeklyPrayerLimit: 5,
 					},
-					Error: nil,
-				},
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
-							"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
-							"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
-							"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
-							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
-							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
-						},
+					IntercessorPhone: testutil.PhoneIntercessor,
+					Request:          "Please pray me..",
+					Requestor: model.Member{
+						Name:        "John Doe",
+						Phone:       testutil.PhoneMember,
+						SetupStage:  model.SignUpStepFinal,
+						SetupStatus: model.SetupComplete,
 					},
-					Error: nil,
-				},
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Intercessor": &types.AttributeValueMemberM{
-								Value: map[string]types.AttributeValue{
-									"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
-									"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
-									"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
-									"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
-									"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-									"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
-									"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "dummy date"},
-									"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
-								},
-							},
-							"IntercessorPhone": &types.AttributeValueMemberS{Value: "+11111111111"},
-							"Request":          &types.AttributeValueMemberS{Value: "Please pray me.."},
-							"Requestor": &types.AttributeValueMemberM{
-								Value: map[string]types.AttributeValue{
-									"Intercessor": &types.AttributeValueMemberBOOL{Value: false},
-									"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
-									"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-									"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-									"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupComplete},
-								},
-							},
-						},
+				}),
+				testutil.MemberItem(model.Member{
+					Intercessor:       true,
+					Name:              "Intercessor2",
+					Phone:             testutil.PhoneAlt1,
+					PrayerCount:       1,
+					SetupStage:        model.SignUpStepFinal,
+					SetupStatus:       model.SetupComplete,
+					WeeklyPrayerDate:  time.Now().Format(time.RFC3339),
+					WeeklyPrayerLimit: 5,
+				}),
+				// Prayer empty get response because there are no active prayers for this intercessor.
+				testutil.EmptyGetResult(),
+				testutil.MemberItem(model.Member{
+					Intercessor:       true,
+					Name:              "Intercessor3",
+					Phone:             testutil.PhoneAlt2,
+					PrayerCount:       1,
+					SetupStage:        model.SignUpStepFinal,
+					SetupStatus:       model.SetupComplete,
+					WeeklyPrayerDate:  time.Now().Format(time.RFC3339),
+					WeeklyPrayerLimit: 5,
+				}),
+				testutil.PrayerItem(model.Prayer{
+					Intercessor: model.Member{
+						Intercessor:       true,
+						Name:              "Intercessor3",
+						Phone:             testutil.PhoneAlt2,
+						PrayerCount:       1,
+						SetupStage:        model.SignUpStepFinal,
+						SetupStatus:       model.SetupComplete,
+						WeeklyPrayerDate:  "dummy date",
+						WeeklyPrayerLimit: 5,
 					},
-					Error: nil,
-				},
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
-							"Name":              &types.AttributeValueMemberS{Value: "Intercessor2"},
-							"Phone":             &types.AttributeValueMemberS{Value: "+12222222222"},
-							"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
-							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
-							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
-						},
+					IntercessorPhone: testutil.PhoneAlt2,
+					Request:          "Please pray me..",
+					Requestor: model.Member{
+						Name:        "John Doe",
+						Phone:       testutil.PhoneMember,
+						SetupStage:  model.SignUpStepFinal,
+						SetupStatus: model.SetupComplete,
 					},
-					Error: nil,
-				},
-				{
-					// Prayer empty get response because there are no active prayers for this intercessor.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
-							"Name":              &types.AttributeValueMemberS{Value: "Intercessor3"},
-							"Phone":             &types.AttributeValueMemberS{Value: "+13333333333"},
-							"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
-							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
-							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
-						},
-					},
-					Error: nil,
-				},
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Intercessor": &types.AttributeValueMemberM{
-								Value: map[string]types.AttributeValue{
-									"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
-									"Name":              &types.AttributeValueMemberS{Value: "Intercessor3"},
-									"Phone":             &types.AttributeValueMemberS{Value: "+13333333333"},
-									"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
-									"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-									"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
-									"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "dummy date"},
-									"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
-								},
-							},
-							"IntercessorPhone": &types.AttributeValueMemberS{Value: "+13333333333"},
-							"Request":          &types.AttributeValueMemberS{Value: "Please pray me.."},
-							"Requestor": &types.AttributeValueMemberM{
-								Value: map[string]types.AttributeValue{
-									"Intercessor": &types.AttributeValueMemberBOOL{Value: false},
-									"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
-									"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-									"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-									"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupComplete},
-								},
-							},
-						},
-					},
-					Error: nil,
-				},
+				}),
 			},
 
 			ExpectedMembers: []model.Member{
 				{
 					Intercessor:       true,
 					Name:              "Intercessor2",
-					Phone:             "+12222222222",
+					Phone:             testutil.PhoneAlt1,
 					PrayerCount:       2,
 					SetupStage:        model.SignUpStepFinal,
 					SetupStatus:       model.SetupComplete,
@@ -2992,111 +2181,63 @@ func TestFindIntercessors(t *testing.T) {
 		{
 			Description: "This should return 2 intercessors even when GenRandPhones returns 3 available intercessors",
 
-			MockGetItemResults: []struct {
-				Output *dynamodb.GetItemOutput
-				Error  error
-			}{
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Key": &types.AttributeValueMemberS{Value: model.IntercessorPhonesKeyValue},
-							"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
-								&types.AttributeValueMemberS{Value: "+11111111111"},
-								&types.AttributeValueMemberS{Value: "+12222222222"},
-								&types.AttributeValueMemberS{Value: "+13333333333"},
-								&types.AttributeValueMemberS{Value: "+14444444444"},
-							}},
-						},
-					},
-					Error: nil,
-				},
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
-							"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
-							"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
-							"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
-							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
-							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
-						},
-					},
-					Error: nil,
-				},
-				{
-					// Prayer empty get response because there are no active prayers for this intercessor.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
-							"Name":              &types.AttributeValueMemberS{Value: "Intercessor2"},
-							"Phone":             &types.AttributeValueMemberS{Value: "+12222222222"},
-							"PrayerCount":       &types.AttributeValueMemberN{Value: "5"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
-							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
-							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
-						},
-					},
-					Error: nil,
-				},
-				{
-					// Prayer empty get response because there are no active prayers for this intercessor.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
-							"Name":              &types.AttributeValueMemberS{Value: "Intercessor3"},
-							"Phone":             &types.AttributeValueMemberS{Value: "+13333333333"},
-							"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
-							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
-							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
-						},
-					},
-					Error: nil,
-				},
-				{
-					// Prayer empty get response because there are no active prayers for this intercessor.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
-							"Name":              &types.AttributeValueMemberS{Value: "Intercessor4"},
-							"Phone":             &types.AttributeValueMemberS{Value: "+14444444444"},
-							"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
-							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: time.Now().Format(time.RFC3339)},
-							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
-						},
-					},
-					Error: nil,
-				},
-				{
-					// Prayer empty get response because there are no active prayers for this intercessor.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
+			MockGetItemResults: []testutil.GetItemResult{
+				testutil.IntercessorPhonesItem(testutil.PhoneIntercessor, testutil.PhoneAlt1, testutil.PhoneAlt2, testutil.PhoneAlt3),
+				testutil.MemberItem(model.Member{
+					Intercessor:       true,
+					Name:              "Intercessor1",
+					Phone:             testutil.PhoneIntercessor,
+					PrayerCount:       1,
+					SetupStage:        model.SignUpStepFinal,
+					SetupStatus:       model.SetupComplete,
+					WeeklyPrayerDate:  time.Now().Format(time.RFC3339),
+					WeeklyPrayerLimit: 5,
+				}),
+				// Prayer empty get response because there are no active prayers for this intercessor.
+				testutil.EmptyGetResult(),
+				testutil.MemberItem(model.Member{
+					Intercessor:       true,
+					Name:              "Intercessor2",
+					Phone:             testutil.PhoneAlt1,
+					PrayerCount:       5,
+					SetupStage:        model.SignUpStepFinal,
+					SetupStatus:       model.SetupComplete,
+					WeeklyPrayerDate:  time.Now().Format(time.RFC3339),
+					WeeklyPrayerLimit: 5,
+				}),
+				// Prayer empty get response because there are no active prayers for this intercessor.
+				testutil.EmptyGetResult(),
+				testutil.MemberItem(model.Member{
+					Intercessor:       true,
+					Name:              "Intercessor3",
+					Phone:             testutil.PhoneAlt2,
+					PrayerCount:       1,
+					SetupStage:        model.SignUpStepFinal,
+					SetupStatus:       model.SetupComplete,
+					WeeklyPrayerDate:  time.Now().Format(time.RFC3339),
+					WeeklyPrayerLimit: 5,
+				}),
+				// Prayer empty get response because there are no active prayers for this intercessor.
+				testutil.EmptyGetResult(),
+				testutil.MemberItem(model.Member{
+					Intercessor:       true,
+					Name:              "Intercessor4",
+					Phone:             testutil.PhoneAlt3,
+					PrayerCount:       1,
+					SetupStage:        model.SignUpStepFinal,
+					SetupStatus:       model.SetupComplete,
+					WeeklyPrayerDate:  time.Now().Format(time.RFC3339),
+					WeeklyPrayerLimit: 5,
+				}),
+				// Prayer empty get response because there are no active prayers for this intercessor.
+				testutil.EmptyGetResult(),
 			},
 
 			ExpectedMembers: []model.Member{
 				{
 					Intercessor:       true,
 					Name:              "Intercessor1",
-					Phone:             "+11111111111",
+					Phone:             testutil.PhoneIntercessor,
 					PrayerCount:       2,
 					SetupStage:        model.SignUpStepFinal,
 					SetupStatus:       model.SetupComplete,
@@ -3106,7 +2247,7 @@ func TestFindIntercessors(t *testing.T) {
 				{
 					Intercessor:       true,
 					Name:              "Intercessor3",
-					Phone:             "+13333333333",
+					Phone:             testutil.PhoneAlt2,
 					PrayerCount:       2,
 					SetupStage:        model.SignUpStepFinal,
 					SetupStatus:       model.SetupComplete,
@@ -3132,14 +2273,14 @@ func TestFindIntercessors(t *testing.T) {
 
 			if tc.ExpectedError {
 				// Handles failures for error mocks.
-				if _, err := svc.FindIntercessors(ctx, "+18888888888"); err == nil {
+				if _, err := svc.FindIntercessors(ctx, testutil.PhoneAlt4); err == nil {
 					t.Fatalf("expected error, got nil")
 				}
 
 				test.ValidateNumMethodCalls(ddbMock, txtMock, t, tc)
 			} else {
 				// Handles success test cases.
-				_, err := svc.FindIntercessors(ctx, "+18888888888")
+				_, err := svc.FindIntercessors(ctx, testutil.PhoneAlt4)
 				if err != nil && !errors.Is(err, apperrors.ErrNoAvailableIntercessors) {
 					// NoAvailableIntercessors is an expected errors that can occur with FindIntercessors. This
 					// error should be handled accordingly by the caller. Since this is expected, it is included
@@ -3161,75 +2302,48 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 
 			InitialMessage: messaging.TextMessage{
 				Body:  "prAyEd   \n",
-				Phone: "+11111111111",
+				Phone: testutil.PhoneIntercessor,
 			},
 
-			MockGetItemResults: []struct {
-				Output *dynamodb.GetItemOutput
-				Error  error
-			}{
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
-							"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
-							"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
-							"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
-							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "dummy date"},
-							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
-						},
+			MockGetItemResults: []testutil.GetItemResult{
+				testutil.MemberItem(model.Member{
+					Intercessor:       true,
+					Name:              "Intercessor1",
+					Phone:             testutil.PhoneIntercessor,
+					PrayerCount:       1,
+					SetupStage:        model.SignUpStepFinal,
+					SetupStatus:       model.SetupComplete,
+					WeeklyPrayerDate:  "dummy date",
+					WeeklyPrayerLimit: 5,
+				}),
+				// BlockedPhones empty get response.
+				testutil.EmptyGetResult(),
+				testutil.PrayerItem(model.Prayer{
+					Intercessor: model.Member{
+						Intercessor:       true,
+						Name:              "Intercessor1",
+						Phone:             testutil.PhoneIntercessor,
+						PrayerCount:       1,
+						SetupStage:        model.SignUpStepFinal,
+						SetupStatus:       model.SetupComplete,
+						WeeklyPrayerDate:  "dummy date",
+						WeeklyPrayerLimit: 5,
 					},
-					Error: nil,
-				},
-				{
-					// BlockedPhones empty get response.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Intercessor": &types.AttributeValueMemberM{
-								Value: map[string]types.AttributeValue{
-									"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
-									"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
-									"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
-									"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
-									"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-									"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
-									"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "dummy date"},
-									"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
-								},
-							},
-							"IntercessorPhone": &types.AttributeValueMemberS{Value: "+11111111111"},
-							"Request":          &types.AttributeValueMemberS{Value: "Please pray me.."},
-							"Requestor": &types.AttributeValueMemberM{
-								Value: map[string]types.AttributeValue{
-									"Intercessor": &types.AttributeValueMemberBOOL{Value: false},
-									"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
-									"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-									"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-									"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupComplete},
-								},
-							},
-						},
+					IntercessorPhone: testutil.PhoneIntercessor,
+					Request:          "Please pray me..",
+					Requestor: model.Member{
+						Name:        "John Doe",
+						Phone:       testutil.PhoneMember,
+						SetupStage:  model.SignUpStepFinal,
+						SetupStatus: model.SetupComplete,
 					},
-					Error: nil,
-				},
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Intercessor": &types.AttributeValueMemberBOOL{Value: false},
-							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
-							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupComplete},
-						},
-					},
-					Error: nil,
-				},
+				}),
+				testutil.MemberItem(model.Member{
+					Name:        "John Doe",
+					Phone:       testutil.PhoneMember,
+					SetupStage:  model.SignUpStepFinal,
+					SetupStatus: model.SetupComplete,
+				}),
 			},
 
 			ExpectedDeleteItems: []struct {
@@ -3237,7 +2351,7 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 				Table string
 			}{
 				{
-					Key:   "+11111111111",
+					Key:   testutil.PhoneIntercessor,
 					Table: "ActivePrayer",
 				},
 			},
@@ -3245,11 +2359,11 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 			ExpectedTexts: []messaging.TextMessage{
 				{
 					Body:  messaging.MsgPrayerThankYou,
-					Phone: "+11111111111",
+					Phone: testutil.PhoneIntercessor,
 				},
 				{
 					Body:  messaging.MsgPrayerConfirmation,
-					Phone: "+11234567890",
+					Phone: testutil.PhoneMember,
 				},
 			},
 
@@ -3263,63 +2377,42 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 
 			InitialMessage: messaging.TextMessage{
 				Body:  "prayed",
-				Phone: "+11111111111",
+				Phone: testutil.PhoneIntercessor,
 			},
 
-			MockGetItemResults: []struct {
-				Output *dynamodb.GetItemOutput
-				Error  error
-			}{
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
-							"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
-							"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
-							"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
-							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "dummy date"},
-							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
-						},
+			MockGetItemResults: []testutil.GetItemResult{
+				testutil.MemberItem(model.Member{
+					Intercessor:       true,
+					Name:              "Intercessor1",
+					Phone:             testutil.PhoneIntercessor,
+					PrayerCount:       1,
+					SetupStage:        model.SignUpStepFinal,
+					SetupStatus:       model.SetupComplete,
+					WeeklyPrayerDate:  "dummy date",
+					WeeklyPrayerLimit: 5,
+				}),
+				// BlockedPhones empty get response.
+				testutil.EmptyGetResult(),
+				testutil.PrayerItem(model.Prayer{
+					Intercessor: model.Member{
+						Intercessor:       true,
+						Name:              "Intercessor1",
+						Phone:             testutil.PhoneIntercessor,
+						PrayerCount:       1,
+						SetupStage:        model.SignUpStepFinal,
+						SetupStatus:       model.SetupComplete,
+						WeeklyPrayerDate:  "dummy date",
+						WeeklyPrayerLimit: 5,
 					},
-					Error: nil,
-				},
-				{
-					// BlockedPhones empty get response.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Intercessor": &types.AttributeValueMemberM{
-								Value: map[string]types.AttributeValue{
-									"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
-									"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
-									"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
-									"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
-									"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-									"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
-									"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "dummy date"},
-									"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
-								},
-							},
-							"IntercessorPhone": &types.AttributeValueMemberS{Value: "+11111111111"},
-							"Request":          &types.AttributeValueMemberS{Value: "Please pray me.."},
-							"Requestor": &types.AttributeValueMemberM{
-								Value: map[string]types.AttributeValue{
-									"Intercessor": &types.AttributeValueMemberBOOL{Value: false},
-									"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
-									"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-									"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-									"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupComplete},
-								},
-							},
-						},
+					IntercessorPhone: testutil.PhoneIntercessor,
+					Request:          "Please pray me..",
+					Requestor: model.Member{
+						Name:        "John Doe",
+						Phone:       testutil.PhoneMember,
+						SetupStage:  model.SignUpStepFinal,
+						SetupStatus: model.SetupComplete,
 					},
-					Error: nil,
-				},
+				}),
 			},
 
 			ExpectedDeleteItems: []struct {
@@ -3327,7 +2420,7 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 				Table string
 			}{
 				{
-					Key:   "+11111111111",
+					Key:   testutil.PhoneIntercessor,
 					Table: "ActivePrayer",
 				},
 			},
@@ -3335,7 +2428,7 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 			ExpectedTexts: []messaging.TextMessage{
 				{
 					Body:  messaging.MsgPrayerThankYou,
-					Phone: "+11111111111",
+					Phone: testutil.PhoneIntercessor,
 				},
 			},
 
@@ -3348,39 +2441,28 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 
 			InitialMessage: messaging.TextMessage{
 				Body:  "prayed",
-				Phone: "+11111111111",
+				Phone: testutil.PhoneIntercessor,
 			},
 
-			MockGetItemResults: []struct {
-				Output *dynamodb.GetItemOutput
-				Error  error
-			}{
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
-							"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
-							"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
-							"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
-							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "dummy date"},
-							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
-						},
-					},
-					Error: nil,
-				},
-				{
-					// BlockedPhones empty get response.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
+			MockGetItemResults: []testutil.GetItemResult{
+				testutil.MemberItem(model.Member{
+					Intercessor:       true,
+					Name:              "Intercessor1",
+					Phone:             testutil.PhoneIntercessor,
+					PrayerCount:       1,
+					SetupStage:        model.SignUpStepFinal,
+					SetupStatus:       model.SetupComplete,
+					WeeklyPrayerDate:  "dummy date",
+					WeeklyPrayerLimit: 5,
+				}),
+				// BlockedPhones empty get response.
+				testutil.EmptyGetResult(),
 			},
 
 			ExpectedTexts: []messaging.TextMessage{
 				{
 					Body:  messaging.MsgNoActivePrayer,
-					Phone: "+11111111111",
+					Phone: testutil.PhoneIntercessor,
 				},
 			},
 
@@ -3392,75 +2474,48 @@ func TestMainFlowCompletePrayer(t *testing.T) {
 
 			InitialMessage: messaging.TextMessage{
 				Body:  "prayed",
-				Phone: "+11234567890",
+				Phone: testutil.PhoneMember,
 			},
 
-			MockGetItemResults: []struct {
-				Output *dynamodb.GetItemOutput
-				Error  error
-			}{
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
-							"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
-							"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
-							"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
-							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "dummy date"},
-							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
-						},
+			MockGetItemResults: []testutil.GetItemResult{
+				testutil.MemberItem(model.Member{
+					Intercessor:       true,
+					Name:              "Intercessor1",
+					Phone:             testutil.PhoneIntercessor,
+					PrayerCount:       1,
+					SetupStage:        model.SignUpStepFinal,
+					SetupStatus:       model.SetupComplete,
+					WeeklyPrayerDate:  "dummy date",
+					WeeklyPrayerLimit: 5,
+				}),
+				// BlockedPhones empty get response.
+				testutil.EmptyGetResult(),
+				testutil.PrayerItem(model.Prayer{
+					Intercessor: model.Member{
+						Intercessor:       true,
+						Name:              "Intercessor1",
+						Phone:             testutil.PhoneIntercessor,
+						PrayerCount:       1,
+						SetupStage:        model.SignUpStepFinal,
+						SetupStatus:       model.SetupComplete,
+						WeeklyPrayerDate:  "dummy date",
+						WeeklyPrayerLimit: 5,
 					},
-					Error: nil,
-				},
-				{
-					// BlockedPhones empty get response.
-					Output: &dynamodb.GetItemOutput{},
-					Error:  nil,
-				},
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Intercessor": &types.AttributeValueMemberM{
-								Value: map[string]types.AttributeValue{
-									"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
-									"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
-									"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
-									"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
-									"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-									"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
-									"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "dummy date"},
-									"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
-								},
-							},
-							"IntercessorPhone": &types.AttributeValueMemberS{Value: "+11111111111"},
-							"Request":          &types.AttributeValueMemberS{Value: "Please pray me.."},
-							"Requestor": &types.AttributeValueMemberM{
-								Value: map[string]types.AttributeValue{
-									"Intercessor": &types.AttributeValueMemberBOOL{Value: false},
-									"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
-									"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-									"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-									"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupComplete},
-								},
-							},
-						},
+					IntercessorPhone: testutil.PhoneIntercessor,
+					Request:          "Please pray me..",
+					Requestor: model.Member{
+						Name:        "John Doe",
+						Phone:       testutil.PhoneMember,
+						SetupStage:  model.SignUpStepFinal,
+						SetupStatus: model.SetupComplete,
 					},
-					Error: nil,
-				},
-				{
-					Output: &dynamodb.GetItemOutput{
-						Item: map[string]types.AttributeValue{
-							"Intercessor": &types.AttributeValueMemberBOOL{Value: false},
-							"Name":        &types.AttributeValueMemberS{Value: "John Doe"},
-							"Phone":       &types.AttributeValueMemberS{Value: "+11234567890"},
-							"SetupStage":  &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-							"SetupStatus": &types.AttributeValueMemberS{Value: model.SetupComplete},
-						},
-					},
-					Error: nil,
-				},
+				}),
+				testutil.MemberItem(model.Member{
+					Name:        "John Doe",
+					Phone:       testutil.PhoneMember,
+					SetupStage:  model.SignUpStepFinal,
+					SetupStatus: model.SetupComplete,
+				}),
 			},
 
 			MockDeleteItemResults: []struct {

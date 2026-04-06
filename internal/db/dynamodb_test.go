@@ -4,103 +4,51 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"strconv"
 	"testing"
 
 	"github.com/4JesusApps/prayertexter/internal/db"
 	"github.com/4JesusApps/prayertexter/internal/model"
 	"github.com/4JesusApps/prayertexter/internal/test/mock"
+	"github.com/4JesusApps/prayertexter/internal/test/testutil"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
 func TestDynamoDBOperations(t *testing.T) {
-	expectedDdbItems := []struct {
-		Output *dynamodb.GetItemOutput
-		Error  error
-	}{
-		// Member
-		{
-			Output: &dynamodb.GetItemOutput{
-				Item: map[string]types.AttributeValue{
-					"Administrator":     &types.AttributeValueMemberBOOL{Value: false},
-					"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
-					"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
-					"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
-					"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
-					"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-					"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
-					"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "2025-02-16T23:54:01Z"},
-					"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
-				},
+	expectedDdbItems := []testutil.GetItemResult{
+		testutil.MemberItem(model.Member{
+			Intercessor:       true,
+			Name:              "Intercessor1",
+			Phone:             "+11111111111",
+			PrayerCount:       1,
+			SetupStage:        model.SignUpStepFinal,
+			SetupStatus:       model.SetupComplete,
+			WeeklyPrayerDate:  "2025-02-16T23:54:01Z",
+			WeeklyPrayerLimit: 5,
+		}),
+		testutil.BlockedPhonesItem("+13333333333", "+14444444444"),
+		testutil.IntercessorPhonesItem("+11111111111", "+12222222222"),
+		testutil.PrayerItem(model.Prayer{
+			Intercessor: model.Member{
+				Intercessor:       true,
+				Name:              "Intercessor1",
+				Phone:             "+11111111111",
+				PrayerCount:       1,
+				SetupStage:        model.SignUpStepFinal,
+				SetupStatus:       model.SetupComplete,
+				WeeklyPrayerDate:  "2025-02-13T23:54:01Z",
+				WeeklyPrayerLimit: 5,
 			},
-			Error: nil,
-		},
-		// BlockedPhones
-		{
-			Output: &dynamodb.GetItemOutput{
-				Item: map[string]types.AttributeValue{
-					"Key": &types.AttributeValueMemberS{Value: model.BlockedPhonesKeyValue},
-					"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
-						&types.AttributeValueMemberS{Value: "+13333333333"},
-						&types.AttributeValueMemberS{Value: "+14444444444"},
-					}},
-				},
+			IntercessorPhone: "+11111111111",
+			ReminderCount:    3,
+			ReminderDate:     "2025-02-13T23:54:01Z",
+			Request:          "I need prayer for...",
+			Requestor: model.Member{
+				Name:        "John Doe",
+				Phone:       "+11234567890",
+				SetupStage:  model.SignUpStepFinal,
+				SetupStatus: model.SetupComplete,
 			},
-			Error: nil,
-		},
-		// IntercessorPhones
-		{
-			Output: &dynamodb.GetItemOutput{
-				Item: map[string]types.AttributeValue{
-					"Key": &types.AttributeValueMemberS{Value: model.IntercessorPhonesKeyValue},
-					"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
-						&types.AttributeValueMemberS{Value: "+11111111111"},
-						&types.AttributeValueMemberS{Value: "+12222222222"},
-					}},
-				},
-			},
-			Error: nil,
-		},
-		// Prayer
-		{
-			Output: &dynamodb.GetItemOutput{
-				Item: map[string]types.AttributeValue{
-					"Intercessor": &types.AttributeValueMemberM{
-						Value: map[string]types.AttributeValue{
-							"Administrator":     &types.AttributeValueMemberBOOL{Value: false},
-							"Intercessor":       &types.AttributeValueMemberBOOL{Value: true},
-							"Name":              &types.AttributeValueMemberS{Value: "Intercessor1"},
-							"Phone":             &types.AttributeValueMemberS{Value: "+11111111111"},
-							"PrayerCount":       &types.AttributeValueMemberN{Value: "1"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
-							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: "2025-02-13T23:54:01Z"},
-							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "5"},
-						},
-					},
-					"IntercessorPhone": &types.AttributeValueMemberS{Value: "+11111111111"},
-					"ReminderCount":    &types.AttributeValueMemberN{Value: "3"},
-					"ReminderDate":     &types.AttributeValueMemberS{Value: "2025-02-13T23:54:01Z"},
-					"Request":          &types.AttributeValueMemberS{Value: "I need prayer for..."},
-					"Requestor": &types.AttributeValueMemberM{
-						Value: map[string]types.AttributeValue{
-							"Administrator":     &types.AttributeValueMemberBOOL{Value: false},
-							"Intercessor":       &types.AttributeValueMemberBOOL{Value: false},
-							"Name":              &types.AttributeValueMemberS{Value: "John Doe"},
-							"Phone":             &types.AttributeValueMemberS{Value: "+11234567890"},
-							"PrayerCount":       &types.AttributeValueMemberN{Value: "0"},
-							"SetupStage":        &types.AttributeValueMemberN{Value: strconv.Itoa(model.SignUpStepFinal)},
-							"SetupStatus":       &types.AttributeValueMemberS{Value: model.SetupComplete},
-							"WeeklyPrayerDate":  &types.AttributeValueMemberS{Value: ""},
-							"WeeklyPrayerLimit": &types.AttributeValueMemberN{Value: "0"},
-						},
-					},
-				},
-			},
-			Error: nil,
-		},
+		}),
 	}
 
 	expectedObjects := []any{
@@ -217,10 +165,7 @@ func testGetObject[T any](t *testing.T, ddbMock db.DDBConnecter, expectedObject 
 	}
 }
 
-func testPutObject[T any](t *testing.T, ddbMock *mock.DDBConnecter, expectedObject *T, expectedDdbItem struct {
-	Output *dynamodb.GetItemOutput
-	Error  error
-}) {
+func testPutObject[T any](t *testing.T, ddbMock *mock.DDBConnecter, expectedObject *T, expectedDdbItem testutil.GetItemResult) {
 	ctx := context.Background()
 	// The parameter test is used here because mocking makes using real parameters unnecessary.
 	err := db.PutDdbObject(ctx, ddbMock, "test", expectedObject)
