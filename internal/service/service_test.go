@@ -312,7 +312,10 @@ func TestMainFlowBlockUser(t *testing.T) {
 			MockGetItemResults: []testutil.GetItemResult{
 				// Member empty get response.
 				testutil.EmptyGetResult(),
-				testutil.BlockedPhonesItem(testutil.PhoneIntercessor, testutil.PhoneAlt1, testutil.PhoneAlt2, testutil.PhoneAlt3, "+19999999999"),
+				testutil.BlockedPhonesItem(
+					testutil.PhoneIntercessor, testutil.PhoneAlt1, testutil.PhoneAlt2,
+					testutil.PhoneAlt3, "+19999999999",
+				),
 			},
 
 			ExpectedGetItemCalls: 2,
