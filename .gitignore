@@ -2,3 +2,4 @@
 bootstrap
 bin
 .aws-sam
+.vscode/settings.json
