@@ -15,17 +15,3 @@ func GenerateID() (string, error) {
 
 	return hex.EncodeToString(bytes), nil
 }
-
-// RemoveItem removes an item from a slice pointer. If the item does not exist, the slice will not be modified.
-func RemoveItem[T comparable](items *[]T, target T) {
-	slice := *items
-	var newItems []T
-
-	for _, v := range slice {
-		if v != target {
-			newItems = append(newItems, v)
-		}
-	}
-
-	*items = newItems
-}

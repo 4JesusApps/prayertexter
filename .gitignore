@@ -1,5 +1,6 @@
-# Ignore binary
 bootstrap
 bin
 .aws-sam
 .vscode/settings.json
+.claude_state
+.claude/settings.json

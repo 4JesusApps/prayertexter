@@ -99,9 +99,3 @@ func initViper() {
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()
 }
-
-// InitConfig is the legacy config initializer. Kept for backward compatibility
-// during refactor. Will be removed when old packages are deleted.
-func InitConfig() {
-	initViper()
-}
