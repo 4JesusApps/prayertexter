@@ -9,3 +9,8 @@ packages:
       PrayerRepository:
       BlockedPhonesRepository:
       IntercessorPhonesRepository:
+  github.com/4JesusApps/prayertexter/internal/messaging:
+    config:
+      dir: "internal/mocks/messaging"
+    interfaces:
+      MessageSender:
