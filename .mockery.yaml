@@ -1,0 +1,11 @@
+with-expecter: true
+dir: "internal/mocks/repository"
+outpkg: "mocks"
+packages:
+  github.com/4JesusApps/prayertexter/internal/repository:
+    interfaces:
+      DDBClient:
+      MemberRepository:
+      PrayerRepository:
+      BlockedPhonesRepository:
+      IntercessorPhonesRepository:
