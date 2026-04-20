@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/4JesusApps/prayertexter/internal/utility"
+	"github.com/4JesusApps/prayertexter/internal/apperr"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
@@ -64,12 +64,12 @@ func (r *DynamoDBRepository[T]) Get(ctx context.Context, key string) (*T, error)
 
 	resp, err := r.client.GetItem(ctx, input)
 	if err != nil {
-		return nil, utility.WrapError(err, fmt.Sprintf("failed to get item from table %s", r.table))
+		return nil, apperr.WrapError(err, fmt.Sprintf("failed to get item from table %s", r.table))
 	}
 
 	var item T
 	if err = attributevalue.UnmarshalMap(resp.Item, &item); err != nil {
-		return nil, utility.WrapError(err, fmt.Sprintf("failed to unmarshal item from table %s", r.table))
+		return nil, apperr.WrapError(err, fmt.Sprintf("failed to unmarshal item from table %s", r.table))
 	}
 
 	return &item, nil
@@ -81,7 +81,7 @@ func (r *DynamoDBRepository[T]) Save(ctx context.Context, item *T) error {
 
 	av, err := attributevalue.MarshalMap(item)
 	if err != nil {
-		return utility.WrapError(err, fmt.Sprintf("failed to marshal item for table %s", r.table))
+		return apperr.WrapError(err, fmt.Sprintf("failed to marshal item for table %s", r.table))
 	}
 
 	input := &dynamodb.PutItemInput{
@@ -91,7 +91,7 @@ func (r *DynamoDBRepository[T]) Save(ctx context.Context, item *T) error {
 	}
 
 	_, err = r.client.PutItem(ctx, input)
-	return utility.WrapError(err, fmt.Sprintf("failed to put item in table %s", r.table))
+	return apperr.WrapError(err, fmt.Sprintf("failed to put item in table %s", r.table))
 }
 
 func (r *DynamoDBRepository[T]) Delete(ctx context.Context, key string) error {
@@ -107,7 +107,7 @@ func (r *DynamoDBRepository[T]) Delete(ctx context.Context, key string) error {
 	}
 
 	_, err := r.client.DeleteItem(ctx, input)
-	return utility.WrapError(err, fmt.Sprintf("failed to delete item from table %s", r.table))
+	return apperr.WrapError(err, fmt.Sprintf("failed to delete item from table %s", r.table))
 }
 
 func (r *DynamoDBRepository[T]) GetAll(ctx context.Context) ([]T, error) {
@@ -121,14 +121,14 @@ func (r *DynamoDBRepository[T]) GetAll(ctx context.Context) ([]T, error) {
 
 	resp, err := r.client.Scan(ctx, input)
 	if err != nil {
-		return nil, utility.WrapError(err, fmt.Sprintf("failed to scan table %s", r.table))
+		return nil, apperr.WrapError(err, fmt.Sprintf("failed to scan table %s", r.table))
 	}
 
 	items := make([]T, 0, len(resp.Items))
 	for _, item := range resp.Items {
 		var obj T
 		if err = attributevalue.UnmarshalMap(item, &obj); err != nil {
-			return nil, utility.WrapError(err, fmt.Sprintf("failed to unmarshal item from table %s", r.table))
+			return nil, apperr.WrapError(err, fmt.Sprintf("failed to unmarshal item from table %s", r.table))
 		}
 		items = append(items, obj)
 	}

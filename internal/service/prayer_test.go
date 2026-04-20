@@ -10,7 +10,6 @@ import (
 	"github.com/4JesusApps/prayertexter/internal/domain"
 	"github.com/4JesusApps/prayertexter/internal/messaging"
 	"github.com/4JesusApps/prayertexter/internal/service"
-	"github.com/4JesusApps/prayertexter/internal/utility"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
@@ -158,7 +157,7 @@ func (s *PrayerServiceSuite) TestFindIntercessors_AllHaveActivePrayers() {
 	s.prayers.EXPECT().Exists(s.ctx, "+19999999999").Return(true, nil)
 
 	_, err := s.svc.FindIntercessors(s.ctx, "+11234567890")
-	s.ErrorIs(err, utility.ErrNoAvailableIntercessors)
+	s.ErrorIs(err, service.ErrNoAvailableIntercessors)
 }
 
 func (s *PrayerServiceSuite) TestFindIntercessors_AtLimit_NotResetEligible() {
@@ -177,7 +176,7 @@ func (s *PrayerServiceSuite) TestFindIntercessors_AtLimit_NotResetEligible() {
 	s.prayers.EXPECT().Exists(s.ctx, "+19999999999").Return(false, nil)
 
 	_, err := s.svc.FindIntercessors(s.ctx, "+11234567890")
-	s.ErrorIs(err, utility.ErrNoAvailableIntercessors)
+	s.ErrorIs(err, service.ErrNoAvailableIntercessors)
 }
 
 func (s *PrayerServiceSuite) TestRequest_WithAnon() {

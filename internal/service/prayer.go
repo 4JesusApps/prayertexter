@@ -12,7 +12,7 @@ import (
 	"github.com/4JesusApps/prayertexter/internal/domain"
 	"github.com/4JesusApps/prayertexter/internal/messaging"
 	"github.com/4JesusApps/prayertexter/internal/repository"
-	"github.com/4JesusApps/prayertexter/internal/utility"
+	"github.com/4JesusApps/prayertexter/internal/apperr"
 )
 
 type PrayerService struct {
@@ -56,11 +56,11 @@ func (s *PrayerService) Request(ctx context.Context, msg domain.TextMessage, mem
 	handleTriggerWords(&msg, &mem)
 
 	intercessors, err := s.FindIntercessors(ctx, mem.Phone)
-	if err != nil && errors.Is(err, utility.ErrNoAvailableIntercessors) {
+	if err != nil && errors.Is(err, ErrNoAvailableIntercessors) {
 		slog.WarnContext(ctx, "no intercessors available", "request", msg.Body, "requestor", msg.Phone)
 		return s.queuePrayer(ctx, msg, mem)
 	} else if err != nil {
-		return utility.WrapError(err, "failed to find intercessors")
+		return apperr.WrapError(err, "failed to find intercessors")
 	}
 
 	for _, intr := range intercessors {
@@ -128,7 +128,7 @@ func (s *PrayerService) FindIntercessors(ctx context.Context, skipPhone string) 
 					"than the desired number of intercessors per prayer")
 				return intercessors, nil
 			}
-			return nil, utility.ErrNoAvailableIntercessors
+			return nil, ErrNoAvailableIntercessors
 		}
 
 		for _, phn := range randPhones {
@@ -138,7 +138,7 @@ func (s *PrayerService) FindIntercessors(ctx context.Context, skipPhone string) 
 
 			var intr *domain.Member
 			intr, err = s.processIntercessor(ctx, phn)
-			if err != nil && errors.Is(err, utility.ErrIntercessorUnavailable) {
+			if err != nil && errors.Is(err, ErrIntercessorUnavailable) {
 				allPhones.RemovePhone(phn)
 				continue
 			} else if err != nil {
@@ -165,7 +165,7 @@ func (s *PrayerService) processIntercessor(ctx context.Context, phone string) (*
 		return nil, err
 	}
 	if isActive {
-		return nil, utility.ErrIntercessorUnavailable
+		return nil, ErrIntercessorUnavailable
 	}
 
 	if intr.PrayerCount < intr.WeeklyPrayerLimit {
@@ -180,7 +180,7 @@ func (s *PrayerService) processIntercessor(ctx context.Context, phone string) (*
 			intr.PrayerCount = 1
 			intr.WeeklyPrayerDate = time.Now().Format(time.RFC3339)
 		} else {
-			return nil, utility.ErrIntercessorUnavailable
+			return nil, ErrIntercessorUnavailable
 		}
 	}
 
@@ -199,7 +199,7 @@ func canResetPrayerCount(intr domain.Member) (bool, error) {
 }
 
 func (s *PrayerService) queuePrayer(ctx context.Context, msg domain.TextMessage, mem domain.Member) error {
-	id, err := utility.GenerateID()
+	id, err := generateID()
 	if err != nil {
 		return err
 	}
@@ -255,13 +255,13 @@ func (s *PrayerService) Complete(ctx context.Context, mem domain.Member) error {
 
 func (s *PrayerService) RunScheduledJobs(ctx context.Context) {
 	if err := s.AssignQueuedPrayers(ctx); err != nil {
-		utility.LogError(ctx, err, "failed job", "job", "Assign Queued Prayers")
+		apperr.LogError(ctx, err, "failed job", "job", "Assign Queued Prayers")
 	} else {
 		slog.InfoContext(ctx, "finished job", "job", "Assign Queued Prayers")
 	}
 
 	if err := s.RemindActiveIntercessors(ctx); err != nil {
-		utility.LogError(ctx, err, "failed job", "job", "Remind Intercessors with Active Prayers")
+		apperr.LogError(ctx, err, "failed job", "job", "Remind Intercessors with Active Prayers")
 	} else {
 		slog.InfoContext(ctx, "finished job", "job", "Remind Intercessors with Active Prayers")
 	}
@@ -270,22 +270,22 @@ func (s *PrayerService) RunScheduledJobs(ctx context.Context) {
 func (s *PrayerService) AssignQueuedPrayers(ctx context.Context) error {
 	prayers, err := s.prayers.GetAll(ctx, true)
 	if err != nil {
-		return utility.WrapError(err, "failed to get queued prayers")
+		return apperr.WrapError(err, "failed to get queued prayers")
 	}
 
 	for _, pryr := range prayers {
 		var intercessors []domain.Member
 		intercessors, err = s.FindIntercessors(ctx, pryr.Requestor.Phone)
-		if err != nil && errors.Is(err, utility.ErrNoAvailableIntercessors) {
+		if err != nil && errors.Is(err, ErrNoAvailableIntercessors) {
 			slog.WarnContext(ctx, "no intercessors available, exiting job")
 			break
 		} else if err != nil {
-			return utility.WrapError(err, "failed to find intercessors")
+			return apperr.WrapError(err, "failed to find intercessors")
 		}
 
 		for _, intr := range intercessors {
 			if err = s.AssignPrayer(ctx, pryr, intr); err != nil {
-				return utility.WrapError(err, "failed to assign prayer")
+				return apperr.WrapError(err, "failed to assign prayer")
 			}
 		}
 
@@ -304,7 +304,7 @@ func (s *PrayerService) AssignQueuedPrayers(ctx context.Context) error {
 func (s *PrayerService) RemindActiveIntercessors(ctx context.Context) error {
 	prayers, err := s.prayers.GetAll(ctx, false)
 	if err != nil {
-		return utility.WrapError(err, "failed to get active prayers")
+		return apperr.WrapError(err, "failed to get active prayers")
 	}
 
 	currentTime := time.Now()
@@ -320,7 +320,7 @@ func (s *PrayerService) RemindActiveIntercessors(ctx context.Context) error {
 		var previousTime time.Time
 		previousTime, err = time.Parse(time.RFC3339, pryr.ReminderDate)
 		if err != nil {
-			return utility.WrapError(err, "failed to parse time")
+			return apperr.WrapError(err, "failed to parse time")
 		}
 		diffTime := currentTime.Sub(previousTime).Hours()
 		if diffTime > float64(s.cfg.PrayerReminderHours) {

@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"os"
 	"time"
 
-	"github.com/4JesusApps/prayertexter/internal/utility"
+	"github.com/4JesusApps/prayertexter/internal/apperr"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/pinpointsmsvoicev2"
 	"github.com/aws/aws-sdk-go-v2/service/pinpointsmsvoicev2/types"
@@ -35,7 +36,7 @@ func NewPinpointSender(client PinpointClient, phonePool string, timeout int) *Pi
 func (s *PinpointSender) SendMessage(ctx context.Context, to string, body string) error {
 	wrappedBody := MsgPre + body + "\n\n" + MsgPost
 
-	if utility.IsAwsLocal() {
+	if os.Getenv("AWS_SAM_LOCAL") == "true" {
 		slog.InfoContext(ctx, "sent text message (local)", "phone", to, "body", wrappedBody)
 		return nil
 	}
@@ -71,5 +72,5 @@ func (s *PinpointSender) SendMessage(ctx context.Context, to string, body string
 		break
 	}
 
-	return utility.LogAndWrapError(ctx, lastErr, "failed to send text message", "phone", to, "msg", body)
+	return apperr.LogAndWrapError(ctx, lastErr, "failed to send text message", "phone", to, "msg", body)
 }

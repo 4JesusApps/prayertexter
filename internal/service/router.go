@@ -10,7 +10,7 @@ import (
 
 	"github.com/4JesusApps/prayertexter/internal/domain"
 	"github.com/4JesusApps/prayertexter/internal/repository"
-	"github.com/4JesusApps/prayertexter/internal/utility"
+	"github.com/4JesusApps/prayertexter/internal/apperr"
 )
 
 type Router struct {
@@ -40,12 +40,12 @@ func NewRouter(
 func (r *Router) Handle(ctx context.Context, msg domain.TextMessage) error {
 	mem, err := r.members.Get(ctx, msg.Phone)
 	if err != nil {
-		return utility.LogAndWrapError(ctx, err, "failure during stage PRE", "phone", msg.Phone, "msg", msg.Body)
+		return apperr.LogAndWrapError(ctx, err, "failure during stage PRE", "phone", msg.Phone, "msg", msg.Body)
 	}
 
 	blockedPhones, err := r.blocked.Get(ctx)
 	if err != nil {
-		return utility.LogAndWrapError(ctx, err, "failure during stage PRE", "phone", msg.Phone, "msg", msg.Body)
+		return apperr.LogAndWrapError(ctx, err, "failure during stage PRE", "phone", msg.Phone, "msg", msg.Body)
 	}
 
 	isBlocked := slices.Contains(blockedPhones.Phones, mem.Phone)
@@ -89,7 +89,7 @@ func (r *Router) Handle(ctx context.Context, msg domain.TextMessage) error {
 
 	default:
 		err = errors.New("unexpected text message input/member status")
-		return utility.LogAndWrapError(
+		return apperr.LogAndWrapError(
 			ctx, err, "could not satisfy any required conditions",
 			"phone", mem.Phone, "msg", msg.Body,
 		)
@@ -97,7 +97,7 @@ func (r *Router) Handle(ctx context.Context, msg domain.TextMessage) error {
 
 	slog.InfoContext(ctx, fmt.Sprintf("Starting stage: %s", stageName), "phone", mem.Phone, "message", msg.Body)
 	if stageErr != nil {
-		return utility.LogAndWrapError(
+		return apperr.LogAndWrapError(
 			ctx, stageErr, "failure during stage "+stageName,
 			"phone", mem.Phone, "msg", msg.Body,
 		)

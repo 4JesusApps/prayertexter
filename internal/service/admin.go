@@ -9,7 +9,6 @@ import (
 	"github.com/4JesusApps/prayertexter/internal/domain"
 	"github.com/4JesusApps/prayertexter/internal/messaging"
 	"github.com/4JesusApps/prayertexter/internal/repository"
-	"github.com/4JesusApps/prayertexter/internal/utility"
 )
 
 type AdminService struct {
@@ -39,7 +38,7 @@ func (s *AdminService) BlockUser(ctx context.Context, msg domain.TextMessage, me
 	}
 
 	phone, err := extractPhone(msg.Body)
-	if errors.Is(err, utility.ErrInvalidPhone) {
+	if errors.Is(err, ErrInvalidPhone) {
 		return s.sender.SendMessage(ctx, mem.Phone, messaging.MsgInvalidPhone)
 	}
 
@@ -76,7 +75,7 @@ func extractPhone(msg string) (string, error) {
 	matchNum := 4
 	matches := phoneRE.FindStringSubmatch(msg)
 	if len(matches) != matchNum {
-		return "", utility.ErrInvalidPhone
+		return "", ErrInvalidPhone
 	}
 
 	return matches[1] + matches[2] + matches[3], nil
