@@ -4,7 +4,9 @@ GOLANGCI_LINT_VERSION := v2.11.4
 .PHONY: test lint generate check-mockery build clean
 
 build:
-	go build ./...
+	go build -o bin/prayertexter ./cmd/prayertexter
+	go build -o bin/statecontroller ./cmd/statecontroller
+	go build -o bin/announcer ./cmd/announcer
 
 test:
 	go test ./... -v -count=1
@@ -25,4 +27,4 @@ check-mockery:
 	fi
 
 clean:
-	rm -rf internal/mocks/
+	rm -rf bin/ internal/mocks/
