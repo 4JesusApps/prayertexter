@@ -1,3 +1,5 @@
+# Install: go install github.com/vektra/mockery/v3@v3.7.0
+# Generate: mockery
 dir: internal/mocks/repository
 filename: mocks.go
 pkgname: mocks
