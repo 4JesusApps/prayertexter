@@ -63,7 +63,11 @@ func (s *MemberServiceSuite) TestSignUpStageTwo_ValidName() {
 	})).Return(nil)
 	s.sender.EXPECT().SendMessage(s.ctx, "+11234567890", messaging.MsgMemberTypeRequest).Return(nil)
 
-	mem := domain.Member{Phone: "+11234567890", SetupStage: domain.MemberSignUpStepOne, SetupStatus: domain.MemberSetupInProgress}
+	mem := domain.Member{
+		Phone:       "+11234567890",
+		SetupStage:  domain.MemberSignUpStepOne,
+		SetupStatus: domain.MemberSetupInProgress,
+	}
 	err := s.svc.SignUp(s.ctx, domain.TextMessage{Body: "John Doe", Phone: "+11234567890"}, mem)
 	s.NoError(err)
 }
@@ -71,7 +75,11 @@ func (s *MemberServiceSuite) TestSignUpStageTwo_ValidName() {
 func (s *MemberServiceSuite) TestSignUpStageTwo_InvalidName() {
 	s.sender.EXPECT().SendMessage(s.ctx, "+11234567890", messaging.MsgInvalidName).Return(nil)
 
-	mem := domain.Member{Phone: "+11234567890", SetupStage: domain.MemberSignUpStepOne, SetupStatus: domain.MemberSetupInProgress}
+	mem := domain.Member{
+		Phone:       "+11234567890",
+		SetupStage:  domain.MemberSignUpStepOne,
+		SetupStatus: domain.MemberSetupInProgress,
+	}
 	err := s.svc.SignUp(s.ctx, domain.TextMessage{Body: "1", Phone: "+11234567890"}, mem)
 	s.NoError(err)
 }

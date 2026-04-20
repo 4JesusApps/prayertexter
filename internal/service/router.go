@@ -97,7 +97,10 @@ func (r *Router) Handle(ctx context.Context, msg domain.TextMessage) error {
 
 	slog.InfoContext(ctx, fmt.Sprintf("Starting stage: %s", stageName), "phone", mem.Phone, "message", msg.Body)
 	if stageErr != nil {
-		return utility.LogAndWrapError(ctx, stageErr, "failure during stage "+stageName, "phone", mem.Phone, "msg", msg.Body)
+		return utility.LogAndWrapError(
+			ctx, stageErr, "failure during stage "+stageName,
+			"phone", mem.Phone, "msg", msg.Body,
+		)
 	}
 
 	return nil

@@ -52,8 +52,12 @@ func handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.API
 		cfg.AWS.DB.QueuedPrayerTable,
 		cfg.AWS.DB.Timeout,
 	)
-	blocked := repository.NewBlockedPhonesRepository(ddbClnt, cfg.AWS.DB.BlockedPhonesTable, cfg.AWS.DB.Timeout)
-	intercessors := repository.NewIntercessorPhonesRepository(ddbClnt, cfg.AWS.DB.IntercessorPhonesTable, cfg.AWS.DB.Timeout)
+	blocked := repository.NewBlockedPhonesRepository(
+		ddbClnt, cfg.AWS.DB.BlockedPhonesTable, cfg.AWS.DB.Timeout,
+	)
+	intercessors := repository.NewIntercessorPhonesRepository(
+		ddbClnt, cfg.AWS.DB.IntercessorPhonesTable, cfg.AWS.DB.Timeout,
+	)
 
 	sender := messaging.NewPinpointSender(smsClnt, cfg.AWS.SMS.PhonePool, cfg.AWS.SMS.Timeout)
 
