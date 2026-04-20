@@ -6,3 +6,4 @@ bin
 .claude/settings.json
 .claude/skills
 coverage.out
+docs/superpowers
