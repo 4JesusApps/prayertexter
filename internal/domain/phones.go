@@ -24,7 +24,7 @@ func (b *BlockedPhones) AddPhone(phone string) {
 }
 
 func (b *BlockedPhones) RemovePhone(phone string) {
-	removeItem(&b.Phones, phone)
+	b.Phones = slices.DeleteFunc(b.Phones, func(s string) bool { return s == phone })
 }
 
 func (i *IntercessorPhones) AddPhone(phone string) {
@@ -35,7 +35,7 @@ func (i *IntercessorPhones) AddPhone(phone string) {
 }
 
 func (i *IntercessorPhones) RemovePhone(phone string) {
-	removeItem(&i.Phones, phone)
+	i.Phones = slices.DeleteFunc(i.Phones, func(s string) bool { return s == phone })
 }
 
 func (i *IntercessorPhones) GenRandPhones(intercessorsPerPrayer int) []string {
@@ -60,15 +60,4 @@ func (i *IntercessorPhones) GenRandPhones(intercessorsPerPrayer int) []string {
 	}
 
 	return selectedPhones
-}
-
-func removeItem[T comparable](items *[]T, target T) {
-	slice := *items
-	var newItems []T
-	for _, v := range slice {
-		if v != target {
-			newItems = append(newItems, v)
-		}
-	}
-	*items = newItems
 }

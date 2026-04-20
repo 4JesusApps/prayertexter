@@ -69,8 +69,9 @@ func (s *AdminService) BlockUser(ctx context.Context, msg domain.TextMessage, me
 	return s.sender.SendMessage(ctx, mem.Phone, messaging.MsgSuccessfullyBlocked)
 }
 
+var phoneRE = regexp.MustCompile(`\(?\b(\d{3})\)?[\s\-]?(\d{3})[\s\-]?(\d{4})\b`)
+
 func extractPhone(msg string) (string, error) {
-	var phoneRE = regexp.MustCompile(`\(?\b(\d{3})\)?[\s\-]?(\d{3})[\s\-]?(\d{4})\b`)
 
 	matchNum := 4
 	matches := phoneRE.FindStringSubmatch(msg)

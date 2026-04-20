@@ -191,16 +191,11 @@ func (s *PrayerService) processIntercessor(ctx context.Context, phone string) (*
 }
 
 func canResetPrayerCount(intr domain.Member) (bool, error) {
-	weekDays := 7
-	dayHours := 24
-
-	currentTime := time.Now()
 	previousTime, err := time.Parse(time.RFC3339, intr.WeeklyPrayerDate)
 	if err != nil {
 		return false, err
 	}
-	diffDays := currentTime.Sub(previousTime).Hours() / float64(dayHours)
-	return diffDays > float64(weekDays), nil
+	return time.Since(previousTime) > 7*24*time.Hour, nil
 }
 
 func (s *PrayerService) queuePrayer(ctx context.Context, msg domain.TextMessage, mem domain.Member) error {

@@ -4,3 +4,4 @@ bin
 .vscode/settings.json
 .claude_state
 .claude/settings.json
+.claude/skills
