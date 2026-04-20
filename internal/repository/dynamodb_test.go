@@ -9,9 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
 	repomocks "github.com/4JesusApps/prayertexter/internal/mocks/repository"
@@ -41,9 +39,9 @@ func (s *DynamoDBRepoSuite) TestGet_Success() {
 		Return(&dynamodb.GetItemOutput{Item: av}, nil)
 
 	mem, err := s.repo.Get(s.ctx, "+11234567890")
-	require.NoError(s.T(), err)
-	assert.Equal(s.T(), "John Doe", mem.Name)
-	assert.Equal(s.T(), "+11234567890", mem.Phone)
+	s.Require().NoError(err)
+	s.Equal("John Doe", mem.Name)
+	s.Equal("+11234567890", mem.Phone)
 }
 
 func (s *DynamoDBRepoSuite) TestGet_NotFound() {
@@ -52,8 +50,8 @@ func (s *DynamoDBRepoSuite) TestGet_NotFound() {
 		Return(&dynamodb.GetItemOutput{}, nil)
 
 	mem, err := s.repo.Get(s.ctx, "+10000000000")
-	require.NoError(s.T(), err)
-	assert.Empty(s.T(), mem.Phone)
+	s.Require().NoError(err)
+	s.Empty(mem.Phone)
 }
 
 func (s *DynamoDBRepoSuite) TestSave_Success() {
@@ -63,7 +61,7 @@ func (s *DynamoDBRepoSuite) TestSave_Success() {
 
 	mem := &domain.Member{Phone: "+11234567890", Name: "Jane"}
 	err := s.repo.Save(s.ctx, mem)
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 }
 
 func (s *DynamoDBRepoSuite) TestDelete_Success() {
@@ -72,7 +70,7 @@ func (s *DynamoDBRepoSuite) TestDelete_Success() {
 		Return(&dynamodb.DeleteItemOutput{}, nil)
 
 	err := s.repo.Delete(s.ctx, "+11234567890")
-	require.NoError(s.T(), err)
+	s.Require().NoError(err)
 }
 
 func (s *DynamoDBRepoSuite) TestGetAll_Success() {
@@ -86,10 +84,10 @@ func (s *DynamoDBRepoSuite) TestGetAll_Success() {
 		}, nil)
 
 	members, err := s.repo.GetAll(s.ctx)
-	require.NoError(s.T(), err)
-	assert.Len(s.T(), members, 2)
-	assert.Equal(s.T(), "A", members[0].Name)
-	assert.Equal(s.T(), "B", members[1].Name)
+	s.Require().NoError(err)
+	s.Len(members, 2)
+	s.Equal("A", members[0].Name)
+	s.Equal("B", members[1].Name)
 }
 
 func TestDynamoDBRepoSuite(t *testing.T) {

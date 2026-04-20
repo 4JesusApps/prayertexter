@@ -82,7 +82,7 @@ func isRequestValid(msg domain.TextMessage) bool {
 }
 
 func handleTriggerWords(msg *domain.TextMessage, mem *domain.Member) {
-	//nolint:gocritic
+	//nolint:gocritic // switch used for future expansion of trigger words
 	switch {
 	case strings.Contains(strings.ToLower(msg.Body), "#anon"):
 		mem.Name = "Anonymous"
@@ -138,7 +138,8 @@ func (s *PrayerService) FindIntercessors(ctx context.Context, skipPhone string) 
 				return intercessors, nil
 			}
 
-			intr, err := s.processIntercessor(ctx, phn)
+			var intr *domain.Member
+			intr, err = s.processIntercessor(ctx, phn)
 			if err != nil && errors.Is(err, utility.ErrIntercessorUnavailable) {
 				allPhones.RemovePhone(phn)
 				continue
@@ -172,7 +173,8 @@ func (s *PrayerService) processIntercessor(ctx context.Context, phone string) (*
 	if intr.PrayerCount < intr.WeeklyPrayerLimit {
 		intr.PrayerCount++
 	} else {
-		canReset, err := canResetPrayerCount(*intr)
+		var canReset bool
+		canReset, err = canResetPrayerCount(*intr)
 		if err != nil {
 			return nil, err
 		}
@@ -279,7 +281,8 @@ func (s *PrayerService) AssignQueuedPrayers(ctx context.Context) error {
 	}
 
 	for _, pryr := range prayers {
-		intercessors, err := s.FindIntercessors(ctx, pryr.Requestor.Phone)
+		var intercessors []domain.Member
+		intercessors, err = s.FindIntercessors(ctx, pryr.Requestor.Phone)
 		if err != nil && errors.Is(err, utility.ErrNoAvailableIntercessors) {
 			slog.WarnContext(ctx, "no intercessors available, exiting job")
 			break
@@ -321,7 +324,8 @@ func (s *PrayerService) RemindActiveIntercessors(ctx context.Context) error {
 			continue
 		}
 
-		previousTime, err := time.Parse(time.RFC3339, pryr.ReminderDate)
+		var previousTime time.Time
+		previousTime, err = time.Parse(time.RFC3339, pryr.ReminderDate)
 		if err != nil {
 			return utility.WrapError(err, "failed to parse time")
 		}
@@ -333,7 +337,11 @@ func (s *PrayerService) RemindActiveIntercessors(ctx context.Context) error {
 				return err
 			}
 
-			reminderMsg, err := messaging.Render(messaging.PrayerReminderTmpl, struct{ Name string }{pryr.Requestor.Name})
+			var reminderMsg string
+			reminderMsg, err = messaging.Render(
+				messaging.PrayerReminderTmpl,
+				struct{ Name string }{pryr.Requestor.Name},
+			)
 			if err != nil {
 				return err
 			}

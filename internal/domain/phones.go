@@ -52,7 +52,7 @@ func (i *IntercessorPhones) GenRandPhones(intercessorsPerPrayer int) []string {
 
 	var selectedPhones []string
 	for len(selectedPhones) < intercessorsPerPrayer {
-		phone := i.Phones[rand.IntN(len(i.Phones))] //nolint:gosec
+		phone := i.Phones[rand.IntN(len(i.Phones))] //nolint:gosec // rand is fine here, not used for security
 		if slices.Contains(selectedPhones, phone) {
 			continue
 		}

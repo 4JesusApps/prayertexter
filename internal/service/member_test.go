@@ -49,7 +49,11 @@ func (s *MemberServiceSuite) TestSignUpStageOne() {
 	})).Return(nil)
 	s.sender.EXPECT().SendMessage(s.ctx, "+11234567890", messaging.MsgNameRequest).Return(nil)
 
-	err := s.svc.SignUp(s.ctx, domain.TextMessage{Body: "pray", Phone: "+11234567890"}, domain.Member{Phone: "+11234567890"})
+	err := s.svc.SignUp(
+		s.ctx,
+		domain.TextMessage{Body: "pray", Phone: "+11234567890"},
+		domain.Member{Phone: "+11234567890"},
+	)
 	s.NoError(err)
 }
 

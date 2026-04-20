@@ -89,7 +89,10 @@ func (r *Router) Handle(ctx context.Context, msg domain.TextMessage) error {
 
 	default:
 		err = errors.New("unexpected text message input/member status")
-		return utility.LogAndWrapError(ctx, err, "could not satisfy any required conditions", "phone", mem.Phone, "msg", msg.Body)
+		return utility.LogAndWrapError(
+			ctx, err, "could not satisfy any required conditions",
+			"phone", mem.Phone, "msg", msg.Body,
+		)
 	}
 
 	slog.InfoContext(ctx, fmt.Sprintf("Starting stage: %s", stageName), "phone", mem.Phone, "message", msg.Body)

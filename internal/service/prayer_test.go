@@ -33,7 +33,7 @@ func (s *PrayerServiceSuite) SetupTest() {
 	s.ctx = context.Background()
 	s.svc = service.NewPrayerService(s.members, s.intercessors, s.prayers, s.sender, config.Config{
 		IntercessorsPerPrayer: 2,
-		PrayerReminderHours:  3,
+		PrayerReminderHours:   3,
 	})
 }
 
@@ -78,7 +78,11 @@ func (s *PrayerServiceSuite) TestRequest_Queued() {
 	s.sender.EXPECT().SendMessage(s.ctx, "+11234567890", messaging.MsgPrayerQueued).Return(nil)
 
 	mem := domain.Member{Phone: "+11234567890", SetupStatus: domain.MemberSetupComplete}
-	err := s.svc.Request(s.ctx, domain.TextMessage{Body: "please pray for my health and well being today", Phone: "+11234567890"}, mem)
+	err := s.svc.Request(
+		s.ctx,
+		domain.TextMessage{Body: "please pray for my health and well being today", Phone: "+11234567890"},
+		mem,
+	)
 	s.NoError(err)
 }
 

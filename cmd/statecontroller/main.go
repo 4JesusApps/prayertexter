@@ -31,7 +31,12 @@ func handler(ctx context.Context) {
 	smsClnt := pinpointsmsvoicev2.NewFromConfig(awsCfg)
 
 	members := repository.NewMemberRepository(ddbClnt, cfg.AWS.DB.MemberTable, cfg.AWS.DB.Timeout)
-	prayers := repository.NewPrayerRepository(ddbClnt, cfg.AWS.DB.ActivePrayerTable, cfg.AWS.DB.QueuedPrayerTable, cfg.AWS.DB.Timeout)
+	prayers := repository.NewPrayerRepository(
+		ddbClnt,
+		cfg.AWS.DB.ActivePrayerTable,
+		cfg.AWS.DB.QueuedPrayerTable,
+		cfg.AWS.DB.Timeout,
+	)
 	intercessors := repository.NewIntercessorPhonesRepository(ddbClnt, cfg.AWS.DB.IntercessorPhonesTable, cfg.AWS.DB.Timeout)
 
 	sender := messaging.NewPinpointSender(smsClnt, cfg.AWS.SMS.PhonePool, cfg.AWS.SMS.Timeout)

@@ -12,10 +12,26 @@ import (
 )
 
 type DDBClient interface {
-	GetItem(ctx context.Context, input *dynamodb.GetItemInput, opts ...func(*dynamodb.Options)) (*dynamodb.GetItemOutput, error)
-	PutItem(ctx context.Context, input *dynamodb.PutItemInput, opts ...func(*dynamodb.Options)) (*dynamodb.PutItemOutput, error)
-	DeleteItem(ctx context.Context, input *dynamodb.DeleteItemInput, opts ...func(*dynamodb.Options)) (*dynamodb.DeleteItemOutput, error)
-	Scan(ctx context.Context, params *dynamodb.ScanInput, optFns ...func(*dynamodb.Options)) (*dynamodb.ScanOutput, error)
+	GetItem(
+		ctx context.Context,
+		input *dynamodb.GetItemInput,
+		opts ...func(*dynamodb.Options),
+	) (*dynamodb.GetItemOutput, error)
+	PutItem(
+		ctx context.Context,
+		input *dynamodb.PutItemInput,
+		opts ...func(*dynamodb.Options),
+	) (*dynamodb.PutItemOutput, error)
+	DeleteItem(
+		ctx context.Context,
+		input *dynamodb.DeleteItemInput,
+		opts ...func(*dynamodb.Options),
+	) (*dynamodb.DeleteItemOutput, error)
+	Scan(
+		ctx context.Context,
+		params *dynamodb.ScanInput,
+		optFns ...func(*dynamodb.Options),
+	) (*dynamodb.ScanOutput, error)
 }
 
 type DynamoDBRepository[T any] struct {

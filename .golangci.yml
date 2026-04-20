@@ -443,3 +443,15 @@ linters:
       # PRAYERTEXTER: skip long lines of map[string]types.AttributeValue in test files
       - source: '&types.AttributeValueMember'
         linters: [ golines ]
+      # PRAYERTEXTER: template globals are idiomatic Go pattern
+      - path: internal/messaging/templates\.go
+        linters:
+          - gochecknoglobals
+      # PRAYERTEXTER: config defaults are the named config, not magic numbers
+      - path: internal/config/config\.go
+        linters:
+          - mnd
+      # PRAYERTEXTER: high complexity in tests is normal
+      - path: _test\.go
+        linters:
+          - gocognit
