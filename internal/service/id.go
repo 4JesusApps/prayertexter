@@ -1,16 +1,17 @@
-package utility
+package service
 
 import (
 	"crypto/rand"
 	"encoding/hex"
+
+	"github.com/4JesusApps/prayertexter/internal/apperr"
 )
 
-// GenerateID returns a random string.
-func GenerateID() (string, error) {
+func generateID() (string, error) {
 	size := 16
 	bytes := make([]byte, size)
 	if _, err := rand.Read(bytes); err != nil {
-		return "", WrapError(err, "failed generate ID")
+		return "", apperr.WrapError(err, "failed generate ID")
 	}
 
 	return hex.EncodeToString(bytes), nil

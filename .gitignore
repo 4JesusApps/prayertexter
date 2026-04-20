@@ -4,3 +4,6 @@ bin
 .vscode/settings.json
 .claude_state
 .claude/settings.json
+.claude/skills
+coverage.out
+docs/superpowers

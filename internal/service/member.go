@@ -12,7 +12,6 @@ import (
 	"github.com/4JesusApps/prayertexter/internal/domain"
 	"github.com/4JesusApps/prayertexter/internal/messaging"
 	"github.com/4JesusApps/prayertexter/internal/repository"
-	"github.com/4JesusApps/prayertexter/internal/utility"
 )
 
 type MemberService struct {
@@ -85,7 +84,7 @@ func (s *MemberService) moveActivePrayer(ctx context.Context, mem domain.Member)
 		return err
 	}
 
-	id, err := utility.GenerateID()
+	id, err := generateID()
 	if err != nil {
 		return err
 	}

@@ -66,7 +66,9 @@ func (s *AdminServiceSuite) TestBlockUser_AlreadyBlocked() {
 }
 
 func (s *AdminServiceSuite) TestBlockUser_Success_NonIntercessor() {
-	s.blocked.EXPECT().Save(s.ctx, mock.Anything).Return(nil)
+	s.blocked.EXPECT().Save(s.ctx, mock.MatchedBy(func(bp *domain.BlockedPhones) bool {
+		return len(bp.Phones) == 2 && bp.Phones[1] == "+11234567890"
+	})).Return(nil)
 	s.members.EXPECT().Get(s.ctx, "+11234567890").Return(&domain.Member{
 		Phone: "+11234567890", Name: "Bad User",
 	}, nil)

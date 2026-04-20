@@ -5,12 +5,12 @@ import (
 	"encoding/json"
 	"log/slog"
 
+	"github.com/4JesusApps/prayertexter/internal/awscfg"
 	"github.com/4JesusApps/prayertexter/internal/config"
 	"github.com/4JesusApps/prayertexter/internal/domain"
 	"github.com/4JesusApps/prayertexter/internal/messaging"
 	"github.com/4JesusApps/prayertexter/internal/repository"
 	"github.com/4JesusApps/prayertexter/internal/service"
-	"github.com/4JesusApps/prayertexter/internal/utility"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
@@ -37,7 +37,7 @@ func handler(ctx context.Context, snsEvent events.SNSEvent) {
 
 	cfg := config.Load()
 
-	awsCfg, err := utility.GetAwsConfig(ctx)
+	awsCfg, err := awscfg.GetAwsConfig(ctx)
 	if err != nil {
 		slog.ErrorContext(ctx, "lambda handler: failed to get aws config", "error", err)
 		return

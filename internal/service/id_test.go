@@ -1,14 +1,10 @@
-package utility_test
+package service //nolint:testpackage // testing unexported generateID
 
-import (
-	"testing"
-
-	"github.com/4JesusApps/prayertexter/internal/utility"
-)
+import "testing"
 
 func TestGenerateID(t *testing.T) {
 	t.Run("generate id and confirm basic details", func(t *testing.T) {
-		id, err := utility.GenerateID()
+		id, err := generateID()
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}

@@ -88,7 +88,8 @@ func (s *MemberServiceSuite) TestSignUpFinalPrayer() {
 	s.members.EXPECT().Save(s.ctx, mock.MatchedBy(func(m *domain.Member) bool {
 		return m.SetupStatus == domain.MemberSetupComplete && !m.Intercessor
 	})).Return(nil)
-	s.sender.EXPECT().SendMessage(s.ctx, "+11234567890", mock.Anything).Return(nil)
+	expectedBody := messaging.MsgPrayerInstructions + "\n\n" + messaging.MsgSignUpConfirmation
+	s.sender.EXPECT().SendMessage(s.ctx, "+11234567890", expectedBody).Return(nil)
 
 	mem := domain.Member{Phone: "+11234567890", SetupStage: domain.MemberSignUpStepTwo}
 	err := s.svc.SignUp(s.ctx, domain.TextMessage{Body: "1", Phone: "+11234567890"}, mem)
@@ -113,6 +114,73 @@ func (s *MemberServiceSuite) TestDelete_Intercessor_NoActivePrayer() {
 		return len(p.Phones) == 1 && p.Phones[0] == "+19999999999"
 	})).Return(nil)
 	s.prayers.EXPECT().Exists(s.ctx, "+11234567890").Return(false, nil)
+	s.sender.EXPECT().SendMessage(s.ctx, "+11234567890", messaging.MsgRemoveUser).Return(nil)
+
+	err := s.svc.Delete(s.ctx, domain.Member{Phone: "+11234567890", Intercessor: true})
+	s.NoError(err)
+}
+
+func (s *MemberServiceSuite) TestSignUpStageThree() {
+	s.members.EXPECT().Save(s.ctx, mock.MatchedBy(func(m *domain.Member) bool {
+		return m.SetupStage == domain.MemberSignUpStepThree && m.Intercessor
+	})).Return(nil)
+	s.sender.EXPECT().SendMessage(s.ctx, "+11234567890", messaging.MsgPrayerNumRequest).Return(nil)
+
+	mem := domain.Member{Phone: "+11234567890", SetupStage: domain.MemberSignUpStepTwo}
+	err := s.svc.SignUp(s.ctx, domain.TextMessage{Body: "2", Phone: "+11234567890"}, mem)
+	s.NoError(err)
+}
+
+func (s *MemberServiceSuite) TestSignUpFinalIntercessor() {
+	s.intercessors.EXPECT().Get(s.ctx).Return(&domain.IntercessorPhones{
+		Phones: []string{"+19999999999"},
+	}, nil)
+	s.intercessors.EXPECT().Save(s.ctx, mock.MatchedBy(func(p *domain.IntercessorPhones) bool {
+		return len(p.Phones) == 2
+	})).Return(nil)
+	s.members.EXPECT().Save(s.ctx, mock.MatchedBy(func(m *domain.Member) bool {
+		return m.SetupStatus == domain.MemberSetupComplete &&
+			m.SetupStage == domain.MemberSignUpStepFinal &&
+			m.WeeklyPrayerLimit == 5
+	})).Return(nil)
+	expectedBody := messaging.MsgPrayerInstructions + "\n\n" + messaging.MsgIntercessorInstructions + "\n\n" +
+		messaging.MsgSignUpConfirmation
+	s.sender.EXPECT().SendMessage(s.ctx, "+11234567890", expectedBody).Return(nil)
+
+	mem := domain.Member{Phone: "+11234567890", SetupStage: domain.MemberSignUpStepThree}
+	err := s.svc.SignUp(s.ctx, domain.TextMessage{Body: "5", Phone: "+11234567890"}, mem)
+	s.NoError(err)
+}
+
+func (s *MemberServiceSuite) TestSignUpFinalIntercessor_WrongInput() {
+	s.sender.EXPECT().SendMessage(s.ctx, "+11234567890", messaging.MsgWrongInput).Return(nil)
+
+	mem := domain.Member{Phone: "+11234567890", SetupStage: domain.MemberSignUpStepThree}
+	err := s.svc.SignUp(s.ctx, domain.TextMessage{Body: "abc", Phone: "+11234567890"}, mem)
+	s.NoError(err)
+}
+
+func (s *MemberServiceSuite) TestDelete_Intercessor_WithActivePrayer() {
+	s.members.EXPECT().Delete(s.ctx, "+11234567890").Return(nil)
+	s.intercessors.EXPECT().Get(s.ctx).Return(&domain.IntercessorPhones{
+		Key:    "IntercessorPhones",
+		Phones: []string{"+11234567890"},
+	}, nil)
+	s.intercessors.EXPECT().Save(s.ctx, mock.MatchedBy(func(p *domain.IntercessorPhones) bool {
+		return len(p.Phones) == 0
+	})).Return(nil)
+	s.prayers.EXPECT().Exists(s.ctx, "+11234567890").Return(true, nil)
+	s.prayers.EXPECT().Get(s.ctx, "+11234567890", false).Return(&domain.Prayer{
+		Request:          "original prayer",
+		IntercessorPhone: "+11234567890",
+		Requestor:        domain.Member{Phone: "+19999999999"},
+	}, nil)
+	s.prayers.EXPECT().Delete(s.ctx, "+11234567890", false).Return(nil)
+	s.prayers.EXPECT().Save(s.ctx, mock.MatchedBy(func(p *domain.Prayer) bool {
+		return p.Request == "original prayer" &&
+			p.IntercessorPhone != "+11234567890" &&
+			p.Intercessor == domain.Member{}
+	}), true).Return(nil)
 	s.sender.EXPECT().SendMessage(s.ctx, "+11234567890", messaging.MsgRemoveUser).Return(nil)
 
 	err := s.svc.Delete(s.ctx, domain.Member{Phone: "+11234567890", Intercessor: true})

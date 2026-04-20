@@ -9,7 +9,7 @@ build:
 	go build -o bin/announcer ./cmd/announcer
 
 test:
-	go test ./... -v -count=1
+	go test ./... -count=1
 
 lint:
 	docker run --rm -v $(CURDIR):/app -w /app golangci/golangci-lint:$(GOLANGCI_LINT_VERSION) golangci-lint run ./...
