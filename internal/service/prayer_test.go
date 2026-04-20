@@ -60,7 +60,8 @@ func (s *PrayerServiceSuite) TestComplete_WithActivePrayer() {
 	}, nil)
 	s.sender.EXPECT().SendMessage(s.ctx, "+11234567890", messaging.MsgPrayerThankYou).Return(nil)
 	s.members.EXPECT().Exists(s.ctx, "+19999999999").Return(true, nil)
-	s.sender.EXPECT().SendMessage(s.ctx, "+19999999999", mock.Anything).Return(nil)
+	confirmMsg, _ := messaging.Render(messaging.PrayerConfirmationTmpl, struct{ Name string }{"Intercessor"})
+	s.sender.EXPECT().SendMessage(s.ctx, "+19999999999", confirmMsg).Return(nil)
 	s.prayers.EXPECT().Delete(s.ctx, "+11234567890", false).Return(nil)
 
 	err := s.svc.Complete(s.ctx, intercessor)
@@ -77,7 +78,11 @@ func (s *PrayerServiceSuite) TestRequest_InvalidRequest() {
 
 func (s *PrayerServiceSuite) TestRequest_Queued() {
 	s.intercessors.EXPECT().Get(s.ctx).Return(&domain.IntercessorPhones{Phones: []string{}}, nil)
-	s.prayers.EXPECT().Save(s.ctx, mock.Anything, true).Return(nil)
+	s.prayers.EXPECT().Save(s.ctx, mock.MatchedBy(func(p *domain.Prayer) bool {
+		return p.Request == "please pray for my health and well being today" &&
+			p.Requestor.Phone == "+11234567890" &&
+			p.IntercessorPhone != ""
+	}), true).Return(nil)
 	s.sender.EXPECT().SendMessage(s.ctx, "+11234567890", messaging.MsgPrayerQueued).Return(nil)
 
 	mem := domain.Member{Phone: "+11234567890", SetupStatus: domain.MemberSetupComplete}
@@ -197,8 +202,10 @@ func (s *PrayerServiceSuite) TestRequest_WithAnon() {
 	s.prayers.EXPECT().Save(s.ctx, mock.MatchedBy(func(p *domain.Prayer) bool {
 		return p.Requestor.Name == "Anonymous" && !strings.Contains(p.Request, "#anon")
 	}), false).Return(nil).Times(2)
-	s.sender.EXPECT().SendMessage(s.ctx, "+18888888888", mock.Anything).Return(nil)
-	s.sender.EXPECT().SendMessage(s.ctx, "+19999999999", mock.Anything).Return(nil)
+	introMsg, _ := messaging.Render(messaging.PrayerIntroTmpl, struct{ Name string }{"Anonymous"})
+	expectedPrayerMsg := introMsg + "please pray for my family and friends" + "\n\n" + messaging.MsgPrayed
+	s.sender.EXPECT().SendMessage(s.ctx, "+18888888888", expectedPrayerMsg).Return(nil)
+	s.sender.EXPECT().SendMessage(s.ctx, "+19999999999", expectedPrayerMsg).Return(nil)
 	s.sender.EXPECT().SendMessage(s.ctx, "+11234567890", messaging.MsgPrayerAssigned).Return(nil)
 
 	mem := domain.Member{Phone: "+11234567890", Name: "RealName", SetupStatus: domain.MemberSetupComplete}
@@ -237,9 +244,14 @@ func (s *PrayerServiceSuite) TestAssignQueuedPrayers_Success() {
 		return m.Phone == "+19999999999"
 	})).Return(nil)
 
-	s.prayers.EXPECT().Save(s.ctx, mock.Anything, false).Return(nil).Times(2)
-	s.sender.EXPECT().SendMessage(s.ctx, "+18888888888", mock.Anything).Return(nil)
-	s.sender.EXPECT().SendMessage(s.ctx, "+19999999999", mock.Anything).Return(nil)
+	s.prayers.EXPECT().Save(s.ctx, mock.MatchedBy(func(p *domain.Prayer) bool {
+		return p.Request == "please pray for me and my family today" &&
+			p.Requestor.Phone == "+11234567890"
+	}), false).Return(nil).Times(2)
+	introMsg, _ := messaging.Render(messaging.PrayerIntroTmpl, struct{ Name string }{"Requestor"})
+	expectedPrayerMsg := introMsg + "please pray for me and my family today" + "\n\n" + messaging.MsgPrayed
+	s.sender.EXPECT().SendMessage(s.ctx, "+18888888888", expectedPrayerMsg).Return(nil)
+	s.sender.EXPECT().SendMessage(s.ctx, "+19999999999", expectedPrayerMsg).Return(nil)
 
 	s.prayers.EXPECT().Delete(s.ctx, "queue-id-123", true).Return(nil)
 	s.sender.EXPECT().SendMessage(s.ctx, "+11234567890", messaging.MsgPrayerAssigned).Return(nil)
@@ -284,7 +296,9 @@ func (s *PrayerServiceSuite) TestRemindActiveIntercessors() {
 	s.prayers.EXPECT().Save(s.ctx, mock.MatchedBy(func(p *domain.Prayer) bool {
 		return p.IntercessorPhone == "+19999999999" && p.ReminderCount == 1
 	}), false).Return(nil)
-	s.sender.EXPECT().SendMessage(s.ctx, "+19999999999", mock.Anything).Return(nil)
+	reminderMsg, _ := messaging.Render(messaging.PrayerReminderTmpl, struct{ Name string }{"R2"})
+	expectedReminderMsg := reminderMsg + "prayer 2" + "\n\n" + messaging.MsgPrayed
+	s.sender.EXPECT().SendMessage(s.ctx, "+19999999999", expectedReminderMsg).Return(nil)
 
 	err := s.svc.RemindActiveIntercessors(s.ctx)
 	s.NoError(err)

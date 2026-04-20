@@ -88,7 +88,8 @@ func (s *MemberServiceSuite) TestSignUpFinalPrayer() {
 	s.members.EXPECT().Save(s.ctx, mock.MatchedBy(func(m *domain.Member) bool {
 		return m.SetupStatus == domain.MemberSetupComplete && !m.Intercessor
 	})).Return(nil)
-	s.sender.EXPECT().SendMessage(s.ctx, "+11234567890", mock.Anything).Return(nil)
+	expectedBody := messaging.MsgPrayerInstructions + "\n\n" + messaging.MsgSignUpConfirmation
+	s.sender.EXPECT().SendMessage(s.ctx, "+11234567890", expectedBody).Return(nil)
 
 	mem := domain.Member{Phone: "+11234567890", SetupStage: domain.MemberSignUpStepTwo}
 	err := s.svc.SignUp(s.ctx, domain.TextMessage{Body: "1", Phone: "+11234567890"}, mem)
