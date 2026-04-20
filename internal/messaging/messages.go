@@ -1,15 +1,5 @@
 package messaging
 
-// Default values for configuration that has been exposed to be used with the config package.
-const (
-	DefaultPhonePool    = "dummy"
-	PhonePoolConfigPath = "conf.aws.sms.phonepool"
-
-	DefaultTimeout    = 60
-	TimeoutConfigPath = "conf.aws.sms.timeout"
-)
-
-// Sign up stage messages.
 const (
 	MsgNameRequest = "Reply with your name, or 2 to stay anonymous."
 	MsgInvalidName = "Sorry, that name is not valid. Please reply with a name that is at least 2 letters long and " +
@@ -28,25 +18,19 @@ const (
 		"number."
 )
 
-// Prayer request stage messages.
 const (
 	MsgInvalidRequest = "Sorry, that request is not valid. Prayer requests must contain at least 5 words."
-	MsgPrayerIntro    = "Hello! Please pray for PLACEHOLDER:\n\n"
 	MsgPrayed         = "Once you have prayed, reply with the word prayed so that the prayer can be confirmed."
 	MsgPrayerQueued   = "We could not find any available intercessors. Your prayer has been added to the queue and " +
 		"will get sent out as soon as someone is available."
 	MsgPrayerAssigned = "Your prayer request has been sent out and assigned!"
-	MsgPrayerReminder = "This is a friendly reminder to pray for PLACEHOLDER:\n\n"
 )
 
-// Prayer completion stage messages.
 const (
-	MsgNoActivePrayer     = "You have no active prayers to mark as prayed."
-	MsgPrayerThankYou     = "Thank you for praying! We let the prayer requestor know that you have prayed for them."
-	MsgPrayerConfirmation = "You're prayer request has been prayed for by PLACEHOLDER."
+	MsgNoActivePrayer = "You have no active prayers to mark as prayed."
+	MsgPrayerThankYou = "Thank you for praying! We let the prayer requestor know that you have prayed for them."
 )
 
-// Block user stage messages.
 const (
 	MsgUnauthorized        = "You are unauthorized to perform this action."
 	MsgInvalidPhone        = "The phone number provided is invalid. Please use this format: 123-456-7890."
@@ -56,10 +40,8 @@ const (
 		"to reach out to us. "
 )
 
-// Other (general) message content sent by prayertexter.
 const (
-	MsgProfanityDetected = "There was profanity found in your message:\n\nPLACEHOLDER\n\nPlease try again"
-	MsgHelp              = "To receive support, please email info@4jesusministries.com or call/text (949) 313-4375. " +
+	MsgHelp = "To receive support, please email info@4jesusministries.com or call/text (949) 313-4375. " +
 		"Thank you!"
 	MsgPre  = "PrayerTexter: "
 	MsgPost = "Reply HELP for help or STOP to cancel."

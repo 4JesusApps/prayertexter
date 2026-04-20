@@ -10,11 +10,16 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/4JesusApps/prayertexter/internal/db"
+	"github.com/4JesusApps/prayertexter/internal/config"
+	"github.com/4JesusApps/prayertexter/internal/domain"
 	"github.com/4JesusApps/prayertexter/internal/messaging"
-	"github.com/4JesusApps/prayertexter/internal/prayertexter"
+	"github.com/4JesusApps/prayertexter/internal/repository"
+	"github.com/4JesusApps/prayertexter/internal/service"
+	"github.com/4JesusApps/prayertexter/internal/utility"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/pinpointsmsvoicev2"
 )
 
 // MUST BE SET by go build -ldflags "-X main.version=999" like 0.6.14-0-g26fe727 or 0.6.14-2-g9118702-dirty.
@@ -22,26 +27,46 @@ var version string // do not remove or modify
 
 func handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	slog.InfoContext(ctx, "running prayertexter", "version", version)
-	msg := messaging.TextMessage{}
 
+	var msg domain.TextMessage
 	if err := json.Unmarshal([]byte(req.Body), &msg); err != nil {
 		slog.ErrorContext(ctx, "lambda handler: failed to unmarshal api gateway request", "error", err)
 		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError}, err
 	}
 
-	ddbClnt, err := db.GetDdbClient(ctx)
+	cfg := config.Load()
+
+	awsCfg, err := utility.GetAwsConfig(ctx)
 	if err != nil {
-		slog.ErrorContext(ctx, "lambda handler: failed to get dynamodb client", "error", err)
+		slog.ErrorContext(ctx, "lambda handler: failed to get aws config", "error", err)
 		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError}, err
 	}
 
-	smsClnt, err := messaging.GetSmsClient(ctx)
-	if err != nil {
-		slog.ErrorContext(ctx, "lambda handler: failed to get sms client", "error", err)
-		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError}, err
-	}
+	ddbClnt := dynamodb.NewFromConfig(awsCfg)
+	smsClnt := pinpointsmsvoicev2.NewFromConfig(awsCfg)
 
-	if err = prayertexter.MainFlow(ctx, ddbClnt, smsClnt, msg); err != nil {
+	members := repository.NewMemberRepository(ddbClnt, cfg.AWS.DB.MemberTable, cfg.AWS.DB.Timeout)
+	prayers := repository.NewPrayerRepository(
+		ddbClnt,
+		cfg.AWS.DB.ActivePrayerTable,
+		cfg.AWS.DB.QueuedPrayerTable,
+		cfg.AWS.DB.Timeout,
+	)
+	blocked := repository.NewBlockedPhonesRepository(
+		ddbClnt, cfg.AWS.DB.BlockedPhonesTable, cfg.AWS.DB.Timeout,
+	)
+	intercessors := repository.NewIntercessorPhonesRepository(
+		ddbClnt, cfg.AWS.DB.IntercessorPhonesTable, cfg.AWS.DB.Timeout,
+	)
+
+	sender := messaging.NewPinpointSender(smsClnt, cfg.AWS.SMS.PhonePool, cfg.AWS.SMS.Timeout)
+
+	memberSvc := service.NewMemberService(members, intercessors, prayers, sender, cfg)
+	prayerSvc := service.NewPrayerService(members, intercessors, prayers, sender, cfg)
+	adminSvc := service.NewAdminService(members, blocked, sender, memberSvc)
+	router := service.NewRouter(members, blocked, memberSvc, prayerSvc, adminSvc)
+
+	if err = router.Handle(ctx, msg); err != nil {
 		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError}, err
 	}
 

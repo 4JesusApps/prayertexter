@@ -4,62 +4,64 @@ import (
 	"testing"
 
 	"github.com/4JesusApps/prayertexter/internal/config"
-	"github.com/4JesusApps/prayertexter/internal/db"
-	"github.com/4JesusApps/prayertexter/internal/messaging"
-	"github.com/4JesusApps/prayertexter/internal/object"
-	"github.com/4JesusApps/prayertexter/internal/utility"
-	"github.com/spf13/viper"
 )
 
-func TestDefaultConfigValues(t *testing.T) {
-	t.Run("verify that all default config values get passed through viper as expected", func(t *testing.T) {
-		config.InitConfig()
+func TestLoad(t *testing.T) {
+	t.Run("verify that Load returns a Config with expected default values", func(t *testing.T) {
+		cfg := config.Load()
 
-		configs := map[string]any{
-			utility.AwsRegionConfigPath:             utility.DefaultAwsRegion,
-			utility.AwsSvcMaxBackoffConfigPath:      utility.DefaultAwsSvcMaxBackoff,
-			utility.AwsSvcRetryAttemptsConfigPath:   utility.DefaultAwsSvcRetryAttempts,
-			db.TimeoutConfigPath:                    db.DefaultTimeout,
-			object.BlockedPhonesTableConfigPath:     object.DefaultBlockedPhonesTable,
-			object.IntercessorPhonesTableConfigPath: object.DefaultIntercessorPhonesTable,
-			object.MemberTableConfigPath:            object.DefaultMemberTable,
-			object.ActivePrayersTableConfigPath:     object.DefaultActivePrayersTable,
-			object.QueuedPrayersTableConfigPath:     object.DefaultQueuedPrayersTable,
-			messaging.PhonePoolConfigPath:           messaging.DefaultPhonePool,
-			messaging.TimeoutConfigPath:             messaging.DefaultTimeout,
-			object.IntercessorsPerPrayerConfigPath:  object.DefaultIntercessorsPerPrayer,
-			object.PrayerReminderHoursConfigPath:    object.DefaultPrayerReminderHours,
+		if cfg.AWS.Region != "us-west-1" {
+			t.Errorf("expected region us-west-1, got %v", cfg.AWS.Region)
 		}
-
-		var config any
-		for configPath, configValue := range configs {
-			switch configValue.(type) {
-			case int:
-				config = viper.GetInt(configPath)
-			case string:
-				config = viper.GetString(configPath)
-			default:
-				t.Errorf("expected type int or string, got %T", configValue)
-				return
-			}
-
-			if config != configValue {
-				t.Errorf("expected value for config path %v to be %v, got %v", configPath, configValue, config)
-			}
+		if cfg.AWS.Backoff != 10 {
+			t.Errorf("expected backoff 10, got %v", cfg.AWS.Backoff)
+		}
+		if cfg.AWS.Retry != 5 {
+			t.Errorf("expected retry 5, got %v", cfg.AWS.Retry)
+		}
+		if cfg.AWS.DB.Timeout != 60 {
+			t.Errorf("expected db timeout 60, got %v", cfg.AWS.DB.Timeout)
+		}
+		if cfg.AWS.DB.MemberTable != "Member" {
+			t.Errorf("expected member table Member, got %v", cfg.AWS.DB.MemberTable)
+		}
+		if cfg.AWS.DB.ActivePrayerTable != "ActivePrayer" {
+			t.Errorf("expected active prayer table ActivePrayer, got %v", cfg.AWS.DB.ActivePrayerTable)
+		}
+		if cfg.AWS.DB.QueuedPrayerTable != "QueuedPrayer" {
+			t.Errorf("expected queued prayer table QueuedPrayer, got %v", cfg.AWS.DB.QueuedPrayerTable)
+		}
+		if cfg.AWS.DB.BlockedPhonesTable != "General" {
+			t.Errorf("expected blocked phones table General, got %v", cfg.AWS.DB.BlockedPhonesTable)
+		}
+		if cfg.AWS.DB.IntercessorPhonesTable != "General" {
+			t.Errorf("expected intercessor phones table General, got %v", cfg.AWS.DB.IntercessorPhonesTable)
+		}
+		if cfg.AWS.SMS.PhonePool != "dummy" {
+			t.Errorf("expected phone pool dummy, got %v", cfg.AWS.SMS.PhonePool)
+		}
+		if cfg.AWS.SMS.Timeout != 60 {
+			t.Errorf("expected sms timeout 60, got %v", cfg.AWS.SMS.Timeout)
+		}
+		if cfg.IntercessorsPerPrayer != 2 {
+			t.Errorf("expected intercessors per prayer 2, got %v", cfg.IntercessorsPerPrayer)
+		}
+		if cfg.PrayerReminderHours != 3 {
+			t.Errorf("expected prayer reminder hours 3, got %v", cfg.PrayerReminderHours)
 		}
 	})
 }
 
 func TestEnvironmentalVariableOverride(t *testing.T) {
 	t.Run("verify environmental variables can override default config values", func(t *testing.T) {
-		config.InitConfig()
-		defaultPhone := viper.GetString(messaging.PhonePoolConfigPath)
-		newPhone := "+17777777777"
+		defaultCfg := config.Load()
+		defaultPhone := defaultCfg.AWS.SMS.PhonePool
 
+		newPhone := "+17777777777"
 		t.Setenv("PRAY_CONF_AWS_SMS_PHONEPOOL", newPhone)
 
-		config.InitConfig()
-		phone := viper.GetString(messaging.PhonePoolConfigPath)
+		cfg := config.Load()
+		phone := cfg.AWS.SMS.PhonePool
 
 		if phone == defaultPhone {
 			t.Errorf("expected phones to not be equal, got %v for both", phone)
