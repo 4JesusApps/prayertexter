@@ -5,3 +5,4 @@ bin
 .claude_state
 .claude/settings.json
 .claude/skills
+coverage.out

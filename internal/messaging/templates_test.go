@@ -2,32 +2,31 @@ package messaging_test
 
 import (
 	"testing"
+	"text/template"
 
 	"github.com/4JesusApps/prayertexter/internal/messaging"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestRenderPrayerIntro(t *testing.T) {
-	result, err := messaging.Render(messaging.PrayerIntroTmpl, struct{ Name string }{"John"})
-	require.NoError(t, err)
-	assert.Equal(t, "Hello! Please pray for John:\n\n", result)
-}
+func TestRender(t *testing.T) {
+	tests := []struct {
+		name     string
+		tmpl     *template.Template
+		data     any
+		contains string
+	}{
+		{"prayer intro", messaging.PrayerIntroTmpl, struct{ Name string }{"John"}, "Hello! Please pray for John:\n\n"},
+		{"profanity detected", messaging.ProfanityDetectedTmpl, struct{ Word string }{"badword"}, "badword"},
+		{"prayer confirmation", messaging.PrayerConfirmationTmpl, struct{ Name string }{"Jane"}, "Jane"},
+		{"prayer reminder", messaging.PrayerReminderTmpl, struct{ Name string }{"Bob"}, "Bob"},
+	}
 
-func TestRenderProfanityDetected(t *testing.T) {
-	result, err := messaging.Render(messaging.ProfanityDetectedTmpl, struct{ Word string }{"badword"})
-	require.NoError(t, err)
-	assert.Contains(t, result, "badword")
-}
-
-func TestRenderPrayerConfirmation(t *testing.T) {
-	result, err := messaging.Render(messaging.PrayerConfirmationTmpl, struct{ Name string }{"Jane"})
-	require.NoError(t, err)
-	assert.Contains(t, result, "Jane")
-}
-
-func TestRenderPrayerReminder(t *testing.T) {
-	result, err := messaging.Render(messaging.PrayerReminderTmpl, struct{ Name string }{"Bob"})
-	require.NoError(t, err)
-	assert.Contains(t, result, "Bob")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := messaging.Render(tt.tmpl, tt.data)
+			require.NoError(t, err)
+			assert.Contains(t, result, tt.contains)
+		})
+	}
 }

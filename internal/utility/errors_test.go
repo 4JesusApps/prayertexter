@@ -11,81 +11,91 @@ import (
 	"github.com/4JesusApps/prayertexter/internal/utility"
 )
 
-func TestErrorOperations(t *testing.T) {
-	ctx := context.Background()
-	origErr := errors.New("original error")
-	expectedErrString := "wrapped new error message: original error"
-	newErrorMsg := "wrapped new error message"
+func TestWrapError(t *testing.T) {
+	tests := []struct {
+		name    string
+		err     error
+		msg     string
+		wantNil bool
+		wantStr string
+	}{
+		{
+			name:    "wraps non-nil error",
+			err:     errors.New("original error"),
+			msg:     "wrapped new error message",
+			wantStr: "wrapped new error message: original error",
+		},
+		{
+			name:    "nil error returns nil",
+			err:     nil,
+			msg:     "wrapped new error message",
+			wantNil: true,
+		},
+	}
 
-	t.Run("WrapError", func(t *testing.T) {
-		t.Run("basic error wrapping string test", func(t *testing.T) {
-			testErr(t, origErr, expectedErrString, newErrorMsg, false)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := utility.WrapError(tt.err, tt.msg)
+			if tt.wantNil {
+				if got != nil {
+					t.Errorf("WrapError(nil, %q) = %v, want nil", tt.msg, got)
+				}
+				return
+			}
+			if got.Error() != tt.wantStr {
+				t.Errorf("WrapError() = %q, want %q", got.Error(), tt.wantStr)
+			}
 		})
-
-		t.Run("nil err as parameter should also return nil", func(t *testing.T) {
-			testErr(t, origErr, expectedErrString, newErrorMsg, true)
-		})
-	})
-	t.Run("LogAndWrapError", func(t *testing.T) {
-		t.Run("basic error wrapping/logging string test", func(t *testing.T) {
-			testErrAndLog(ctx, t, origErr, expectedErrString, newErrorMsg, false)
-		})
-
-		t.Run("nil err as parameter should also return nil and not log anything", func(t *testing.T) {
-			testErrAndLog(ctx, t, origErr, expectedErrString, newErrorMsg, true)
-		})
-	})
-}
-
-func testErr(t *testing.T, origErr error, expectedErrString, newErrorMsg string, nilErr bool) {
-	if nilErr {
-		newErr := utility.WrapError(nil, newErrorMsg)
-
-		if newErr != nil {
-			t.Errorf("expected nil error, got %v", newErr.Error())
-		}
-	} else {
-		newErr := utility.WrapError(origErr, newErrorMsg)
-
-		if newErr.Error() != expectedErrString {
-			t.Errorf("expected error string %v, got %v", expectedErrString, newErr.Error())
-		}
 	}
 }
 
-func testErrAndLog(ctx context.Context, t *testing.T, origErr error, expectedErrString, newErrorMsg string, nilErr bool) {
-	var buff bytes.Buffer
-	log := slog.New(slog.NewTextHandler(&buff, nil))
-	slog.SetDefault(log)
-	expectedLog := `level=ERROR msg="wrapped new error message" testattr1=1 testattr2=2 error="original error"`
-
-	if nilErr {
-		testNilErrorAndLog(ctx, t, newErrorMsg, &buff)
-	} else {
-		testActualErrorAndLog(ctx, t, origErr, newErrorMsg, expectedErrString, expectedLog, &buff)
-	}
-}
-
-func testNilErrorAndLog(ctx context.Context, t *testing.T, newErrorMsg string, buff *bytes.Buffer) {
-	newErr := utility.LogAndWrapError(ctx, nil, newErrorMsg, "testattr1", "1", "testattr2", "2")
-
-	if newErr != nil {
-		t.Errorf("expected nil error, got %v", newErr.Error())
-	}
-
-	if buff.Len() != 0 {
-		t.Errorf("expected no logging, got %v", buff.String())
-	}
-}
-
-func testActualErrorAndLog(ctx context.Context, t *testing.T, origErr error, newErrorMsg, expectedErrString, expectedLog string, buff *bytes.Buffer) {
-	newErr := utility.LogAndWrapError(ctx, origErr, newErrorMsg, "testattr1", "1", "testattr2", "2")
-
-	if newErr.Error() != expectedErrString {
-		t.Errorf("expected error string %v, got %v", expectedErrString, newErr.Error())
+func TestLogAndWrapError(t *testing.T) {
+	tests := []struct {
+		name       string
+		err        error
+		msg        string
+		wantNil    bool
+		wantStr    string
+		wantLogged string
+	}{
+		{
+			name:       "wraps and logs non-nil error",
+			err:        errors.New("original error"),
+			msg:        "wrapped new error message",
+			wantStr:    "wrapped new error message: original error",
+			wantLogged: `level=ERROR msg="wrapped new error message" testattr1=1 testattr2=2 error="original error"`,
+		},
+		{
+			name:    "nil error returns nil without logging",
+			err:     nil,
+			msg:     "wrapped new error message",
+			wantNil: true,
+		},
 	}
 
-	if !strings.Contains(buff.String(), expectedLog) {
-		t.Errorf("expected string %v to contain substring %v", buff.String(), expectedLog)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			orig := slog.Default()
+			slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
+			t.Cleanup(func() { slog.SetDefault(orig) })
+
+			got := utility.LogAndWrapError(context.Background(), tt.err, tt.msg, "testattr1", "1", "testattr2", "2")
+			if tt.wantNil {
+				if got != nil {
+					t.Errorf("LogAndWrapError(nil, %q) = %v, want nil", tt.msg, got)
+				}
+				if buf.Len() != 0 {
+					t.Errorf("expected no log output, got %q", buf.String())
+				}
+				return
+			}
+			if got.Error() != tt.wantStr {
+				t.Errorf("LogAndWrapError() = %q, want %q", got.Error(), tt.wantStr)
+			}
+			if !strings.Contains(buf.String(), tt.wantLogged) {
+				t.Errorf("log output %q does not contain %q", buf.String(), tt.wantLogged)
+			}
+		})
 	}
 }
