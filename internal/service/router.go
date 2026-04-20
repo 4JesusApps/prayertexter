@@ -8,9 +8,9 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/4JesusApps/prayertexter/internal/apperr"
 	"github.com/4JesusApps/prayertexter/internal/domain"
 	"github.com/4JesusApps/prayertexter/internal/repository"
-	"github.com/4JesusApps/prayertexter/internal/apperr"
 )
 
 type Router struct {

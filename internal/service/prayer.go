@@ -8,11 +8,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/4JesusApps/prayertexter/internal/apperr"
 	"github.com/4JesusApps/prayertexter/internal/config"
 	"github.com/4JesusApps/prayertexter/internal/domain"
 	"github.com/4JesusApps/prayertexter/internal/messaging"
 	"github.com/4JesusApps/prayertexter/internal/repository"
-	"github.com/4JesusApps/prayertexter/internal/apperr"
 )
 
 type PrayerService struct {
