@@ -6,11 +6,15 @@ import (
 	goaway "github.com/TwiN/go-away"
 )
 
-func CheckProfanity(text string) string {
-	profanities := &goaway.DefaultProfanities
-	*profanities = slices.DeleteFunc(*profanities, func(s string) bool {
+var profanityDetector *goaway.ProfanityDetector
+
+func init() {
+	goaway.DefaultProfanities = slices.DeleteFunc(goaway.DefaultProfanities, func(s string) bool {
 		return s == "jerk" || s == "ass" || s == "butt"
 	})
-	detector := goaway.NewProfanityDetector().WithSanitizeSpaces(false)
-	return detector.ExtractProfanity(text)
+	profanityDetector = goaway.NewProfanityDetector().WithSanitizeSpaces(false)
+}
+
+func CheckProfanity(text string) string {
+	return profanityDetector.ExtractProfanity(text)
 }
