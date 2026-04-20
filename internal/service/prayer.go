@@ -82,9 +82,7 @@ func isRequestValid(msg domain.TextMessage) bool {
 }
 
 func handleTriggerWords(msg *domain.TextMessage, mem *domain.Member) {
-	//nolint:gocritic // switch used for future expansion of trigger words
-	switch {
-	case strings.Contains(strings.ToLower(msg.Body), "#anon"):
+	if strings.Contains(strings.ToLower(msg.Body), "#anon") {
 		mem.Name = "Anonymous"
 		re := regexp.MustCompile(`(?i)#anon`)
 		msg.Body = strings.TrimSpace(re.ReplaceAllString(msg.Body, ""))
