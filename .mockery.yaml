@@ -1,16 +1,20 @@
-with-expecter: true
-dir: "internal/mocks/repository"
-outpkg: "mocks"
+dir: internal/mocks/repository
+filename: mocks.go
+pkgname: mocks
+template: testify
+template-data:
+  unroll-variadic: true
 packages:
-  github.com/4JesusApps/prayertexter/internal/repository:
-    interfaces:
-      DDBClient:
-      MemberRepository:
-      PrayerRepository:
-      BlockedPhonesRepository:
-      IntercessorPhonesRepository:
   github.com/4JesusApps/prayertexter/internal/messaging:
     config:
-      dir: "internal/mocks/messaging"
+      dir: internal/mocks/messaging
+      filename: mocks.go
     interfaces:
-      MessageSender:
+      MessageSender: {}
+  github.com/4JesusApps/prayertexter/internal/repository:
+    interfaces:
+      BlockedPhonesRepository: {}
+      DDBClient: {}
+      IntercessorPhonesRepository: {}
+      MemberRepository: {}
+      PrayerRepository: {}
