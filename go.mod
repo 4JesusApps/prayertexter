@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	github.com/TwiN/go-away v1.6.15
-	github.com/aws/aws-lambda-go v1.48.0
+	github.com/aws/aws-lambda-go v1.54.0
 	github.com/aws/aws-sdk-go-v2 v1.41.6
 	github.com/aws/aws-sdk-go-v2/config v1.29.14
 	github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue v1.20.38
