@@ -90,37 +90,58 @@ func handleTriggerWords(msg *domain.TextMessage, mem *domain.Member) {
 }
 
 func (s *PrayerService) AssignPrayer(ctx context.Context, pryr domain.Prayer, intr domain.Member) error {
-	pryr.Intercessor = intr
-	pryr.IntercessorPhone = intr.Phone
-	if err := s.prayers.Save(ctx, &pryr, false); err != nil {
-		return err
-	}
-
 	introMsg, err := messaging.Render(messaging.PrayerIntroTmpl, struct{ Name string }{pryr.Requestor.Name})
 	if err != nil {
 		return err
 	}
-	msg := introMsg + pryr.Request + "\n\n" + messaging.MsgPrayed
-	if err = s.sender.SendMessage(ctx, pryr.Intercessor.Phone, msg); err != nil {
+
+	reservedIntercessor, rollbackReservation, err := s.reserveIntercessor(ctx, intr.Phone)
+	if err != nil {
 		return err
 	}
 
-	slog.InfoContext(ctx, "assigned prayer successfully")
+	pryr.Intercessor = *reservedIntercessor
+	pryr.IntercessorPhone = reservedIntercessor.Phone
+	pryr.ReminderCount = 0
+	pryr.ReminderDate = time.Now().Format(time.RFC3339)
+	if err = s.prayers.Save(ctx, &pryr, false); err != nil {
+		if rollbackErr := rollbackReservation(ctx); rollbackErr != nil {
+			return errors.Join(err, rollbackErr)
+		}
+		return err
+	}
+
+	msg := introMsg + pryr.Request + "\n\n" + messaging.MsgPrayed
+	if err = s.sender.SendMessage(ctx, pryr.Intercessor.Phone, msg); err != nil {
+		rollbackErr := s.rollbackAssignedPrayer(ctx, pryr.IntercessorPhone, rollbackReservation)
+		if rollbackErr != nil {
+			return errors.Join(err, rollbackErr)
+		}
+		return err
+	}
+
+	slog.InfoContext(ctx, "assigned prayer successfully", "intercessor", pryr.Intercessor.Phone)
 	return nil
 }
 
-func (s *PrayerService) FindIntercessors(ctx context.Context, skipPhone string) ([]domain.Member, error) {
+func (s *PrayerService) FindIntercessors(ctx context.Context, skipPhones ...string) ([]domain.Member, error) {
+	return s.findIntercessors(ctx, s.cfg.IntercessorsPerPrayer, skipPhones...)
+}
+
+func (s *PrayerService) findIntercessors(ctx context.Context, desired int, skipPhones ...string) ([]domain.Member, error) {
 	allPhones, err := s.intercessors.Get(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	allPhones.RemovePhone(skipPhone)
+	for _, skipPhone := range skipPhones {
+		allPhones.RemovePhone(skipPhone)
+	}
 
 	var intercessors []domain.Member
 
-	for len(intercessors) < s.cfg.IntercessorsPerPrayer {
-		randPhones := allPhones.GenRandPhones(s.cfg.IntercessorsPerPrayer)
+	for len(intercessors) < desired {
+		randPhones := allPhones.GenRandPhones(desired - len(intercessors))
 		if randPhones == nil {
 			slog.InfoContext(ctx, "there are no more intercessors left to check")
 			if len(intercessors) > 0 {
@@ -132,7 +153,7 @@ func (s *PrayerService) FindIntercessors(ctx context.Context, skipPhone string) 
 		}
 
 		for _, phn := range randPhones {
-			if len(intercessors) >= s.cfg.IntercessorsPerPrayer {
+			if len(intercessors) >= desired {
 				return intercessors, nil
 			}
 
@@ -156,6 +177,9 @@ func (s *PrayerService) FindIntercessors(ctx context.Context, skipPhone string) 
 
 func (s *PrayerService) processIntercessor(ctx context.Context, phone string) (*domain.Member, error) {
 	intr, err := s.members.Get(ctx, phone)
+	if errors.Is(err, repository.ErrNotFound) {
+		return nil, ErrIntercessorUnavailable
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -168,26 +192,85 @@ func (s *PrayerService) processIntercessor(ctx context.Context, phone string) (*
 		return nil, ErrIntercessorUnavailable
 	}
 
+	if intr.WeeklyPrayerLimit <= 0 {
+		return nil, ErrIntercessorUnavailable
+	}
+
+	if intr.PrayerCount < intr.WeeklyPrayerLimit {
+		return intr, nil
+	}
+
+	canReset, err := canResetPrayerCount(*intr)
+	if err != nil {
+		return nil, err
+	}
+	if !canReset {
+		return nil, ErrIntercessorUnavailable
+	}
+
+	return intr, nil
+}
+
+func (s *PrayerService) reserveIntercessor(
+	ctx context.Context, phone string,
+) (*domain.Member, func(context.Context) error, error) {
+	intr, err := s.members.Get(ctx, phone)
+	if errors.Is(err, repository.ErrNotFound) {
+		return nil, nil, ErrIntercessorUnavailable
+	}
+	if err != nil {
+		return nil, nil, err
+	}
+
+	isActive, err := s.prayers.Exists(ctx, intr.Phone)
+	if err != nil {
+		return nil, nil, err
+	}
+	if isActive {
+		return nil, nil, ErrIntercessorUnavailable
+	}
+	if intr.WeeklyPrayerLimit <= 0 {
+		return nil, nil, ErrIntercessorUnavailable
+	}
+
+	original := *intr
 	if intr.PrayerCount < intr.WeeklyPrayerLimit {
 		intr.PrayerCount++
 	} else {
 		var canReset bool
 		canReset, err = canResetPrayerCount(*intr)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-		if canReset {
-			intr.PrayerCount = 1
-			intr.WeeklyPrayerDate = time.Now().Format(time.RFC3339)
-		} else {
-			return nil, ErrIntercessorUnavailable
+		if !canReset {
+			return nil, nil, ErrIntercessorUnavailable
 		}
+		intr.PrayerCount = 1
+		intr.WeeklyPrayerDate = time.Now().Format(time.RFC3339)
 	}
 
 	if err = s.members.Save(ctx, intr); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return intr, nil
+
+	rollback := func(ctx context.Context) error {
+		return s.members.Save(ctx, &original)
+	}
+
+	return intr, rollback, nil
+}
+
+func (s *PrayerService) rollbackAssignedPrayer(
+	ctx context.Context, intercessorPhone string, rollbackReservation func(context.Context) error,
+) error {
+	var rollbackErrs []error
+	if err := s.prayers.Delete(ctx, intercessorPhone, false); err != nil {
+		rollbackErrs = append(rollbackErrs, err)
+	}
+	if err := rollbackReservation(ctx); err != nil {
+		rollbackErrs = append(rollbackErrs, err)
+	}
+	return errors.Join(rollbackErrs...)
 }
 
 func canResetPrayerCount(intr domain.Member) (bool, error) {
@@ -206,6 +289,7 @@ func (s *PrayerService) queuePrayer(ctx context.Context, msg domain.TextMessage,
 
 	pryr := domain.Prayer{
 		IntercessorPhone: id,
+		QueueID:          id,
 		Request:          msg.Body,
 		Requestor:        mem,
 	}
@@ -219,6 +303,9 @@ func (s *PrayerService) queuePrayer(ctx context.Context, msg domain.TextMessage,
 
 func (s *PrayerService) Complete(ctx context.Context, mem domain.Member) error {
 	pryr, err := s.prayers.Get(ctx, mem.Phone, false)
+	if errors.Is(err, repository.ErrNotFound) {
+		return s.sender.SendMessage(ctx, mem.Phone, messaging.MsgNoActivePrayer)
+	}
 	if err != nil {
 		return err
 	}
@@ -253,18 +340,24 @@ func (s *PrayerService) Complete(ctx context.Context, mem domain.Member) error {
 	return s.prayers.Delete(ctx, mem.Phone, false)
 }
 
-func (s *PrayerService) RunScheduledJobs(ctx context.Context) {
+func (s *PrayerService) RunScheduledJobs(ctx context.Context) error {
+	var jobErrs []error
+
 	if err := s.AssignQueuedPrayers(ctx); err != nil {
 		apperr.LogError(ctx, err, "failed job", "job", "Assign Queued Prayers")
+		jobErrs = append(jobErrs, err)
 	} else {
 		slog.InfoContext(ctx, "finished job", "job", "Assign Queued Prayers")
 	}
 
 	if err := s.RemindActiveIntercessors(ctx); err != nil {
 		apperr.LogError(ctx, err, "failed job", "job", "Remind Intercessors with Active Prayers")
+		jobErrs = append(jobErrs, err)
 	} else {
 		slog.InfoContext(ctx, "finished job", "job", "Remind Intercessors with Active Prayers")
 	}
+
+	return errors.Join(jobErrs...)
 }
 
 func (s *PrayerService) AssignQueuedPrayers(ctx context.Context) error {
@@ -274,31 +367,81 @@ func (s *PrayerService) AssignQueuedPrayers(ctx context.Context) error {
 	}
 
 	for _, pryr := range prayers {
-		var intercessors []domain.Member
-		intercessors, err = s.FindIntercessors(ctx, pryr.Requestor.Phone)
-		if err != nil && errors.Is(err, ErrNoAvailableIntercessors) {
-			slog.WarnContext(ctx, "no intercessors available, exiting job")
-			break
-		} else if err != nil {
-			return apperr.WrapError(err, "failed to find intercessors")
+		queueID := pryr.QueueID
+		if queueID == "" {
+			queueID = pryr.IntercessorPhone
+			pryr.QueueID = queueID
 		}
 
-		for _, intr := range intercessors {
-			if err = s.AssignPrayer(ctx, pryr, intr); err != nil {
-				return apperr.WrapError(err, "failed to assign prayer")
+		activeAssignments, err := s.getActiveAssignmentsByQueueID(ctx, queueID)
+		if err != nil {
+			return apperr.WrapError(err, "failed to look up active queued assignments")
+		}
+
+		remainingAssignments := s.cfg.IntercessorsPerPrayer - len(activeAssignments)
+		if remainingAssignments > 0 {
+			skipPhones := []string{pryr.Requestor.Phone}
+			for _, activePrayer := range activeAssignments {
+				skipPhones = append(skipPhones, activePrayer.IntercessorPhone)
+			}
+
+			var intercessors []domain.Member
+			intercessors, err = s.findIntercessors(ctx, remainingAssignments, skipPhones...)
+			if err != nil && errors.Is(err, ErrNoAvailableIntercessors) {
+				slog.WarnContext(ctx, "no intercessors available, leaving prayer queued", "queueID", queueID)
+				continue
+			} else if err != nil {
+				return apperr.WrapError(err, "failed to find intercessors")
+			}
+
+			for _, intr := range intercessors {
+				pryr.QueueID = queueID
+				if err = s.AssignPrayer(ctx, pryr, intr); err != nil {
+					return apperr.WrapError(err, "failed to assign prayer")
+				}
+				activeAssignments = append(activeAssignments, domain.Prayer{
+					IntercessorPhone: intr.Phone,
+					QueueID:          queueID,
+				})
+			}
+		}
+
+		if len(activeAssignments) == 0 {
+			continue
+		}
+
+		if !pryr.RequestorNotified {
+			if err = s.sender.SendMessage(ctx, pryr.Requestor.Phone, messaging.MsgPrayerAssigned); err != nil {
+				return err
+			}
+			pryr.RequestorNotified = true
+			if err = s.prayers.Save(ctx, &pryr, true); err != nil {
+				return err
 			}
 		}
 
 		if err = s.prayers.Delete(ctx, pryr.IntercessorPhone, true); err != nil {
 			return err
 		}
-
-		if err = s.sender.SendMessage(ctx, pryr.Requestor.Phone, messaging.MsgPrayerAssigned); err != nil {
-			return err
-		}
 	}
 
 	return nil
+}
+
+func (s *PrayerService) getActiveAssignmentsByQueueID(ctx context.Context, queueID string) ([]domain.Prayer, error) {
+	activePrayers, err := s.prayers.GetAll(ctx, false)
+	if err != nil {
+		return nil, err
+	}
+
+	assignments := make([]domain.Prayer, 0)
+	for _, pryr := range activePrayers {
+		if pryr.QueueID == queueID {
+			assignments = append(assignments, pryr)
+		}
+	}
+
+	return assignments, nil
 }
 
 func (s *PrayerService) RemindActiveIntercessors(ctx context.Context) error {

@@ -2,6 +2,7 @@ package service_test
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -9,6 +10,7 @@ import (
 	"github.com/4JesusApps/prayertexter/internal/config"
 	"github.com/4JesusApps/prayertexter/internal/domain"
 	"github.com/4JesusApps/prayertexter/internal/messaging"
+	"github.com/4JesusApps/prayertexter/internal/repository"
 	"github.com/4JesusApps/prayertexter/internal/service"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
@@ -40,7 +42,7 @@ func (s *PrayerServiceSuite) SetupTest() {
 }
 
 func (s *PrayerServiceSuite) TestComplete_NoActivePrayer() {
-	s.prayers.EXPECT().Get(s.ctx, "+11234567890", false).Return(&domain.Prayer{}, nil)
+	s.prayers.EXPECT().Get(s.ctx, "+11234567890", false).Return(nil, repository.ErrNotFound)
 	s.sender.EXPECT().SendMessage(s.ctx, "+11234567890", messaging.MsgNoActivePrayer).Return(nil)
 
 	err := s.svc.Complete(s.ctx, domain.Member{Phone: "+11234567890"})
@@ -101,16 +103,10 @@ func (s *PrayerServiceSuite) TestFindIntercessors_UnderLimit() {
 		Phone: "+18888888888", PrayerCount: 0, WeeklyPrayerLimit: 5,
 	}, nil)
 	s.prayers.EXPECT().Exists(s.ctx, "+18888888888").Return(false, nil)
-	s.members.EXPECT().Save(s.ctx, mock.MatchedBy(func(m *domain.Member) bool {
-		return m.Phone == "+18888888888" && m.PrayerCount == 1
-	})).Return(nil)
 	s.members.EXPECT().Get(s.ctx, "+19999999999").Return(&domain.Member{
 		Phone: "+19999999999", PrayerCount: 0, WeeklyPrayerLimit: 5,
 	}, nil)
 	s.prayers.EXPECT().Exists(s.ctx, "+19999999999").Return(false, nil)
-	s.members.EXPECT().Save(s.ctx, mock.MatchedBy(func(m *domain.Member) bool {
-		return m.Phone == "+19999999999" && m.PrayerCount == 1
-	})).Return(nil)
 
 	result, err := s.svc.FindIntercessors(s.ctx, "+11234567890")
 	s.Require().NoError(err)
@@ -127,16 +123,10 @@ func (s *PrayerServiceSuite) TestFindIntercessors_AtLimit_ResetEligible() {
 		Phone: "+18888888888", PrayerCount: 5, WeeklyPrayerLimit: 5, WeeklyPrayerDate: oldDate,
 	}, nil)
 	s.prayers.EXPECT().Exists(s.ctx, "+18888888888").Return(false, nil)
-	s.members.EXPECT().Save(s.ctx, mock.MatchedBy(func(m *domain.Member) bool {
-		return m.Phone == "+18888888888" && m.PrayerCount == 1
-	})).Return(nil)
 	s.members.EXPECT().Get(s.ctx, "+19999999999").Return(&domain.Member{
 		Phone: "+19999999999", PrayerCount: 5, WeeklyPrayerLimit: 5, WeeklyPrayerDate: oldDate,
 	}, nil)
 	s.prayers.EXPECT().Exists(s.ctx, "+19999999999").Return(false, nil)
-	s.members.EXPECT().Save(s.ctx, mock.MatchedBy(func(m *domain.Member) bool {
-		return m.Phone == "+19999999999" && m.PrayerCount == 1
-	})).Return(nil)
 
 	result, err := s.svc.FindIntercessors(s.ctx, "+11234567890")
 	s.Require().NoError(err)
@@ -185,15 +175,15 @@ func (s *PrayerServiceSuite) TestRequest_WithAnon() {
 	}, nil)
 	s.members.EXPECT().Get(s.ctx, "+18888888888").Return(&domain.Member{
 		Phone: "+18888888888", PrayerCount: 0, WeeklyPrayerLimit: 5,
-	}, nil)
-	s.prayers.EXPECT().Exists(s.ctx, "+18888888888").Return(false, nil)
+	}, nil).Twice()
+	s.prayers.EXPECT().Exists(s.ctx, "+18888888888").Return(false, nil).Twice()
 	s.members.EXPECT().Save(s.ctx, mock.MatchedBy(func(m *domain.Member) bool {
 		return m.Phone == "+18888888888"
 	})).Return(nil)
 	s.members.EXPECT().Get(s.ctx, "+19999999999").Return(&domain.Member{
 		Phone: "+19999999999", PrayerCount: 0, WeeklyPrayerLimit: 5,
-	}, nil)
-	s.prayers.EXPECT().Exists(s.ctx, "+19999999999").Return(false, nil)
+	}, nil).Twice()
+	s.prayers.EXPECT().Exists(s.ctx, "+19999999999").Return(false, nil).Twice()
 	s.members.EXPECT().Save(s.ctx, mock.MatchedBy(func(m *domain.Member) bool {
 		return m.Phone == "+19999999999"
 	})).Return(nil)
@@ -219,26 +209,28 @@ func (s *PrayerServiceSuite) TestRequest_WithAnon() {
 func (s *PrayerServiceSuite) TestAssignQueuedPrayers_Success() {
 	queuedPrayer := domain.Prayer{
 		IntercessorPhone: "queue-id-123",
+		QueueID:          "queue-id-123",
 		Request:          "please pray for me and my family today",
 		Requestor:        domain.Member{Phone: "+11234567890", Name: "Requestor"},
 	}
 
 	s.prayers.EXPECT().GetAll(s.ctx, true).Return([]domain.Prayer{queuedPrayer}, nil)
+	s.prayers.EXPECT().GetAll(s.ctx, false).Return([]domain.Prayer{}, nil)
 
 	s.intercessors.EXPECT().Get(s.ctx).Return(&domain.IntercessorPhones{
 		Phones: []string{"+18888888888", "+19999999999"},
 	}, nil)
 	s.members.EXPECT().Get(s.ctx, "+18888888888").Return(&domain.Member{
 		Phone: "+18888888888", Name: "I1", PrayerCount: 0, WeeklyPrayerLimit: 5,
-	}, nil)
-	s.prayers.EXPECT().Exists(s.ctx, "+18888888888").Return(false, nil)
+	}, nil).Twice()
+	s.prayers.EXPECT().Exists(s.ctx, "+18888888888").Return(false, nil).Twice()
 	s.members.EXPECT().Save(s.ctx, mock.MatchedBy(func(m *domain.Member) bool {
 		return m.Phone == "+18888888888"
 	})).Return(nil)
 	s.members.EXPECT().Get(s.ctx, "+19999999999").Return(&domain.Member{
 		Phone: "+19999999999", Name: "I2", PrayerCount: 0, WeeklyPrayerLimit: 5,
-	}, nil)
-	s.prayers.EXPECT().Exists(s.ctx, "+19999999999").Return(false, nil)
+	}, nil).Twice()
+	s.prayers.EXPECT().Exists(s.ctx, "+19999999999").Return(false, nil).Twice()
 	s.members.EXPECT().Save(s.ctx, mock.MatchedBy(func(m *domain.Member) bool {
 		return m.Phone == "+19999999999"
 	})).Return(nil)
@@ -252,11 +244,40 @@ func (s *PrayerServiceSuite) TestAssignQueuedPrayers_Success() {
 	s.sender.EXPECT().SendMessage(s.ctx, "+18888888888", expectedPrayerMsg).Return(nil)
 	s.sender.EXPECT().SendMessage(s.ctx, "+19999999999", expectedPrayerMsg).Return(nil)
 
-	s.prayers.EXPECT().Delete(s.ctx, "queue-id-123", true).Return(nil)
 	s.sender.EXPECT().SendMessage(s.ctx, "+11234567890", messaging.MsgPrayerAssigned).Return(nil)
+	s.prayers.EXPECT().Save(s.ctx, mock.MatchedBy(func(p *domain.Prayer) bool {
+		return p.QueueID == "queue-id-123" && p.RequestorNotified
+	}), true).Return(nil)
+	s.prayers.EXPECT().Delete(s.ctx, "queue-id-123", true).Return(nil)
 
 	err := s.svc.AssignQueuedPrayers(s.ctx)
 	s.NoError(err)
+}
+
+func (s *PrayerServiceSuite) TestAssignPrayer_RollsBackOnSendFailure() {
+	s.members.EXPECT().Get(s.ctx, "+18888888888").Return(&domain.Member{
+		Phone: "+18888888888", Name: "I1", PrayerCount: 0, WeeklyPrayerLimit: 5,
+	}, nil)
+	s.prayers.EXPECT().Exists(s.ctx, "+18888888888").Return(false, nil)
+	s.members.EXPECT().Save(s.ctx, mock.MatchedBy(func(m *domain.Member) bool {
+		return m.Phone == "+18888888888" && m.PrayerCount == 1
+	})).Return(nil)
+	s.prayers.EXPECT().Save(s.ctx, mock.MatchedBy(func(p *domain.Prayer) bool {
+		return p.IntercessorPhone == "+18888888888" && p.ReminderDate != ""
+	}), false).Return(nil)
+	introMsg, _ := messaging.Render(messaging.PrayerIntroTmpl, struct{ Name string }{"Requestor"})
+	expectedPrayerMsg := introMsg + "please pray for me and my family today" + "\n\n" + messaging.MsgPrayed
+	s.sender.EXPECT().SendMessage(s.ctx, "+18888888888", expectedPrayerMsg).Return(errors.New("send failed"))
+	s.prayers.EXPECT().Delete(s.ctx, "+18888888888", false).Return(nil)
+	s.members.EXPECT().Save(s.ctx, mock.MatchedBy(func(m *domain.Member) bool {
+		return m.Phone == "+18888888888" && m.PrayerCount == 0
+	})).Return(nil)
+
+	err := s.svc.AssignPrayer(s.ctx, domain.Prayer{
+		Request:   "please pray for me and my family today",
+		Requestor: domain.Member{Phone: "+11234567890", Name: "Requestor"},
+	}, domain.Member{Phone: "+18888888888"})
+	s.Error(err)
 }
 
 func (s *PrayerServiceSuite) TestRemindActiveIntercessors() {

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"strconv"
 	"strings"
@@ -43,13 +44,24 @@ func (s *MemberService) Help(ctx context.Context, mem domain.Member) error {
 }
 
 func (s *MemberService) Delete(ctx context.Context, mem domain.Member) error {
-	if err := s.members.Delete(ctx, mem.Phone); err != nil {
-		return err
-	}
+	return s.delete(ctx, mem, true)
+}
+
+func (s *MemberService) DeleteWithoutNotification(ctx context.Context, mem domain.Member) error {
+	return s.delete(ctx, mem, false)
+}
+
+func (s *MemberService) delete(ctx context.Context, mem domain.Member, notify bool) error {
 	if mem.Intercessor {
 		if err := s.removeIntercessor(ctx, mem); err != nil {
 			return err
 		}
+	}
+	if err := s.members.Delete(ctx, mem.Phone); err != nil {
+		return err
+	}
+	if !notify {
+		return nil
 	}
 	return s.sender.SendMessage(ctx, mem.Phone, messaging.MsgRemoveUser)
 }
@@ -59,28 +71,32 @@ func (s *MemberService) removeIntercessor(ctx context.Context, mem domain.Member
 	if err != nil {
 		return err
 	}
+
+	originalPhones := append([]string(nil), phones.Phones...)
 	phones.RemovePhone(mem.Phone)
 	if err = s.intercessors.Save(ctx, phones); err != nil {
 		return err
 	}
-	return s.moveActivePrayer(ctx, mem)
+
+	if err = s.moveActivePrayer(ctx, mem); err != nil {
+		restorePhones := &domain.IntercessorPhones{
+			Key:    phones.Key,
+			Phones: originalPhones,
+		}
+		if restoreErr := s.intercessors.Save(ctx, restorePhones); restoreErr != nil {
+			return errors.Join(err, restoreErr)
+		}
+		return err
+	}
+
+	return nil
 }
 
 func (s *MemberService) moveActivePrayer(ctx context.Context, mem domain.Member) error {
-	isActive, err := s.prayers.Exists(ctx, mem.Phone)
-	if err != nil {
-		return err
-	}
-	if !isActive {
-		return nil
-	}
-
 	pryr, err := s.prayers.Get(ctx, mem.Phone, false)
-	if err != nil {
-		return err
-	}
-
-	if err = s.prayers.Delete(ctx, mem.Phone, false); err != nil {
+	if errors.Is(err, repository.ErrNotFound) {
+		return nil
+	} else if err != nil {
 		return err
 	}
 
@@ -88,10 +104,26 @@ func (s *MemberService) moveActivePrayer(ctx context.Context, mem domain.Member)
 	if err != nil {
 		return err
 	}
-	pryr.IntercessorPhone = id
-	pryr.Intercessor = domain.Member{}
 
-	return s.prayers.Save(ctx, pryr, true)
+	queuedPrayer := *pryr
+	queuedPrayer.QueueID = id
+	queuedPrayer.IntercessorPhone = id
+	queuedPrayer.Intercessor = domain.Member{}
+	queuedPrayer.ReminderCount = 0
+	queuedPrayer.ReminderDate = ""
+	queuedPrayer.RequestorNotified = false
+
+	if err = s.prayers.Delete(ctx, mem.Phone, false); err != nil {
+		return err
+	}
+	if err = s.prayers.Save(ctx, &queuedPrayer, true); err != nil {
+		if restoreErr := s.prayers.Save(ctx, pryr, false); restoreErr != nil {
+			return errors.Join(err, restoreErr)
+		}
+		return err
+	}
+
+	return nil
 }
 
 func (s *MemberService) SignUp(ctx context.Context, msg domain.TextMessage, mem domain.Member) error {

@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"log/slog"
 
 	"github.com/4JesusApps/prayertexter/internal/awscfg"
@@ -19,28 +21,21 @@ import (
 
 var version string // do not remove or modify
 
-func handler(ctx context.Context, snsEvent events.SNSEvent) {
+func handler(ctx context.Context, snsEvent events.SNSEvent) error {
 	slog.InfoContext(ctx, "running prayertexter", "version", version)
 
-	if len(snsEvent.Records) > 1 {
-		for _, record := range snsEvent.Records {
-			slog.ErrorContext(ctx, "lambda handler: there are more than 1 SNS records! This is unexpected and only "+
-				"the first record will be handled", "message", record.SNS.Message, "messageid", record.SNS.MessageID)
-		}
+	if len(snsEvent.Records) == 0 {
+		return errors.New("lambda handler: sns event contained no records")
 	}
-
-	var msg domain.TextMessage
-	if err := json.Unmarshal([]byte(snsEvent.Records[0].SNS.Message), &msg); err != nil {
-		slog.ErrorContext(ctx, "lambda handler: failed to unmarshal api gateway request", "error", err)
-		return
+	if len(snsEvent.Records) > 1 {
+		slog.WarnContext(ctx, "processing batched SNS event", "records", len(snsEvent.Records))
 	}
 
 	cfg := config.Load()
 
 	awsCfg, err := awscfg.GetAwsConfig(ctx)
 	if err != nil {
-		slog.ErrorContext(ctx, "lambda handler: failed to get aws config", "error", err)
-		return
+		return fmt.Errorf("lambda handler: failed to get aws config: %w", err)
 	}
 
 	ddbClnt := dynamodb.NewFromConfig(awsCfg)
@@ -67,9 +62,25 @@ func handler(ctx context.Context, snsEvent events.SNSEvent) {
 	adminSvc := service.NewAdminService(members, blocked, sender, memberSvc)
 	router := service.NewRouter(members, blocked, memberSvc, prayerSvc, adminSvc)
 
-	if err = router.Handle(ctx, msg); err != nil {
-		return
+	var recordErrs []error
+	for idx, record := range snsEvent.Records {
+		var msg domain.TextMessage
+		if err = json.Unmarshal([]byte(record.SNS.Message), &msg); err != nil {
+			recordErrs = append(recordErrs, fmt.Errorf(
+				"lambda handler: failed to unmarshal sns record %d (%s): %w",
+				idx, record.SNS.MessageID, err,
+			))
+			continue
+		}
+		if err = router.Handle(ctx, msg); err != nil {
+			recordErrs = append(recordErrs, fmt.Errorf(
+				"lambda handler: failed to process sns record %d (%s): %w",
+				idx, record.SNS.MessageID, err,
+			))
+		}
 	}
+
+	return errors.Join(recordErrs...)
 }
 
 func main() {

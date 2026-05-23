@@ -48,6 +48,9 @@ func (r *prayerRepository) Delete(ctx context.Context, key string, queued bool) 
 func (r *prayerRepository) Exists(ctx context.Context, phone string) (bool, error) {
 	pryr, err := r.activeRepo.Get(ctx, phone)
 	if err != nil {
+		if err == ErrNotFound {
+			return false, nil
+		}
 		return false, err
 	}
 	return pryr.Request != "", nil

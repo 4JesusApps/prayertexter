@@ -16,15 +16,14 @@ import (
 
 var version string // do not remove or modify
 
-func handler(ctx context.Context) {
+func handler(ctx context.Context) error {
 	slog.InfoContext(ctx, "running statecontroller", "version", version)
 
 	cfg := config.Load()
 
 	awsCfg, err := awscfg.GetAwsConfig(ctx)
 	if err != nil {
-		slog.ErrorContext(ctx, "lambda handler: failed to get aws config", "error", err)
-		return
+		return err
 	}
 
 	ddbClnt := dynamodb.NewFromConfig(awsCfg)
@@ -44,7 +43,7 @@ func handler(ctx context.Context) {
 	sender := messaging.NewPinpointSender(smsClnt, cfg.AWS.SMS.PhonePool, cfg.AWS.SMS.Timeout)
 
 	prayerSvc := service.NewPrayerService(members, intercessors, prayers, sender, cfg)
-	prayerSvc.RunScheduledJobs(ctx)
+	return prayerSvc.RunScheduledJobs(ctx)
 }
 
 func main() {

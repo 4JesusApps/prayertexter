@@ -2,6 +2,7 @@ package service_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/4JesusApps/prayertexter/internal/config"
@@ -66,14 +67,13 @@ func (s *AdminServiceSuite) TestBlockUser_AlreadyBlocked() {
 }
 
 func (s *AdminServiceSuite) TestBlockUser_Success_NonIntercessor() {
-	s.blocked.EXPECT().Save(s.ctx, mock.MatchedBy(func(bp *domain.BlockedPhones) bool {
-		return len(bp.Phones) == 2 && bp.Phones[1] == "+11234567890"
-	})).Return(nil)
 	s.members.EXPECT().Get(s.ctx, "+11234567890").Return(&domain.Member{
 		Phone: "+11234567890", Name: "Bad User",
 	}, nil)
 	s.members.EXPECT().Delete(s.ctx, "+11234567890").Return(nil)
-	s.sender.EXPECT().SendMessage(s.ctx, "+11234567890", messaging.MsgRemoveUser).Return(nil)
+	s.blocked.EXPECT().Save(s.ctx, mock.MatchedBy(func(bp *domain.BlockedPhones) bool {
+		return len(bp.Phones) == 2 && bp.Phones[1] == "+11234567890"
+	})).Return(nil)
 	s.sender.EXPECT().SendMessage(s.ctx, "+11234567890", messaging.MsgBlockedNotification+messaging.MsgHelp).Return(nil)
 	s.sender.EXPECT().SendMessage(s.ctx, "+17777777777", messaging.MsgSuccessfullyBlocked).Return(nil)
 
@@ -81,6 +81,18 @@ func (s *AdminServiceSuite) TestBlockUser_Success_NonIntercessor() {
 	blocked := &domain.BlockedPhones{Phones: []string{"+12222222222"}}
 	err := s.svc.BlockUser(s.ctx, domain.TextMessage{Body: "#block 123-456-7890"}, mem, blocked)
 	s.NoError(err)
+}
+
+func (s *AdminServiceSuite) TestBlockUser_CleanupFailureDoesNotPersistBlockList() {
+	s.members.EXPECT().Get(s.ctx, "+11234567890").Return(&domain.Member{
+		Phone: "+11234567890", Name: "Bad User",
+	}, nil)
+	s.members.EXPECT().Delete(s.ctx, "+11234567890").Return(errors.New("delete failed"))
+
+	mem := domain.Member{Phone: "+17777777777", Administrator: true}
+	blocked := &domain.BlockedPhones{Phones: []string{"+12222222222"}}
+	err := s.svc.BlockUser(s.ctx, domain.TextMessage{Body: "#block 123-456-7890"}, mem, blocked)
+	s.Error(err)
 }
 
 func TestAdminServiceSuite(t *testing.T) {

@@ -24,8 +24,11 @@ However, the refactor also introduced or at least codified one severe boundary b
 The other major gap is operational reliability. The production Lambda handlers swallow errors instead of returning them, and several destructive flows are not safe under partial failure. The architecture is better than before, but it is not yet as robust or as internally consistent as the design docs describe.
 
 ## 1. Confirmed Issues Caused or Exposed by the Refactor
+Status update: all issues in section 1 below have now been fixed in the current working tree.
 
 ### 1.1 Critical: missing-member lookups break new-user routing and block enforcement
+Status: Fixed.
+
 Files:
 - `internal/repository/dynamodb.go`
 - `internal/repository/dynamodb_test.go`
@@ -47,7 +50,16 @@ Why this matters:
 - This is a real correctness regression, not just an architectural smell.
 - It undermines first-time signup, opt-out/help behavior, and the block feature.
 
+How it was fixed:
+- `internal/repository/dynamodb.go` now returns `repository.ErrNotFound` instead of silently unmarshaling a zero-value struct on a missing item.
+- `internal/repository/member.go` and `internal/repository/prayer.go` now treat `ErrNotFound` as "does not exist" instead of inferring existence from empty fields.
+- `internal/repository/phones.go` now treats missing fixed-key phone-list rows as empty collections, so the new not-found contract does not break first-time setup.
+- `internal/service/router.go` now falls back to a synthetic member with `Phone = msg.Phone` when a member lookup misses, and block checks/logging now use the inbound phone (`msg.Phone`) rather than `mem.Phone`.
+- Added regression coverage in `internal/repository/dynamodb_test.go` and `internal/service/router_test.go` for not-found lookups, first-contact signup, and blocked numbers with no member row.
+
 ### 1.2 High: production Lambda handlers swallow errors and silently drop work
+Status: Fixed.
+
 Files:
 - `cmd/prayertexter/main.go`
 - `cmd/statecontroller/main.go`
@@ -67,7 +79,14 @@ Why this matters:
 - Real production failures become silent successes.
 - The local dev handler is stricter than production, so the safest behavior is not what gets deployed.
 
+How it was fixed:
+- `cmd/prayertexter/main.go` now returns an error from the Lambda handler, rejects empty SNS batches, processes every SNS record in the batch, and returns a joined error if any record fails.
+- `cmd/statecontroller/main.go` now returns an error from the Lambda handler instead of logging and returning success on failures.
+- `internal/service/prayer.go` now returns an aggregated error from `RunScheduledJobs()` after attempting both scheduled jobs, so Lambda retry/DLQ behavior can work correctly without losing visibility into whichever job failed.
+
 ### 1.3 High: delete and block flows are not safe under partial failure
+Status: Fixed.
+
 Files:
 - `internal/service/member.go`
 - `internal/service/admin.go`
@@ -85,7 +104,16 @@ Practical effects if any later step fails:
 Why this matters:
 - The system can end up half-deleted and hard to reconcile.
 
+How it was fixed:
+- `internal/service/member.go` no longer deletes the member record first. Intercessor cleanup now happens before the destructive member delete.
+- `internal/service/member.go` now restores the intercessor phone list if active-prayer cleanup/requeue fails after the phone list update.
+- `internal/service/member.go` now requeues active prayers with rollback: if saving the queued prayer fails after deleting the active prayer, the original active prayer is restored.
+- `internal/service/admin.go` now cleans up the target member before persisting the block list, and it uses `DeleteWithoutNotification()` so the blocked-user flow only sends the final blocked notification rather than a normal removal SMS plus a blocked SMS.
+- Added regression coverage in `internal/service/member_test.go` and `internal/service/admin_test.go` to verify cleanup failures do not proceed to the destructive next step.
+
 ### 1.4 High: prayer assignment has failure windows that can create ghost active prayers or duplicates
+Status: Fixed.
+
 Files:
 - `internal/service/prayer.go`
 
@@ -102,7 +130,17 @@ Practical effects:
 Why this matters:
 - These are real failure windows in core business flows.
 
+How it was fixed:
+- `internal/service/prayer.go` no longer increments intercessor quota inside `FindIntercessors()`. Candidate discovery is now non-mutating.
+- `internal/service/prayer.go` now reserves intercessor quota inside `AssignPrayer()` and rolls that reservation back if the active-prayer save fails.
+- `internal/service/prayer.go` now deletes the newly-saved active prayer and restores the original intercessor state if the SMS send fails, eliminating ghost active prayers and burned capacity from single-assignment failures.
+- Queued prayers now carry a stable `QueueID`, and active prayers copied from the queue retain that `QueueID`. `AssignQueuedPrayers()` uses that ID to detect previously-created assignments before retrying, which prevents duplicate re-assignment after a partial failure.
+- `AssignQueuedPrayers()` now marks `RequestorNotified = true` on the queued row before deleting it. If deletion fails after the notification send, a retry will see the persisted notification state and will only retry cleanup instead of re-notifying/re-assigning.
+- Added regression coverage in `internal/service/prayer_test.go` for rollback on SMS-send failure and for the new queued-processing persistence path.
+
 ### 1.5 Medium: requeued prayers keep stale reminder history
+Status: Fixed.
+
 Files:
 - `internal/service/member.go`
 - `internal/service/prayer.go`
@@ -118,15 +156,25 @@ Practical effects:
 Why this matters:
 - Reminder behavior becomes incorrect after requeueing.
 
+How it was fixed:
+- `internal/service/member.go` now clears `ReminderDate` and `ReminderCount` whenever an active prayer is moved back to the queue.
+- `internal/service/member.go` also generates a fresh queue ID when requeueing an active prayer, so the queued row represents a new assignment lifecycle instead of inheriting stale active-state metadata.
+- `internal/service/prayer.go` now stamps `ReminderDate` when an assignment is first created, which removes the delayed-start reminder behavior for newly assigned prayers.
+- Added regression coverage in `internal/service/member_test.go` to verify reminder metadata is cleared during requeue.
+
 ## 2. Likely Regressions or Reliability Risks
 
 ### 2.1 Queued assignment can starve later prayers
+Status: Fixed during section 1 remediation.
+
 Files:
 - `internal/service/prayer.go`
 
 `AssignQueuedPrayers()` breaks the entire loop on the first `ErrNoAvailableIntercessors`. Because availability depends partly on the queued prayer's requestor phone, later prayers may still be assignable but will never be attempted in that run.
 
 ### 2.2 First reminder starts late
+Status: Fixed during section 1 remediation.
+
 Files:
 - `internal/service/prayer.go`
 

@@ -50,8 +50,8 @@ func (s *DynamoDBRepoSuite) TestGet_NotFound() {
 		Return(&dynamodb.GetItemOutput{}, nil)
 
 	mem, err := s.repo.Get(s.ctx, "+10000000000")
-	s.Require().NoError(err)
-	s.Empty(mem.Phone)
+	s.Require().ErrorIs(err, repository.ErrNotFound)
+	s.Nil(mem)
 }
 
 func (s *DynamoDBRepoSuite) TestSave_Success() {
