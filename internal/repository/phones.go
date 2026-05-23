@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 
 	"github.com/4JesusApps/prayertexter/internal/domain"
 )
@@ -34,7 +35,7 @@ func NewBlockedPhonesRepository(client DDBClient, table string, timeout int) Blo
 
 func (r *blockedPhonesRepository) Get(ctx context.Context) (*domain.BlockedPhones, error) {
 	phones, err := r.repo.Get(ctx, blockedPhonesKeyValue)
-	if err == ErrNotFound {
+	if errors.Is(err, ErrNotFound) {
 		return &domain.BlockedPhones{Key: blockedPhonesKeyValue}, nil
 	}
 	return phones, err
@@ -57,7 +58,7 @@ func NewIntercessorPhonesRepository(client DDBClient, table string, timeout int)
 
 func (r *intercessorPhonesRepository) Get(ctx context.Context) (*domain.IntercessorPhones, error) {
 	phones, err := r.repo.Get(ctx, intercessorPhonesKeyValue)
-	if err == ErrNotFound {
+	if errors.Is(err, ErrNotFound) {
 		return &domain.IntercessorPhones{Key: intercessorPhonesKeyValue}, nil
 	}
 	return phones, err

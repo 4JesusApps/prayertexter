@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 
 	"github.com/4JesusApps/prayertexter/internal/domain"
 )
@@ -38,7 +39,7 @@ func (r *memberRepository) Delete(ctx context.Context, phone string) error {
 func (r *memberRepository) Exists(ctx context.Context, phone string) (bool, error) {
 	mem, err := r.repo.Get(ctx, phone)
 	if err != nil {
-		if err == ErrNotFound {
+		if errors.Is(err, ErrNotFound) {
 			return false, nil
 		}
 		return false, err

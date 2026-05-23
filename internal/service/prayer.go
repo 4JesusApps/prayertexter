@@ -367,65 +367,91 @@ func (s *PrayerService) AssignQueuedPrayers(ctx context.Context) error {
 	}
 
 	for _, pryr := range prayers {
-		queueID := pryr.QueueID
-		if queueID == "" {
-			queueID = pryr.IntercessorPhone
-			pryr.QueueID = queueID
-		}
-
-		activeAssignments, err := s.getActiveAssignmentsByQueueID(ctx, queueID)
-		if err != nil {
-			return apperr.WrapError(err, "failed to look up active queued assignments")
-		}
-
-		remainingAssignments := s.cfg.IntercessorsPerPrayer - len(activeAssignments)
-		if remainingAssignments > 0 {
-			skipPhones := []string{pryr.Requestor.Phone}
-			for _, activePrayer := range activeAssignments {
-				skipPhones = append(skipPhones, activePrayer.IntercessorPhone)
-			}
-
-			var intercessors []domain.Member
-			intercessors, err = s.findIntercessors(ctx, remainingAssignments, skipPhones...)
-			if err != nil && errors.Is(err, ErrNoAvailableIntercessors) {
-				slog.WarnContext(ctx, "no intercessors available, leaving prayer queued", "queueID", queueID)
-				continue
-			} else if err != nil {
-				return apperr.WrapError(err, "failed to find intercessors")
-			}
-
-			for _, intr := range intercessors {
-				pryr.QueueID = queueID
-				if err = s.AssignPrayer(ctx, pryr, intr); err != nil {
-					return apperr.WrapError(err, "failed to assign prayer")
-				}
-				activeAssignments = append(activeAssignments, domain.Prayer{
-					IntercessorPhone: intr.Phone,
-					QueueID:          queueID,
-				})
-			}
-		}
-
-		if len(activeAssignments) == 0 {
-			continue
-		}
-
-		if !pryr.RequestorNotified {
-			if err = s.sender.SendMessage(ctx, pryr.Requestor.Phone, messaging.MsgPrayerAssigned); err != nil {
-				return err
-			}
-			pryr.RequestorNotified = true
-			if err = s.prayers.Save(ctx, &pryr, true); err != nil {
-				return err
-			}
-		}
-
-		if err = s.prayers.Delete(ctx, pryr.IntercessorPhone, true); err != nil {
+		if err = s.processQueuedPrayer(ctx, pryr); err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+func (s *PrayerService) processQueuedPrayer(ctx context.Context, pryr domain.Prayer) error {
+	queueID := pryr.QueueID
+	if queueID == "" {
+		queueID = pryr.IntercessorPhone
+		pryr.QueueID = queueID
+	}
+
+	activeAssignments, err := s.getActiveAssignmentsByQueueID(ctx, queueID)
+	if err != nil {
+		return apperr.WrapError(err, "failed to look up active queued assignments")
+	}
+
+	remaining := s.cfg.IntercessorsPerPrayer - len(activeAssignments)
+	if remaining > 0 {
+		var added []domain.Prayer
+		added, err = s.assignAdditionalIntercessors(ctx, pryr, queueID, activeAssignments, remaining)
+		if err != nil {
+			return err
+		}
+		activeAssignments = append(activeAssignments, added...)
+	}
+
+	if len(activeAssignments) == 0 {
+		return nil
+	}
+
+	return s.finalizeQueuedPrayer(ctx, pryr)
+}
+
+func (s *PrayerService) assignAdditionalIntercessors(
+	ctx context.Context,
+	pryr domain.Prayer,
+	queueID string,
+	activeAssignments []domain.Prayer,
+	remaining int,
+) ([]domain.Prayer, error) {
+	skipPhones := []string{pryr.Requestor.Phone}
+	for _, activePrayer := range activeAssignments {
+		skipPhones = append(skipPhones, activePrayer.IntercessorPhone)
+	}
+
+	intercessors, err := s.findIntercessors(ctx, remaining, skipPhones...)
+	if errors.Is(err, ErrNoAvailableIntercessors) {
+		slog.WarnContext(ctx, "no intercessors available, leaving prayer queued", "queueID", queueID)
+		return nil, nil
+	}
+	if err != nil {
+		return nil, apperr.WrapError(err, "failed to find intercessors")
+	}
+
+	added := make([]domain.Prayer, 0, len(intercessors))
+	for _, intr := range intercessors {
+		pryr.QueueID = queueID
+		if err = s.AssignPrayer(ctx, pryr, intr); err != nil {
+			return nil, apperr.WrapError(err, "failed to assign prayer")
+		}
+		added = append(added, domain.Prayer{
+			IntercessorPhone: intr.Phone,
+			QueueID:          queueID,
+		})
+	}
+
+	return added, nil
+}
+
+func (s *PrayerService) finalizeQueuedPrayer(ctx context.Context, pryr domain.Prayer) error {
+	if !pryr.RequestorNotified {
+		if err := s.sender.SendMessage(ctx, pryr.Requestor.Phone, messaging.MsgPrayerAssigned); err != nil {
+			return err
+		}
+		pryr.RequestorNotified = true
+		if err := s.prayers.Save(ctx, &pryr, true); err != nil {
+			return err
+		}
+	}
+
+	return s.prayers.Delete(ctx, pryr.IntercessorPhone, true)
 }
 
 func (s *PrayerService) getActiveAssignmentsByQueueID(ctx context.Context, queueID string) ([]domain.Prayer, error) {
