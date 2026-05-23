@@ -7,6 +7,7 @@ import (
 	"github.com/4JesusApps/prayertexter/internal/config"
 	"github.com/4JesusApps/prayertexter/internal/domain"
 	"github.com/4JesusApps/prayertexter/internal/messaging"
+	"github.com/4JesusApps/prayertexter/internal/repository"
 	"github.com/4JesusApps/prayertexter/internal/service"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
@@ -66,6 +67,28 @@ func (s *RouterSuite) TestRouteSignUp() {
 		return m.SetupStatus == domain.MemberSetupInProgress
 	})).Return(nil)
 	s.sender.EXPECT().SendMessage(s.ctx, "+11234567890", messaging.MsgNameRequest).Return(nil)
+
+	err := s.router.Handle(s.ctx, domain.TextMessage{Body: "pray", Phone: "+11234567890"})
+	s.NoError(err)
+}
+
+func (s *RouterSuite) TestRouteSignUp_WhenMemberMissingUsesInboundPhone() {
+	s.members.EXPECT().Get(s.ctx, "+11234567890").Return(nil, repository.ErrNotFound)
+	s.blocked.EXPECT().Get(s.ctx).Return(&domain.BlockedPhones{}, nil)
+	s.members.EXPECT().Save(s.ctx, mock.MatchedBy(func(m *domain.Member) bool {
+		return m.Phone == "+11234567890" &&
+			m.SetupStatus == domain.MemberSetupInProgress &&
+			m.SetupStage == domain.MemberSignUpStepOne
+	})).Return(nil)
+	s.sender.EXPECT().SendMessage(s.ctx, "+11234567890", messaging.MsgNameRequest).Return(nil)
+
+	err := s.router.Handle(s.ctx, domain.TextMessage{Body: "pray", Phone: "+11234567890"})
+	s.NoError(err)
+}
+
+func (s *RouterSuite) TestRouteBlockedUser_WhenMemberMissingStillDropsMessage() {
+	s.members.EXPECT().Get(s.ctx, "+11234567890").Return(nil, repository.ErrNotFound)
+	s.blocked.EXPECT().Get(s.ctx).Return(&domain.BlockedPhones{Phones: []string{"+11234567890"}}, nil)
 
 	err := s.router.Handle(s.ctx, domain.TextMessage{Body: "pray", Phone: "+11234567890"})
 	s.NoError(err)

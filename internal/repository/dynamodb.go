@@ -66,6 +66,9 @@ func (r *DynamoDBRepository[T]) Get(ctx context.Context, key string) (*T, error)
 	if err != nil {
 		return nil, apperr.WrapError(err, fmt.Sprintf("failed to get item from table %s", r.table))
 	}
+	if len(resp.Item) == 0 {
+		return nil, ErrNotFound
+	}
 
 	var item T
 	if err = attributevalue.UnmarshalMap(resp.Item, &item); err != nil {

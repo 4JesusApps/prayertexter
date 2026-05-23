@@ -39,7 +39,9 @@ func NewRouter(
 
 func (r *Router) Handle(ctx context.Context, msg domain.TextMessage) error {
 	mem, err := r.members.Get(ctx, msg.Phone)
-	if err != nil {
+	if errors.Is(err, repository.ErrNotFound) {
+		mem = &domain.Member{Phone: msg.Phone}
+	} else if err != nil {
 		return apperr.LogAndWrapError(ctx, err, "failure during stage PRE", "phone", msg.Phone, "msg", msg.Body)
 	}
 
@@ -48,7 +50,7 @@ func (r *Router) Handle(ctx context.Context, msg domain.TextMessage) error {
 		return apperr.LogAndWrapError(ctx, err, "failure during stage PRE", "phone", msg.Phone, "msg", msg.Body)
 	}
 
-	isBlocked := slices.Contains(blockedPhones.Phones, mem.Phone)
+	isBlocked := slices.Contains(blockedPhones.Phones, msg.Phone)
 	cleanMsg := cleanStr(msg.Body)
 
 	var stageName string
@@ -57,7 +59,7 @@ func (r *Router) Handle(ctx context.Context, msg domain.TextMessage) error {
 	switch {
 	case isBlocked:
 		stageName = "BLOCKED USER"
-		slog.WarnContext(ctx, "blocked user dropping message", "phone", mem.Phone, "msg", msg.Body)
+		slog.WarnContext(ctx, "blocked user dropping message", "phone", msg.Phone, "msg", msg.Body)
 
 	case strings.Contains(strings.ToLower(msg.Body), "#block"):
 		stageName = "ADD BLOCKED USER"
@@ -77,7 +79,7 @@ func (r *Router) Handle(ctx context.Context, msg domain.TextMessage) error {
 
 	case mem.SetupStatus == "":
 		stageName = "DROP MESSAGE"
-		slog.WarnContext(ctx, "non registered user dropping message", "phone", mem.Phone, "msg", msg.Body)
+		slog.WarnContext(ctx, "non registered user dropping message", "phone", msg.Phone, "msg", msg.Body)
 
 	case cleanMsg == "prayed":
 		stageName = "COMPLETE PRAYER"
@@ -91,15 +93,15 @@ func (r *Router) Handle(ctx context.Context, msg domain.TextMessage) error {
 		err = errors.New("unexpected text message input/member status")
 		return apperr.LogAndWrapError(
 			ctx, err, "could not satisfy any required conditions",
-			"phone", mem.Phone, "msg", msg.Body,
+			"phone", msg.Phone, "msg", msg.Body,
 		)
 	}
 
-	slog.InfoContext(ctx, fmt.Sprintf("Starting stage: %s", stageName), "phone", mem.Phone, "message", msg.Body)
+	slog.InfoContext(ctx, fmt.Sprintf("Starting stage: %s", stageName), "phone", msg.Phone, "message", msg.Body)
 	if stageErr != nil {
 		return apperr.LogAndWrapError(
 			ctx, stageErr, "failure during stage "+stageName,
-			"phone", mem.Phone, "msg", msg.Body,
+			"phone", msg.Phone, "msg", msg.Body,
 		)
 	}
 
