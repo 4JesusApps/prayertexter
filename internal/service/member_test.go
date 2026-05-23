@@ -2,11 +2,13 @@ package service_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/4JesusApps/prayertexter/internal/config"
 	"github.com/4JesusApps/prayertexter/internal/domain"
 	"github.com/4JesusApps/prayertexter/internal/messaging"
+	"github.com/4JesusApps/prayertexter/internal/repository"
 	"github.com/4JesusApps/prayertexter/internal/service"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
@@ -105,7 +107,6 @@ func (s *MemberServiceSuite) TestDelete_NonIntercessor() {
 }
 
 func (s *MemberServiceSuite) TestDelete_Intercessor_NoActivePrayer() {
-	s.members.EXPECT().Delete(s.ctx, "+11234567890").Return(nil)
 	s.intercessors.EXPECT().Get(s.ctx).Return(&domain.IntercessorPhones{
 		Key:    "IntercessorPhones",
 		Phones: []string{"+11234567890", "+19999999999"},
@@ -113,7 +114,8 @@ func (s *MemberServiceSuite) TestDelete_Intercessor_NoActivePrayer() {
 	s.intercessors.EXPECT().Save(s.ctx, mock.MatchedBy(func(p *domain.IntercessorPhones) bool {
 		return len(p.Phones) == 1 && p.Phones[0] == "+19999999999"
 	})).Return(nil)
-	s.prayers.EXPECT().Exists(s.ctx, "+11234567890").Return(false, nil)
+	s.prayers.EXPECT().Get(s.ctx, "+11234567890", false).Return(nil, repository.ErrNotFound)
+	s.members.EXPECT().Delete(s.ctx, "+11234567890").Return(nil)
 	s.sender.EXPECT().SendMessage(s.ctx, "+11234567890", messaging.MsgRemoveUser).Return(nil)
 
 	err := s.svc.Delete(s.ctx, domain.Member{Phone: "+11234567890", Intercessor: true})
@@ -161,7 +163,6 @@ func (s *MemberServiceSuite) TestSignUpFinalIntercessor_WrongInput() {
 }
 
 func (s *MemberServiceSuite) TestDelete_Intercessor_WithActivePrayer() {
-	s.members.EXPECT().Delete(s.ctx, "+11234567890").Return(nil)
 	s.intercessors.EXPECT().Get(s.ctx).Return(&domain.IntercessorPhones{
 		Key:    "IntercessorPhones",
 		Phones: []string{"+11234567890"},
@@ -169,22 +170,43 @@ func (s *MemberServiceSuite) TestDelete_Intercessor_WithActivePrayer() {
 	s.intercessors.EXPECT().Save(s.ctx, mock.MatchedBy(func(p *domain.IntercessorPhones) bool {
 		return len(p.Phones) == 0
 	})).Return(nil)
-	s.prayers.EXPECT().Exists(s.ctx, "+11234567890").Return(true, nil)
 	s.prayers.EXPECT().Get(s.ctx, "+11234567890", false).Return(&domain.Prayer{
 		Request:          "original prayer",
 		IntercessorPhone: "+11234567890",
 		Requestor:        domain.Member{Phone: "+19999999999"},
+		ReminderCount:    2,
+		ReminderDate:     "2026-01-02T15:04:05Z",
 	}, nil)
 	s.prayers.EXPECT().Delete(s.ctx, "+11234567890", false).Return(nil)
 	s.prayers.EXPECT().Save(s.ctx, mock.MatchedBy(func(p *domain.Prayer) bool {
 		return p.Request == "original prayer" &&
 			p.IntercessorPhone != "+11234567890" &&
-			p.Intercessor == domain.Member{}
+			p.Intercessor == domain.Member{} &&
+			p.QueueID == p.IntercessorPhone &&
+			p.ReminderCount == 0 &&
+			p.ReminderDate == "" &&
+			!p.RequestorNotified
 	}), true).Return(nil)
+	s.members.EXPECT().Delete(s.ctx, "+11234567890").Return(nil)
 	s.sender.EXPECT().SendMessage(s.ctx, "+11234567890", messaging.MsgRemoveUser).Return(nil)
 
 	err := s.svc.Delete(s.ctx, domain.Member{Phone: "+11234567890", Intercessor: true})
 	s.NoError(err)
+}
+
+func (s *MemberServiceSuite) TestDelete_Intercessor_CleanupFailureDoesNotDeleteMember() {
+	s.intercessors.EXPECT().Get(s.ctx).Return(&domain.IntercessorPhones{
+		Key:    "IntercessorPhones",
+		Phones: []string{"+11234567890"},
+	}, nil)
+	s.intercessors.EXPECT().Save(s.ctx, mock.Anything).Return(nil)
+	s.prayers.EXPECT().Get(s.ctx, "+11234567890", false).Return(nil, errors.New("boom"))
+	s.intercessors.EXPECT().Save(s.ctx, mock.MatchedBy(func(p *domain.IntercessorPhones) bool {
+		return len(p.Phones) == 1 && p.Phones[0] == "+11234567890"
+	})).Return(nil)
+
+	err := s.svc.Delete(s.ctx, domain.Member{Phone: "+11234567890", Intercessor: true})
+	s.Error(err)
 }
 
 func TestMemberServiceSuite(t *testing.T) {

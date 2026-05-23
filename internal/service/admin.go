@@ -47,17 +47,19 @@ func (s *AdminService) BlockUser(ctx context.Context, msg domain.TextMessage, me
 		return s.sender.SendMessage(ctx, mem.Phone, messaging.MsgUserAlreadyBlocked)
 	}
 
+	blockedUser, err := s.members.Get(ctx, phone)
+	if errors.Is(err, repository.ErrNotFound) {
+		blockedUser = &domain.Member{Phone: phone}
+	} else if err != nil {
+		return err
+	}
+
+	if err = s.memberSvc.DeleteWithoutNotification(ctx, *blockedUser); err != nil {
+		return err
+	}
+
 	blockedPhones.AddPhone(phone)
 	if err = s.blocked.Save(ctx, blockedPhones); err != nil {
-		return err
-	}
-
-	blockedUser, err := s.members.Get(ctx, phone)
-	if err != nil {
-		return err
-	}
-
-	if err = s.memberSvc.Delete(ctx, *blockedUser); err != nil {
 		return err
 	}
 
