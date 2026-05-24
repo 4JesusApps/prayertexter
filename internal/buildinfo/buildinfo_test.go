@@ -1,4 +1,4 @@
-package buildinfo
+package buildinfo //nolint:testpackage // testing unexported format helper
 
 import (
 	"runtime/debug"

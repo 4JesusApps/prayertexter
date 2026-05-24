@@ -40,7 +40,7 @@ func handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.API
 		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError}, err
 	}
 
-	if err := router.Handle(ctx, msg); err != nil {
+	if err = router.Handle(ctx, msg); err != nil {
 		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError}, err
 	}
 

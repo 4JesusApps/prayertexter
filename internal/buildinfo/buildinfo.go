@@ -7,10 +7,14 @@ package buildinfo
 
 import "runtime/debug"
 
-// Version returns a short build identifier: the first 12 characters of the
-// commit SHA, with a "-dirty" suffix when the working tree was modified at
-// build time. Returns "unknown" when VCS metadata is unavailable (e.g.
-// building from a tarball or with -buildvcs=false).
+// shortRevLen is the number of leading SHA characters Version() emits — long
+// enough to be unambiguous in this repo, short enough to keep log lines tidy.
+const shortRevLen = 12
+
+// Version returns a short build identifier: the first shortRevLen characters
+// of the commit SHA, with a "-dirty" suffix when the working tree was
+// modified at build time. Returns "unknown" when VCS metadata is unavailable
+// (e.g. building from a tarball or with -buildvcs=false).
 func Version() string {
 	info, ok := debug.ReadBuildInfo()
 	if !ok {
@@ -33,8 +37,8 @@ func format(info *debug.BuildInfo) string {
 	if rev == "" {
 		return "unknown"
 	}
-	if len(rev) > 12 {
-		rev = rev[:12]
+	if len(rev) > shortRevLen {
+		rev = rev[:shortRevLen]
 	}
 	if dirty {
 		return rev + "-dirty"
