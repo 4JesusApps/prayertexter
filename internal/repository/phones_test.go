@@ -41,7 +41,7 @@ func (s *PhonesRepoSuite) TestBlockedGet_NotFoundReturnsEmpty() {
 
 func (s *PhonesRepoSuite) TestBlockedGet_ReturnsDomainWithoutKey() {
 	row := map[string]types.AttributeValue{
-		"Key":    &types.AttributeValueMemberS{Value: "BlockedPhones"},
+		"Key": &types.AttributeValueMemberS{Value: "BlockedPhones"},
 		"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
 			&types.AttributeValueMemberS{Value: "+11111111111"},
 			&types.AttributeValueMemberS{Value: "+12222222222"},
@@ -79,7 +79,7 @@ func (s *PhonesRepoSuite) TestIntercessorGet_NotFoundReturnsEmpty() {
 
 func (s *PhonesRepoSuite) TestIntercessorGet_UsesIntercessorKey() {
 	row := map[string]types.AttributeValue{
-		"Key":    &types.AttributeValueMemberS{Value: "IntercessorPhones"},
+		"Key": &types.AttributeValueMemberS{Value: "IntercessorPhones"},
 		"Phones": &types.AttributeValueMemberL{Value: []types.AttributeValue{
 			&types.AttributeValueMemberS{Value: "+18888888888"},
 		}},

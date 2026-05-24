@@ -6,6 +6,7 @@ import (
 	goaway "github.com/TwiN/go-away"
 )
 
+//nolint:gochecknoglobals // package-level detector built once at init to avoid mutating goaway.DefaultProfanities on every call
 var profanityDetector = newProfanityDetector()
 
 func newProfanityDetector() *goaway.ProfanityDetector {
