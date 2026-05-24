@@ -188,13 +188,28 @@ Go test process
 
 #### What This Catches That Unit Tests Cannot
 
-- DynamoDB marshaling/unmarshaling bugs (attributevalue tags)
-- Table schema mismatches (key field names, attribute types)
-- GetAll/Scan behavior with real data
-- Business logic that depends on database state across multiple operations
-- Full prayer lifecycle: request -> queue -> assign -> remind -> complete
-- Member sign-up state machine (stages 1 -> 2 -> 3 -> 99)
-- Edge cases in intercessor selection with real data
+The repository layer uses a generic `DynamoDBRepository[T]` with only single-hash-key
+GetItem/PutItem/DeleteItem/Scan -- no GSIs, range keys, or conditional expressions. The
+"schema drift" surface area is small (just the `keyField` value and `attributevalue`
+struct-tag-less marshaling). The real value of Layer 1 is **multi-step flow correctness**
+under realistic DB behavior, not schema-mismatch detection:
+
+- **Rollback correctness**: `reserveIntercessor` + `rollbackAssignedPrayer` in
+  `internal/service/prayer.go` performs a multi-step Save/Delete sequence with rollback on
+  partial failure. Mocks can't validate the DB is left consistent when SendMessage fails
+  after the reservation Save succeeded.
+- **Shared `General` table contention**: Both `BlockedPhones` and `IntercessorPhones`
+  write to the same table with different keys (`internal/repository/phones.go`). Concurrent
+  intercessor sign-ups + admin block operations can collide -- mocks paper over this.
+- **Queue-to-active state transitions**: `processQueuedPrayer` reads via `GetAll(queued=true)`,
+  writes to the active table, and deletes from the queued table. Ordering and visibility
+  semantics differ from a perfect in-memory mock.
+- **Full prayer lifecycle**: request -> queue -> assign -> remind -> complete
+- **Sign-up state machine** (stages 1 -> 2 -> 3 -> 99) against real persisted state
+- **Edge cases in intercessor selection** (`FindIntercessors` with skip lists, weekly-limit
+  reset boundary) with real data
+- **Marshaling round-trips** for domain structs (catches the day someone adds a `time.Time`
+  field and forgets it doesn't survive default attributevalue marshaling)
 
 #### Example Test Scenarios
 
@@ -217,7 +232,7 @@ Go test process
 
 ### Layer 1: Integration Tests with Testcontainers
 
-**Priority**: HIGH -- Do first.
+**Priority**: HIGH -- Do second (after Layer 2a quick wins). See Priority Matrix.
 
 **Tool**: `testcontainers-go/modules/dynamodb`
 
@@ -299,11 +314,39 @@ go get github.com/testcontainers/testcontainers-go
 go get github.com/testcontainers/testcontainers-go/modules/dynamodb
 ```
 
+#### DynamoDB Local Setup Footgun
+
+DynamoDB Local partitions data by access-key + region pair unless launched with `-sharedDb`.
+Without it, the same test process using two different credential providers will see two
+separate databases and silently fail to find records. Two equivalent fixes -- pick one and
+apply it consistently in `TestMain`:
+
+1. Launch the container with `-sharedDb` (mirrors `dev/dynamodb/compose.yaml`):
+
+   ```go
+   container, err := dynamodb.Run(ctx,
+       "amazon/dynamodb-local:latest",
+       dynamodb.WithSharedDB(),
+   )
+   ```
+
+2. Or pin deterministic credentials before constructing the AWS config:
+
+   ```go
+   t.Setenv("AWS_ACCESS_KEY_ID", "test")
+   t.Setenv("AWS_SECRET_ACCESS_KEY", "test")
+   t.Setenv("AWS_REGION", "us-west-1")
+   ```
+
+Either works; `-sharedDb` matches the dev environment and is the lower-friction default.
+
 ---
 
 ### Layer 2: Handler & Pinpoint Unit Tests
 
-**Priority**: MEDIUM -- Do second.
+**Priority**: Layer 2a (PinpointSender + SNS payload fixture) is HIGHEST -- do first.
+Layer 2b (handler refactor + handler tests) is MEDIUM and can be deferred. See Priority
+Matrix.
 
 **Runs in**: CI on every PR (part of `go test ./...`)
 
@@ -314,17 +357,67 @@ Test the Lambda entry points with crafted SNS/API Gateway events and mocked serv
 **Coverage targets:**
 - Valid SNS event parsing and TextMessage extraction
 - Multi-record SNS event handling (the warning log path in `cmd/prayertexter/main.go`)
-- Malformed JSON in SNS message body
+- Malformed JSON in SNS message body (one record bad, others succeed -> `errors.Join`)
 - AWS config initialization failure path
 - API Gateway request parsing (dev handler)
 
-**Approach**: Refactor the handler functions to accept injected dependencies (or test via
-the existing function signatures with environment manipulation). Consider extracting the
-wiring logic into a testable function.
+**Approach**: The current `cmd/prayertexter/main.go` handler does all wiring inline (Config
+-> AWS config -> repositories -> services -> Router). To make it testable, extract:
+
+```go
+// cmd/prayertexter/main.go
+func newRouter(ctx context.Context, cfg config.Config) (*service.Router, error) { /* wiring */ }
+
+func handler(ctx context.Context, snsEvent events.SNSEvent) error {
+    cfg := config.Load()
+    router, err := newRouter(ctx, cfg)
+    if err != nil { return err }
+    return processRecords(ctx, router, snsEvent.Records)
+}
+
+func processRecords(ctx context.Context, r *service.Router, records []events.SNSEventRecord) error { ... }
+```
+
+Tests target `processRecords` with a `*service.Router` built from mocks. This is a real
+refactor (the inline wiring is currently ~30 lines per handler) -- weigh the coverage gain
+against the cost. Many serverless shops accept ~0% coverage on the wiring half of `main.go`
+because the alternative is a leaky abstraction over Lambda; the *event-parsing* half is
+what matters and is worth extracting.
+
+#### Inbound Payload Contract Fixture
+
+Closes the "no contract tests for inbound SMS webhook payload" gap in the table above.
+The Pinpoint inbound SMS event shape is owned by AWS and can drift. Cheapest defense:
+
+```
+internal/integration/testdata/sns-event.json   -- known-good captured payload
+```
+
+Plus a unit test in `cmd/prayertexter/main_test.go` that loads the fixture, feeds it to
+the extracted `processRecords` (or to `json.Unmarshal` directly into `domain.TextMessage`),
+and asserts the expected `domain.TextMessage` fields. Update the fixture whenever a real
+production event reveals new fields. This catches the unmarshal-side regression without
+needing a deployed stack.
 
 #### PinpointSender Tests
 
-Test with a mocked `PinpointClient` interface (already defined in `messaging/pinpoint.go`):
+Test with a mocked `PinpointClient` interface (already defined in `messaging/pinpoint.go`).
+
+**Prerequisite**: `PinpointClient` is not currently in `.mockery.yaml`. Add it before
+running mockery:
+
+```yaml
+# .mockery.yaml
+github.com/4JesusApps/prayertexter/internal/messaging:
+  config:
+    dir: internal/mocks/messaging
+    filename: mocks.go
+  interfaces:
+    MessageSender: {}
+    PinpointClient: {}   # ADD THIS
+```
+
+Then `mockery` regenerates `internal/mocks/messaging/mocks.go` with `MockPinpointClient`.
 
 | Test Case | Setup | Assert |
 |-----------|-------|--------|
@@ -373,10 +466,34 @@ stop-all:       # Tear down all local infra
 
 #### Limitations (Documented Here for Awareness)
 
-- Cannot test SNS event path (uses API Gateway adapter)
-- Cannot test StateController or EventBridge scheduling
+- Cannot test SNS event path (the dev handler uses an API Gateway adapter)
+- EventBridge scheduling is not exercisable locally (no local EventBridge in SAM)
 - SMS sends are logged only, not delivered
 - Requires Docker + SAM CLI installed locally
+
+#### Adding StateController to the Dev Workflow
+
+`cmd/statecontroller/main.go` takes only `ctx` -- no event payload -- so it can be added
+to `dev/prayertexter/template.yaml` as a second `AWS::Serverless::Function` and invoked via
+`sam local invoke StateController` against the same DynamoDB Local instance. This unlocks
+manual testing of `RunScheduledJobs` (queue assignment + reminder logic) without deploying
+to AWS. EventBridge *triggering* still can't be tested locally, but the handler logic can.
+
+```yaml
+# Add to dev/prayertexter/template.yaml under Resources:
+StateController:
+  Type: AWS::Serverless::Function
+  Metadata:
+    BuildMethod: go1.x
+  Properties:
+    Architectures:
+      - arm64
+    CodeUri: ../../cmd/statecontroller/
+    Handler: bootstrap
+    Runtime: provided.al2023
+```
+
+Then: `sam local invoke StateController --docker-network sam-backend`.
 
 ---
 
@@ -390,16 +507,47 @@ stop-all:       # Tear down all local infra
 
 Deploy an ephemeral SAM stack and run E2E tests against real AWS services.
 
+#### Prerequisite: Cross-Stack Imports Block Ephemeral Deploys
+
+The current `deploy/` layout has three separate stacks (`db`, `prayertexter`,
+`statecontroller`) wired together with hardcoded CloudFormation exports/imports:
+
+- `deploy/prayertexter/template.yaml` uses `!ImportValue db-MemberTableName`,
+  `db-ActivePrayerTableName`, `db-GeneralTableName`, `db-QueuedPrayerTableName`
+- `deploy/statecontroller/template.yaml` does the same and also imports
+  `prayertexter-SMSPhonePoolARN`
+- Export names are hardcoded with the prefixes `db-` and `prayertexter-`, so two
+  ephemeral environments cannot coexist in the same account
+
+A naive `sam deploy --stack-name pt-e2e-${sha}` against just the prayertexter template
+will fail: the imports resolve against fixed names that point at the *real* db stack.
+
+**Options to make ephemeral deploys viable (pick one before Layer 4 work starts):**
+
+1. **Merge templates** into a single `deploy/e2e/template.yaml` with all resources in one
+   stack. Simplest; loses the deploy-independence of the current layout.
+2. **Parameterize the export prefix** so each stack can be deployed with a
+   `--parameter-overrides StackPrefix=e2e-${sha}` and exports/imports use
+   `!Sub "${StackPrefix}-db-MemberTableName"`. Preserves the three-stack layout; requires
+   editing both the producer (`deploy/db/template.yaml`) and consumer templates.
+3. **Deploy the full triplet per E2E run** with renamed exports. Most faithful to prod
+   topology; slowest (three stack creations + waits).
+
+Option 2 is the recommended path: it's the smallest diff that unblocks E2E without
+collapsing the existing deploy structure.
+
 #### Workflow
 
-1. `sam deploy` a test stack with a unique name (e.g., `pt-e2e-{short-sha}`)
-2. Wait for stack creation to complete
-3. Run a Go test binary that:
+1. Deploy the db stack (or all three) with a per-run prefix (e.g.,
+   `pt-e2e-${short-sha}-db`)
+2. Deploy the prayertexter stack referencing those exports
+3. Wait for stack creation to complete; discover resource ARNs from stack outputs
+4. Run a Go test binary that:
    - Publishes test messages to the SNS topic via AWS SDK
    - Uses AWS SMS simulator phone numbers as destinations for Pinpoint sends
    - Queries DynamoDB tables to assert state changes
    - Invokes the StateController Lambda directly to test scheduled jobs
-4. `sam delete` to tear down the stack
+5. `sam delete` each stack in reverse dependency order to tear down
 
 #### What This Validates (That Lower Layers Cannot)
 
@@ -505,28 +653,48 @@ A canary test using a real dedicated test phone number to verify the full produc
 
 ## Priority Matrix
 
+Layer 2 is split into 2a (quick wins) and 2b (handler refactor) because the cost and ROI
+of each half are very different.
+
 | Layer | ROI | Effort | Runs In | Catches |
 |-------|-----|--------|---------|---------|
-| 1. Testcontainers integration | Very High | Medium (2-3 days) | CI, every PR | DB bugs, flow bugs, state machine bugs |
-| 2. Handler + Pinpoint unit tests | High | Low (1 day) | CI, every PR | Entry point bugs, retry logic bugs |
-| 3. SAM local automation | Medium | Low (1 day) | Dev machine | Developer confidence, onboarding |
-| 4. Cloud E2E | Medium | High (2-3 days) | Nightly CI | IAM, infra config, real AWS behavior |
-| 5. Production smoke | Low (now) | High (2-3 days) | Weekly | Full path validation |
+| 2a. PinpointSender + SNS payload fixture | Very High | Very Low (~half day) | CI, every PR | Retry logic bugs, inbound payload drift |
+| 1. Testcontainers integration | Very High | Medium (2-3 days) | CI, every PR | Rollback/concurrency bugs, multi-step flow bugs, state machine regressions |
+| 2b. Handler refactor + handler tests | Medium | Medium (1-2 days) | CI, every PR | Entry point parsing, multi-record SNS handling |
+| 3. SAM local automation | Medium | Low (1 day) | Dev machine | Developer confidence, StateController manual runs |
+| 4. Cloud E2E | Medium | High (3-5 days incl. template parameterization) | Nightly CI | IAM, infra config, real SNS->Lambda wiring |
+| 5. Production smoke | Low (now) | High (2-3 days) | Weekly | Full carrier path validation |
 
 ---
 
 ## Recommendation
 
-Start with **Layer 1** (testcontainers integration tests). It fills the biggest gap: there
-is currently no way to catch a DynamoDB schema mismatch, a serialization bug, or a
-multi-step flow regression without deploying to AWS. Testcontainers gives real DynamoDB in
-CI with zero AWS cost.
+**Do Layer 2a first.** PinpointSender retry logic is the only untested piece of
+timing-sensitive control flow in the app; a bug there silently drops user-visible SMS in
+production. With the `PinpointClient` mockery prereq added, the test suite is ~30 minutes
+of work. The SNS payload fixture is another hour and closes the inbound contract gap. This
+is the cheapest, highest-confidence win on the board.
 
-Then add **Layer 2** (handler + Pinpoint unit tests) since the effort is low and it fills
-obvious coverage holes in the entry points and SMS retry logic.
+**Then Layer 1.** Testcontainers + DynamoDB Local fills the biggest *structural* gap: there
+is currently no way to validate multi-step rollback paths, queue-to-active state
+transitions, or concurrent writes to the shared `General` table without deploying to AWS.
+Frame this work around flow/rollback correctness, not schema-drift detection -- the
+repository layer's surface area for schema bugs is genuinely small.
 
-After those two layers, the majority of regressions will be caught before code ever reaches
-AWS. Layers 3-5 add incremental value and can be pursued based on available time and budget.
+**Then Layer 2b** (handler refactor) if and only if the entry-point coverage is judged
+worth the wiring extraction. Many serverless shops accept ~0% on Lambda wiring code; the
+*event-parsing* paths are the part worth covering, and those are already addressed by the
+fixture test in Layer 2a.
+
+After those three layers, the majority of regressions will be caught before code ever
+reaches AWS. Layers 3-5 add incremental value:
+
+- **Layer 3** is worthwhile only when Layer 1 lands first -- otherwise it duplicates Layer 1's
+  coverage with worse tooling. Its unique value is enabling local StateController invocation.
+- **Layer 4** has a hard prerequisite (template export parameterization) that should be
+  scoped before the layer is committed to.
+- **Layer 5** is a production-health concern, not a regression-prevention one, and should
+  wait until Layers 1-3 are solid.
 
 ---
 

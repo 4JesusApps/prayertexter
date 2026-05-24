@@ -1,0 +1,22 @@
+{
+  "Records": [
+    {
+      "EventVersion": "1.0",
+      "EventSubscriptionArn": "arn:aws:sns:us-west-1:123456789012:prayertexter-main-trigger:00000000-0000-0000-0000-000000000000",
+      "EventSource": "aws:sns",
+      "Sns": {
+        "Signature": "EXAMPLE",
+        "MessageId": "95df01b4-ee98-5cb9-9903-4c221d41eb5e",
+        "Type": "Notification",
+        "TopicArn": "arn:aws:sns:us-west-1:123456789012:prayertexter-main-trigger",
+        "MessageAttributes": {},
+        "SignatureVersion": "1",
+        "Timestamp": "2026-05-24T17:43:27.123Z",
+        "SigningCertUrl": "https://sns.us-west-1.amazonaws.com/EXAMPLE.pem",
+        "Message": "{\"originationNumber\":\"+11234567890\",\"destinationNumber\":\"+15555550100\",\"messageKeyword\":\"KEYWORD_NOT_SET\",\"messageBody\":\"pray\",\"inboundMessageId\":\"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\"previousPublishedMessageId\":\"\"}",
+        "UnsubscribeUrl": "https://sns.us-west-1.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=EXAMPLE",
+        "Subject": ""
+      }
+    }
+  ]
+}
