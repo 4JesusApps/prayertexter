@@ -211,19 +211,29 @@ How it was fixed:
 - Added `internal/awscfg/awscfg_test.go` (the package was at 0% coverage per §5.2). The test verifies that the passed region and retry count are plumbed through to the returned `aws.Config`.
 
 ### 2.5 Intercessor weekly limit accepts `0`
-Files:
-- `internal/service/member.go`
-- `internal/service/prayer.go`
+Status: Fixed.
 
-`signUpFinalIntercessor()` accepts `0` as a valid weekly prayer limit. That can leave users on the intercessor list who are effectively unavailable or only become eligible under odd weekly-reset behavior.
+Files:
+- `internal/messaging/messages.go`
+- `internal/service/member.go`
+- `internal/service/member_test.go`
+
+`signUpFinalIntercessor()` accepted `0` as a valid weekly prayer limit. That left users on the intercessor list who were effectively unavailable (the existing `intr.WeeklyPrayerLimit <= 0` guard in `internal/service/prayer.go` already correctly excluded them from selection, but they shouldn't have been signed up that way to begin with).
+
+How it was fixed:
+- `signUpFinalIntercessor()` now rejects `num <= 0` immediately after parsing, before mutating the intercessor phone list or saving the member. The user gets a new `MsgInvalidPrayerLimit` reply explaining the constraint, and stays in step three so their next message reply can complete signup correctly. Non-numeric input continues to route through the existing `signUpWrongInput` path.
+- Added `MsgInvalidPrayerLimit` constant in `internal/messaging/messages.go`.
+- Added `TestSignUpFinalIntercessor_ZeroLimit` regression coverage. (`cleanStr` strips the leading `-`, so negative input is unreachable via the public API today; the `<= 0` check is kept as a defensive guard against future changes to the input pipeline.)
 
 ## 3. Improvements That Should Be Considered
 
 ### 3.1 Introduce an explicit repository not-found contract
+Status: Fixed.
+
 Files:
-- `internal/repository/dynamodb.go`
 - `internal/repository/member.go`
 - `internal/repository/prayer.go`
+- `internal/service/prayer.go`
 
 Recommended direction:
 - Return `ErrNotFound`, or return `nil, nil` on misses and make callers handle it explicitly.
@@ -231,6 +241,13 @@ Recommended direction:
 
 Why:
 - This removes the zero-value/member-phone ambiguity that is driving the worst current bug.
+
+How it was fixed:
+- §1.1 already moved `DynamoDBRepository.Get()` onto `ErrNotFound`; this change completes the migration by removing the leftover field heuristics in the wrappers.
+- `memberRepository.Exists()` now returns true on any successful `Get` and false on `ErrNotFound`. The `mem.SetupStatus != ""` heuristic is gone.
+- `prayerRepository.Exists()` now returns true on any successful `Get` against the active-prayer table and false on `ErrNotFound`. The `pryr.Request != ""` heuristic is gone.
+- `PrayerService.Complete()` no longer second-guesses with `pryr.Request == ""` after a successful `Get`. That branch is dead now that the repository contract is explicit.
+- No service tests required changes — they mock `Exists()` directly. Existing service-level behavior is preserved because, with §1.1's signup-bootstrap fix in place, every persisted member/prayer row is a real one (no more partial blank-phone rows).
 
 ### 3.2 Route pre-membership behavior off the inbound phone, not the loaded member
 Files:

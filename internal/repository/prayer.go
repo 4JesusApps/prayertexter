@@ -47,14 +47,14 @@ func (r *prayerRepository) Delete(ctx context.Context, key string, queued bool) 
 }
 
 func (r *prayerRepository) Exists(ctx context.Context, phone string) (bool, error) {
-	pryr, err := r.activeRepo.Get(ctx, phone)
+	_, err := r.activeRepo.Get(ctx, phone)
+	if errors.Is(err, ErrNotFound) {
+		return false, nil
+	}
 	if err != nil {
-		if errors.Is(err, ErrNotFound) {
-			return false, nil
-		}
 		return false, err
 	}
-	return pryr.Request != "", nil
+	return true, nil
 }
 
 func (r *prayerRepository) GetAll(ctx context.Context, queued bool) ([]domain.Prayer, error) {

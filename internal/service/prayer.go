@@ -310,10 +310,6 @@ func (s *PrayerService) Complete(ctx context.Context, mem domain.Member) error {
 		return err
 	}
 
-	if pryr.Request == "" {
-		return s.sender.SendMessage(ctx, mem.Phone, messaging.MsgNoActivePrayer)
-	}
-
 	if err = s.sender.SendMessage(ctx, mem.Phone, messaging.MsgPrayerThankYou); err != nil {
 		return err
 	}

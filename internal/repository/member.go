@@ -37,12 +37,12 @@ func (r *memberRepository) Delete(ctx context.Context, phone string) error {
 }
 
 func (r *memberRepository) Exists(ctx context.Context, phone string) (bool, error) {
-	mem, err := r.repo.Get(ctx, phone)
+	_, err := r.repo.Get(ctx, phone)
+	if errors.Is(err, ErrNotFound) {
+		return false, nil
+	}
 	if err != nil {
-		if errors.Is(err, ErrNotFound) {
-			return false, nil
-		}
 		return false, err
 	}
-	return mem.SetupStatus != "", nil
+	return true, nil
 }

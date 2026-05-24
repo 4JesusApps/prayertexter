@@ -10,6 +10,7 @@ const (
 		" at any time."
 	MsgPrayerNumRequest = "Reply with the number of maximum prayer texts that you are willing to receive and pray for " +
 		"each week."
+	MsgInvalidPrayerLimit = "Sorry, that number is not valid. Please reply with a whole number greater than 0."
 	MsgIntercessorInstructions = "You are now signed up to receive prayer requests. Please try to pray for the " +
 		"requests as soon as you receive them. " + MsgPrayed
 	MsgWrongInput         = "Incorrect input received during sign up, please try again."

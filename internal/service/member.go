@@ -207,6 +207,9 @@ func (s *MemberService) signUpFinalIntercessor(ctx context.Context, msg domain.T
 	if err != nil {
 		return s.signUpWrongInput(ctx, mem, msg)
 	}
+	if num <= 0 {
+		return s.sender.SendMessage(ctx, mem.Phone, messaging.MsgInvalidPrayerLimit)
+	}
 
 	phones, err := s.intercessors.Get(ctx)
 	if err != nil {

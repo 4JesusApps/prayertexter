@@ -162,6 +162,14 @@ func (s *MemberServiceSuite) TestSignUpFinalIntercessor_WrongInput() {
 	s.NoError(err)
 }
 
+func (s *MemberServiceSuite) TestSignUpFinalIntercessor_ZeroLimit() {
+	s.sender.EXPECT().SendMessage(s.ctx, "+11234567890", messaging.MsgInvalidPrayerLimit).Return(nil)
+
+	mem := domain.Member{Phone: "+11234567890", SetupStage: domain.MemberSignUpStepThree}
+	err := s.svc.SignUp(s.ctx, domain.TextMessage{Body: "0", Phone: "+11234567890"}, mem)
+	s.NoError(err)
+}
+
 func (s *MemberServiceSuite) TestDelete_Intercessor_WithActivePrayer() {
 	s.intercessors.EXPECT().Get(s.ctx).Return(&domain.IntercessorPhones{
 		Key:    "IntercessorPhones",
