@@ -33,7 +33,7 @@ func handler(ctx context.Context, snsEvent events.SNSEvent) error {
 
 	cfg := config.Load()
 
-	awsCfg, err := awscfg.GetAwsConfig(ctx)
+	awsCfg, err := awscfg.GetAwsConfig(ctx, cfg.AWS.Region, cfg.AWS.Retry, cfg.AWS.Backoff)
 	if err != nil {
 		return fmt.Errorf("lambda handler: failed to get aws config: %w", err)
 	}

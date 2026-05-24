@@ -79,10 +79,7 @@ func (s *MemberService) removeIntercessor(ctx context.Context, mem domain.Member
 	}
 
 	if err = s.moveActivePrayer(ctx, mem); err != nil {
-		restorePhones := &domain.IntercessorPhones{
-			Key:    phones.Key,
-			Phones: originalPhones,
-		}
+		restorePhones := &domain.IntercessorPhones{Phones: originalPhones}
 		if restoreErr := s.intercessors.Save(ctx, restorePhones); restoreErr != nil {
 			return errors.Join(err, restoreErr)
 		}
@@ -206,6 +203,9 @@ func (s *MemberService) signUpFinalIntercessor(ctx context.Context, msg domain.T
 	num, err := strconv.Atoi(cleanStr(msg.Body))
 	if err != nil {
 		return s.signUpWrongInput(ctx, mem, msg)
+	}
+	if num <= 0 {
+		return s.sender.SendMessage(ctx, mem.Phone, messaging.MsgInvalidPrayerLimit)
 	}
 
 	phones, err := s.intercessors.Get(ctx)

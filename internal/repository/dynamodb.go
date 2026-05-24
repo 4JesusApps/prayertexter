@@ -117,24 +117,32 @@ func (r *DynamoDBRepository[T]) GetAll(ctx context.Context) ([]T, error) {
 	ctx, cancel := context.WithTimeout(ctx, time.Duration(r.timeout)*time.Second)
 	defer cancel()
 
-	input := &dynamodb.ScanInput{
-		TableName:              &r.table,
-		ReturnConsumedCapacity: types.ReturnConsumedCapacityNone,
-	}
+	var items []T
+	var startKey map[string]types.AttributeValue
 
-	resp, err := r.client.Scan(ctx, input)
-	if err != nil {
-		return nil, apperr.WrapError(err, fmt.Sprintf("failed to scan table %s", r.table))
-	}
-
-	items := make([]T, 0, len(resp.Items))
-	for _, item := range resp.Items {
-		var obj T
-		if err = attributevalue.UnmarshalMap(item, &obj); err != nil {
-			return nil, apperr.WrapError(err, fmt.Sprintf("failed to unmarshal item from table %s", r.table))
+	for {
+		input := &dynamodb.ScanInput{
+			TableName:              &r.table,
+			ReturnConsumedCapacity: types.ReturnConsumedCapacityNone,
+			ExclusiveStartKey:      startKey,
 		}
-		items = append(items, obj)
-	}
 
-	return items, nil
+		resp, err := r.client.Scan(ctx, input)
+		if err != nil {
+			return nil, apperr.WrapError(err, fmt.Sprintf("failed to scan table %s", r.table))
+		}
+
+		for _, item := range resp.Items {
+			var obj T
+			if err = attributevalue.UnmarshalMap(item, &obj); err != nil {
+				return nil, apperr.WrapError(err, fmt.Sprintf("failed to unmarshal item from table %s", r.table))
+			}
+			items = append(items, obj)
+		}
+
+		if len(resp.LastEvaluatedKey) == 0 {
+			return items, nil
+		}
+		startKey = resp.LastEvaluatedKey
+	}
 }

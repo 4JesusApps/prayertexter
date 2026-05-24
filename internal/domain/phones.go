@@ -1,18 +1,15 @@
 package domain
 
 import (
-	"log/slog"
 	"math/rand/v2"
 	"slices"
 )
 
 type BlockedPhones struct {
-	Key    string
 	Phones []string
 }
 
 type IntercessorPhones struct {
-	Key    string
 	Phones []string
 }
 
@@ -40,7 +37,6 @@ func (i *IntercessorPhones) RemovePhone(phone string) {
 
 func (i *IntercessorPhones) GenRandPhones(intercessorsPerPrayer int) []string {
 	if len(i.Phones) == 0 {
-		slog.Warn("unable to generate phones, phone list is empty")
 		return nil
 	}
 

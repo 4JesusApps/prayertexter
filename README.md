@@ -24,7 +24,8 @@ PrayerTexter is a Go application that lets users submit prayer requests via text
 
 4. **Additional Features**
    • Users can text “help” to receive the phone number’s contact and help information (required by SMS service regulations).
-   • Multiple phone numbers can be assigned to handle announcements or asynchronous tasks (like statecontroller).
+   • Administrators can text a message containing `#block <phone>` to block a phone number; the blocked user is removed and a notification SMS is sent.
+   • A separate scheduled Lambda (`statecontroller`) drains the queued-prayer table and reminds intercessors with long-outstanding active prayers.
 
 
 ## Main Technical Flows
@@ -34,89 +35,100 @@ PrayerTexter is a Go application that lets users submit prayer requests via text
    2) The system checks if they are new; if so, sets them as “IN PROGRESS,” step one.
    3) They are asked their name (or choose “2” for anonymous).
    4) They decide whether to be a regular member or an intercessor. If intercessor, how many prayers per week.
-   5) The user is flagged “COMPLETE,” enabling them to submit requests. If intercessor, they’re added to the “IntercessorsPhones” list.
+   5) The user is flagged “COMPLETE,” enabling them to submit requests. If intercessor, they’re added to the “IntercessorPhones” list.
 
 2. **Prayer Request**
    1) A member texts any arbitrary message with a prayer need.
-   2) The system checks for profanity. If found, the request is refused. Otherwise, it tries to find available intercessors.
-   3) Each suitable intercessor is updated in DynamoDB (incrementing their prayer counts, verifying no active request conflicts).
-   4) The request is saved as an “active prayer” for each intercessor.
-   5) If no intercessors can be assigned, the request goes into “QueuedPrayers.”
+   2) The system checks for profanity. If detected, an explanatory reply is sent and the request is not assigned.
+   3) The service finds available intercessors. Each candidate’s weekly quota is reserved atomically inside `AssignPrayer`, with rollback on save or SMS failure.
+   4) The request is saved as an “active prayer” for each intercessor and sent over SMS.
+   5) If no intercessors can be assigned, the request goes into “QueuedPrayer” with a stable `QueueID`. The scheduled job picks it up later.
 
 3. **Completing a Prayer**
-   1) Intercessors reply “prayed.”
-   2) If an active prayer is found for their phone number, it is removed from “ActivePrayers.”
-   3) The requestor is notified that their prayer has been prayed over—unless the requestor has canceled membership.
-   4) The intercessor’s “active prayer” slot is now cleared.
+   1) An intercessor replies “prayed.”
+   2) If an active prayer is found for their phone number, the requestor is notified and the active prayer is deleted.
+   3) The intercessor is again eligible to receive new prayers.
 
 4. **Member Removal**
-   1) A user can text “cancel” or “stop.”
-   2) They’re removed from “Members,” and if they are an intercessor, from “IntercessorPhones.”
-   3) If they had an active prayer assigned, that prayer is changed from active to queued so that future intercessors may cover it.
+   1) A user texts “cancel” or “stop.”
+   2) Intercessor cleanup runs first: phone is removed from `IntercessorPhones`, and any active prayer they hold is requeued (with a fresh `QueueID` and cleared reminder state). The member row is only deleted after that completes successfully — otherwise the phone-list update is rolled back.
+
+5. **Block Flow**
+   1) An administrator texts a message containing `#block <phone>` (regex-extracted).
+   2) The target is removed via the normal delete path (without the user-facing “you have been removed” SMS), then the phone is added to `BlockedPhones`.
+   3) The blocked user receives a final notification SMS; the admin gets a success confirmation. Subsequent messages from the blocked phone are dropped at the router stage based on `msg.Phone` (not the loaded member), so blocking remains effective after the member row is gone.
+
+6. **Scheduled Jobs (`statecontroller`)**
+   • `AssignQueuedPrayers` walks the queued table, finds intercessors for each queued prayer, marks `RequestorNotified` before deleting the queued row so retries are idempotent.
+   • `RemindActiveIntercessors` re-sends a reminder for active prayers whose `ReminderDate` is older than the configured cutoff. `ReminderDate` is stamped at assignment time, so the first reminder fires on the expected schedule.
+   • Both jobs use paginated DynamoDB scans, so they do not silently drop rows once tables outgrow a single scan page.
+   • Errors from either job are joined and returned to the Lambda runtime so retry/DLQ behavior is preserved.
+
 
 ## Directory and Code Structure
 
-PrayerTexter is structured to separate code for domain logic, AWS integrations, utility helpers, and the actual commands (Lambda entries). Notable directories and files:
+PrayerTexter follows a layered architecture: `config` → `domain` ← `repository` ← `messaging` ← `service` ← `cmd`. Lower-level packages do not depend on higher-level ones.
 
-1. **cmd Folder (Lambda Entrypoints)**
-   - Each subfolder is a small Lambda function with its own “main.go.”
-   - • `prayertexter`: The main function that receives incoming text messages (via API Gateway) and processes them through the “prayertexter” logic.
-   - • `announcer`: Intended for sending announcements to all members, e.g., scheduled updates or maintenance.
-   - • `statecontroller`: A scheduled (cron-like) Lambda for tasks such as assigning queued prayers, retrying failed operations, or sending reminders to intercessors.
+1. **`cmd/` (Lambda Entrypoints)**
+   - `cmd/prayertexter/main.go` — Lambda handler triggered by SNS. Processes every record in the batch, returns a joined error so SNS retries and DLQ behavior work correctly.
+   - `cmd/statecontroller/main.go` — Scheduled Lambda that runs `PrayerService.RunScheduledJobs` (queued-prayer drainer + active-prayer reminder loop).
+   - `cmd/announcer/main.go` — Placeholder for sending broadcast announcements (not yet implemented).
 
-2. **internal/config**
-   - Central place to initialize configuration using Viper.
-   - Sets default values for AWS retry attempts, backoff times, DynamoDB timeouts, table names, etc.
-   - Maintains overrides via environment variables (e.g., “PRAY_CONF_AWS_SMS_PHONE” can override the default SMS phone number).
+2. **`dev/prayertexter/main.go`**
+   - SAM-local entrypoint that wraps the same router behind an API Gateway trigger for local testing.
 
-3. **internal/db**
-   - DynamoDB logic (Get, Put, Delete) in a generic, reusable manner.
-   - Contains a “DDBConnecter” interface simulating the AWS client; used in tests via mock implementations.
-   - Logic for timeouts, table name configuration, and helper functions for retrieving or storing objects.
+3. **`internal/config`**
+   - Single place that loads configuration via Viper. No other package imports Viper.
+   - Provides defaults for AWS region/retry/backoff, DynamoDB timeouts and table names, SMS phone pool, intercessors-per-prayer, and reminder window.
+   - All settings are overridable via `PRAY_CONF_*` environment variables.
 
-4. **internal/messaging**
-   - Sends and receives text messages (SMS) using Amazon Pinpoint.
-   - Defines the “TextMessage” structure (the core payload).
-   - Provides logic for generating message strings (signup prompts, help messages, prayer instructions, etc.).
-   - Offers “SendText” to actually transmit the SMS.
+4. **`internal/awscfg`**
+   - Builds the `aws.Config` used by every AWS SDK client. Takes region, retry attempts, and max-backoff seconds as primitives from `config.Config`.
+   - Includes a logging retryer that emits a structured log on each retry attempt.
 
-5. **internal/mock**
-   - Mock implementations of external interfaces (DynamoDB, Pinpoint) for unit testing.
-   - Enables thorough testing without calling real AWS services.
+5. **`internal/apperr`**
+   - Small error-wrapping/logging helpers used uniformly across services and repositories.
 
-6. **internal/object**
-   - Houses the main domain models (i.e., “Member,” “Prayer,” “IntercessorPhones,” etc.).
-   - Each model has “Get,” “Put,” “Delete,” and specialized logic.
-   - Example: “Member” includes fields for phone number, name, prayer count, etc. “Prayer” ties requestors to their assigned intercessors.
+6. **`internal/domain`**
+   - Pure domain types: `Member`, `Prayer`, `TextMessage`, `BlockedPhones`, `IntercessorPhones`. No storage or logging concerns.
 
-7. **internal/prayertexter**
-   - Core business rules for receiving and handling text messages.
-   - The “MainFlow” function decides how to handle each inbound SMS (sign up, help, cancel, prayer request, or prayer completion).
-   - Calls out to supporting functions (e.g., “signUp,” “memberDelete,” “prayerRequest,” “completePrayer,” etc.).
-   - “FindIntercessors” picks suitable intercessors based on prayer count, weekly limits, and existing active prayers.
+7. **`internal/messaging`**
+   - SMS sending via Amazon Pinpoint behind a `MessageSender` interface.
+   - User-facing message constants and templates.
+   - Profanity detection (`go-away` with an allowlist applied once at package init).
 
-8. **internal/utility**
-   - Common helper functions: error wrappers, AWS configuration (i.e., “IsAwsLocal,” custom AWS retryer), random ID generation, slice utility, etc.
+8. **`internal/repository`**
+   - Generic DynamoDB wrapper `DynamoDBRepository[T]` (paginated scan included).
+   - Concrete wrappers: `MemberRepository`, `PrayerRepository` (active vs queued table selection), `BlockedPhonesRepository`, `IntercessorPhonesRepository`.
+   - Returns `ErrNotFound` on missing items so callers handle absence explicitly instead of inferring it from zero-value fields.
 
-9. **localdev**
-   - Docker Compose scripts for local DynamoDB, JSON files describing local DB tables, plus a helper shell script to start everything.
+9. **`internal/service`**
+   - Business logic, split by concern:
+     - `Router` dispatches incoming messages.
+     - `MemberService` handles signup, delete, requeue.
+     - `PrayerService` handles request, assign, complete, queued-drain, and reminders.
+     - `AdminService` handles the `#block` flow.
 
-10. **Makefile and Templates**
-   - Allows building each command for different architectures (x86/arm64).
-   - “template.yaml” is the AWS SAM template describing the Lambda functions, the DynamoDB tables, and an API Gateway for receiving SMS events.
+10. **`internal/mocks/`**
+    - Mockery-generated mocks for the repository and messaging interfaces. Used by the testify suites in each service test file.
 
-11. **Testing**
-   - Tests are located alongside their packages in files named “*_test.go.”
-   - Makes extensive use of “mock” packages for AWS calls to keep tests deterministic.
-   - Covers sign-up flows, prayer queue logic, text-sending, and error-handling scenarios.
+11. **`deploy/` and `Makefile`**
+    - SAM template and build scripts. The Makefile cross-compiles each `cmd/*` binary for the Lambda runtime.
+
+
+## Testing
+
+- Each package has co-located `*_test.go` files using `testify/suite` and the generated mocks.
+- Strongest coverage lives in `internal/service` (router/member/prayer/admin).
+- Run everything with `go test ./...`.
 
 
 ## Summary
 
-- “cmd/prayertexter/main.go” is the primary Lambda handler for inbound SMS events via API Gateway.
-- “internal/prayertexter/prayertexter.go” orchestrates each message’s flow: sign-up, prayer requests, completion, cancels, etc.
-- “internal/object” models the data stored in DynamoDB (Members, Prayers, IntercessorPhones, etc.). Each model provides CRUD capabilities.
-- “internal/db” generalizes DynamoDB interactions so that the logic can be shared and tested easily.
-- “internal/messaging” handles SMS logic, from constructing messages to sending them through AWS Pinpoint.
-- “internal/config” and “internal/utility” handle environment config, error handling, and AWS session setup.
-- Tests leverage “mock” frameworks to avoid actual AWS calls.
+- `cmd/prayertexter/main.go` is the SNS-triggered Lambda. `cmd/statecontroller/main.go` is the scheduled-jobs Lambda. `dev/prayertexter/main.go` is the local-dev API Gateway variant.
+- `internal/service` orchestrates each message’s flow: signup, prayer requests, completion, removal, blocking. The `Router` is the single entry point.
+- `internal/domain` holds pure domain types.
+- `internal/repository` provides generic and concrete DynamoDB access with explicit `ErrNotFound` semantics and paginated scans.
+- `internal/messaging` builds and sends SMS via Pinpoint.
+- `internal/config`, `internal/awscfg`, and `internal/apperr` handle configuration, AWS client bootstrap, and error wrapping.
+- Tests use generated mocks so the suite never calls real AWS services.

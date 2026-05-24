@@ -95,6 +95,47 @@ func (s *AdminServiceSuite) TestBlockUser_CleanupFailureDoesNotPersistBlockList(
 	s.Error(err)
 }
 
+func (s *AdminServiceSuite) TestBlockUser_Success_ActiveIntercessor() {
+	blockedUser := &domain.Member{
+		Phone:       "+11234567890",
+		Name:        "Intercessor",
+		Intercessor: true,
+	}
+	activePrayer := &domain.Prayer{
+		Request:          "please pray for me and my family today",
+		IntercessorPhone: "+11234567890",
+		Intercessor:      *blockedUser,
+		Requestor:        domain.Member{Phone: "+15555555555", Name: "Requestor"},
+	}
+
+	s.members.EXPECT().Get(s.ctx, "+11234567890").Return(blockedUser, nil)
+	s.intercessors.EXPECT().Get(s.ctx).Return(&domain.IntercessorPhones{
+		Phones: []string{"+11234567890", "+12222222222"},
+	}, nil)
+	s.intercessors.EXPECT().Save(s.ctx, mock.MatchedBy(func(p *domain.IntercessorPhones) bool {
+		return len(p.Phones) == 1 && p.Phones[0] == "+12222222222"
+	})).Return(nil)
+	s.prayers.EXPECT().Get(s.ctx, "+11234567890", false).Return(activePrayer, nil)
+	s.prayers.EXPECT().Delete(s.ctx, "+11234567890", false).Return(nil)
+	s.prayers.EXPECT().Save(s.ctx, mock.MatchedBy(func(p *domain.Prayer) bool {
+		return p.Request == activePrayer.Request &&
+			p.IntercessorPhone != "+11234567890" &&
+			p.QueueID == p.IntercessorPhone &&
+			p.Intercessor == domain.Member{}
+	}), true).Return(nil)
+	s.members.EXPECT().Delete(s.ctx, "+11234567890").Return(nil)
+	s.blocked.EXPECT().Save(s.ctx, mock.MatchedBy(func(bp *domain.BlockedPhones) bool {
+		return len(bp.Phones) == 1 && bp.Phones[0] == "+11234567890"
+	})).Return(nil)
+	s.sender.EXPECT().SendMessage(s.ctx, "+11234567890", messaging.MsgBlockedNotification+messaging.MsgHelp).Return(nil)
+	s.sender.EXPECT().SendMessage(s.ctx, "+17777777777", messaging.MsgSuccessfullyBlocked).Return(nil)
+
+	mem := domain.Member{Phone: "+17777777777", Administrator: true}
+	blocked := &domain.BlockedPhones{}
+	err := s.svc.BlockUser(s.ctx, domain.TextMessage{Body: "#block 123-456-7890"}, mem, blocked)
+	s.NoError(err)
+}
+
 func TestAdminServiceSuite(t *testing.T) {
 	suite.Run(t, new(AdminServiceSuite))
 }
