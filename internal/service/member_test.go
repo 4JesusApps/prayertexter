@@ -108,7 +108,6 @@ func (s *MemberServiceSuite) TestDelete_NonIntercessor() {
 
 func (s *MemberServiceSuite) TestDelete_Intercessor_NoActivePrayer() {
 	s.intercessors.EXPECT().Get(s.ctx).Return(&domain.IntercessorPhones{
-		Key:    "IntercessorPhones",
 		Phones: []string{"+11234567890", "+19999999999"},
 	}, nil)
 	s.intercessors.EXPECT().Save(s.ctx, mock.MatchedBy(func(p *domain.IntercessorPhones) bool {
@@ -172,7 +171,6 @@ func (s *MemberServiceSuite) TestSignUpFinalIntercessor_ZeroLimit() {
 
 func (s *MemberServiceSuite) TestDelete_Intercessor_WithActivePrayer() {
 	s.intercessors.EXPECT().Get(s.ctx).Return(&domain.IntercessorPhones{
-		Key:    "IntercessorPhones",
 		Phones: []string{"+11234567890"},
 	}, nil)
 	s.intercessors.EXPECT().Save(s.ctx, mock.MatchedBy(func(p *domain.IntercessorPhones) bool {
@@ -204,7 +202,6 @@ func (s *MemberServiceSuite) TestDelete_Intercessor_WithActivePrayer() {
 
 func (s *MemberServiceSuite) TestDelete_Intercessor_CleanupFailureDoesNotDeleteMember() {
 	s.intercessors.EXPECT().Get(s.ctx).Return(&domain.IntercessorPhones{
-		Key:    "IntercessorPhones",
 		Phones: []string{"+11234567890"},
 	}, nil)
 	s.intercessors.EXPECT().Save(s.ctx, mock.Anything).Return(nil)

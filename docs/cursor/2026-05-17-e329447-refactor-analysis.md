@@ -250,6 +250,8 @@ How it was fixed:
 - No service tests required changes — they mock `Exists()` directly. Existing service-level behavior is preserved because, with §1.1's signup-bootstrap fix in place, every persisted member/prayer row is a real one (no more partial blank-phone rows).
 
 ### 3.2 Route pre-membership behavior off the inbound phone, not the loaded member
+Status: Skipped (functionally satisfied by §1.1; reshape not worth the churn).
+
 Files:
 - `internal/service/router.go`
 
@@ -259,10 +261,17 @@ Recommended direction:
 Why:
 - The inbound phone is always authoritative. The loaded member is optional.
 
+Why skipped:
+- The functional content of this recommendation was absorbed by §1.1's synthetic-member fallback in `Router.Handle()` and the matching fallback in `AdminService.BlockUser()`. Block checks, all logging, and all error wrapping already key off `msg.Phone`. Downstream services (`Help`, `Delete`, `SignUp`) receive a synthetic `domain.Member{Phone: msg.Phone}` when no row exists, which routes correctly because zero-value fields (`SetupStage`, `Intercessor`, etc.) signal "not yet a member."
+- Taking the recommendation literally would mean reshaping `Help(ctx, phone)` / `Delete(ctx, phone)` / `SignUp(ctx, msg, ???)` to take primitives instead of a member. That's larger touch surface across services + tests with zero behavioral improvement, and `SignUp` would arguably get worse because it needs `mem.SetupStage` for its state machine — leading to mixed signatures or two entry points.
+- Instead, a documenting comment was added at `internal/service/router.go:43` describing the synthetic-member contract so the convention is explicit to readers.
+
 ### 3.3 Unify AWS bootstrap around `config.Config`
+Status: Fixed (satisfied by §2.4 remediation).
+
 Files:
-- `internal/config/config.go`
 - `internal/awscfg/awscfg.go`
+- `internal/awscfg/awscfg_test.go`
 - `cmd/prayertexter/main.go`
 - `cmd/statecontroller/main.go`
 - `dev/prayertexter/main.go`
@@ -273,7 +282,13 @@ Recommended direction:
 Why:
 - The current refactor claims explicit dependency injection, but AWS setup still bypasses the injected config model.
 
+How it was fixed:
+- See §2.4. `awscfg.GetAwsConfig` now takes `(ctx, region, maxRetry, maxBackoffSeconds)` as primitives from `config.Config`. The `os.Getenv` read and `defaultRegion`/`defaultMaxRetry`/`defaultMaxBackoff` constants are gone. All three Lambda entrypoints pass `cfg.AWS.Region`, `cfg.AWS.Retry`, `cfg.AWS.Backoff` from `config.Load()`.
+- Primitives were chosen over the full `config.AWSConfig` struct to match the codebase convention (repository/messaging constructors take primitives unpacked from `config.Config` at the cmd layer). Net result satisfies the recommendation: `internal/config` is the single source of truth for AWS region, retry, and backoff.
+
 ### 3.4 Make destructive flows idempotent or compensating
+Status: Fixed (satisfied by §1.3 and §1.4 remediation).
+
 Files:
 - `internal/service/member.go`
 - `internal/service/admin.go`
@@ -285,7 +300,13 @@ Recommended direction:
 Why:
 - Current happy-path ordering is understandable, but brittle.
 
+How it was fixed:
+- See §1.3 and §1.4. Delete/block flows now reorder so intercessor cleanup happens before the destructive member delete; intercessor-phone list rollback restores prior state if active-prayer cleanup fails; active-prayer requeue rolls back on save failure; admin block flow uses `DeleteWithoutNotification` to avoid duplicate SMS.
+- Prayer assignment now reserves intercessor quota inside `AssignPrayer` and rolls the reservation back on save or SMS failure; queued assignment uses a stable `QueueID` to detect previously-created assignments before retrying and persists `RequestorNotified` before deletion so partial-failure retries are idempotent.
+
 ### 3.5 Timestamp assignments immediately and clear reminder state on requeue
+Status: Fixed (satisfied by §1.5 remediation).
+
 Files:
 - `internal/service/prayer.go`
 - `internal/service/member.go`
@@ -297,7 +318,12 @@ Recommended direction:
 Why:
 - That makes reminder timing correct and predictable.
 
+How it was fixed:
+- See §1.5. `AssignPrayer` now stamps `ReminderDate = time.Now()` and `ReminderCount = 0` at assignment time (`internal/service/prayer.go:105-106`), removing the lazy-init behavior in `RemindActiveIntercessors`. `moveActivePrayer` clears `ReminderDate`, `ReminderCount`, `Intercessor`, and `RequestorNotified` and generates a fresh `QueueID` when an active prayer is requeued (`internal/service/member.go:108-114`).
+
 ### 3.6 Decouple the router from concrete services
+Status: Skipped (cosmetic; concrete services have no alternative implementations).
+
 Files:
 - `internal/service/router.go`
 - `internal/service/router_test.go`
@@ -308,11 +334,19 @@ Recommended direction:
 Why:
 - This better matches the design doc, keeps the router thinner, and allows dispatch-only tests.
 
+Why skipped:
+- Concrete services have no alternative implementations in production, so the architectural benefit is theoretical. The real win would be tighter `router_test.go` mocks (only the 5-6 methods the router dispatches to instead of the full service chain).
+- Cost: three new interface declarations, three mockery configs, and corresponding router/test churn. No behavioral improvement.
+- Revisit if router tests start causing pain or if a second router implementation appears.
+
 ### 3.7 Remove remaining storage/logging leakage from `domain`
+Status: Partially fixed (3.7a and 3.7b done; 3.7c skipped — requires schema migration).
+
 Files:
 - `internal/domain/phones.go`
 - `internal/repository/phones.go`
-- `internal/domain/prayer.go`
+- `internal/service/member.go`
+- `internal/service/member_test.go`
 
 Recommended direction:
 - Move `Key` handling fully into repositories.
@@ -321,6 +355,14 @@ Recommended direction:
 
 Why:
 - The current domain layer is better than before, but not fully pure.
+
+How it was fixed:
+- 3.7a (Key handling): `Key` removed from `domain.BlockedPhones` and `domain.IntercessorPhones`. Added internal storage-row types (`blockedPhonesRow`, `intercessorPhonesRow`) inside `internal/repository/phones.go` that carry `Key` for DynamoDB marshaling. `Get`/`Save` convert between the row and the domain type, so callers and tests no longer need to know the partition-key constant. The `removeIntercessor` rollback in `internal/service/member.go` simplifies to `&domain.IntercessorPhones{Phones: originalPhones}`. Three test fixtures in `member_test.go` had their `Key: "IntercessorPhones"` fields removed.
+- 3.7b (domain logging): `slog.Warn("unable to generate phones, phone list is empty")` removed from `GenRandPhones` in `internal/domain/phones.go`; `log/slog` import dropped. The caller in `internal/service/prayer.go` already logs the same condition.
+
+Why 3.7c skipped:
+- The queued-prayer table uses `IntercessorPhone` as its partition key (`internal/repository/prayer.go:25-26`), with a generated ID stuffed into that field for queued rows. Decoupling this properly requires either a per-table partition-key field or switching the queued table to key on `QueueID`. Both require a DynamoDB schema migration and operational planning.
+- Current overloading is documented via the dedicated `QueueID` field added in §1.4 and works correctly. Revisit when a schema migration is planned.
 
 ## 4. Regressions Against the Design Docs
 
@@ -332,24 +374,24 @@ Why:
 - Generated mocks and testify suites are a major testing improvement.
 
 ### 4.2 What only partially landed
-- The repository layer did not land the fully explicit generic `Repository[T]` interface described in the architecture spec.
-- `Exists()` is still based on field heuristics rather than explicit not-found handling.
-- The router depends on concrete services instead of service interfaces.
-- The domain layer still contains storage/logging concerns (`Key`, `slog`).
-- AWS bootstrap still bypasses parts of the loaded config.
+Status: Resolved or deliberately skipped.
+
+- ~~The repository layer did not land the fully explicit generic `Repository[T]` interface described in the architecture spec.~~ — Skipped along with §3.6 (no alternative implementations exist; the interface would be cosmetic).
+- ~~`Exists()` is still based on field heuristics rather than explicit not-found handling.~~ — Fixed in §3.1.
+- ~~The router depends on concrete services instead of service interfaces.~~ — Skipped per §3.6.
+- ~~The domain layer still contains storage/logging concerns (`Key`, `slog`).~~ — Fixed in §3.7a/b.
+- ~~AWS bootstrap still bypasses parts of the loaded config.~~ — Fixed in §2.4/§3.3.
 
 ### 4.3 Documentation/process regression
+Status: README updated; `.gitignore` decision deferred to the user.
+
 Files:
 - `README.md`
 - `.gitignore`
 
 Observations:
-- `README.md` still documents the old architecture (`internal/db`, `internal/object`, `internal/prayertexter`, `internal/utility`).
-- `.gitignore` excludes both `docs/superpowers` and `docs/cursor`.
-
-Why this matters:
-- The implemented architecture improved, but the durable documentation got worse.
-- The design docs and this analysis are local-only unless intentionally tracked elsewhere.
+- ~~`README.md` still documents the old architecture (`internal/db`, `internal/object`, `internal/prayertexter`, `internal/utility`).~~ — Rewritten to reflect the current `config` / `awscfg` / `apperr` / `domain` / `messaging` / `repository` / `service` layout, the SNS-triggered Lambda handler, the scheduled-jobs flow, the `#block` admin trigger, and the synthetic-member fallback.
+- `.gitignore` still excludes `docs/superpowers` and `docs/cursor`. This is a deliberate choice (those are local-only design/analysis artifacts). No change made; revisit if you want either tree tracked in git.
 
 ## 5. Test and Coverage Assessment
 
@@ -360,14 +402,14 @@ Why this matters:
 - `internal/apperr/apperr_test.go` and `internal/config/config_test.go` are proportionate to package complexity.
 
 ### 5.2 Gaps that matter
-- `internal/awscfg`: no tests
-- `internal/messaging/pinpoint.go`: no tests
-- `internal/messaging/profanity.go`: no tests
-- `internal/repository/member.go`: no direct tests
-- `internal/repository/prayer.go`: no direct tests
-- `internal/repository/phones.go`: no direct tests
-- `internal/service/router.go`: missing important edge/error-path coverage
-- `RunScheduledJobs()`: no direct coverage
+- ~~`internal/awscfg`: no tests~~ — Partial coverage added in §2.4 (region + retry plumb-through). Backoff inspection still missing (no accessor on wrapped retryer).
+- `internal/messaging/pinpoint.go`: no tests — Skipped; needs Pinpoint client mocks, low value relative to effort.
+- ~~`internal/messaging/profanity.go`: no tests~~ — Added alongside §6.2 fix (clean text, allowlisted words, global-dictionary-mutation regression).
+- ~~`internal/repository/member.go`: no direct tests~~ — Added (`member_test.go`).
+- ~~`internal/repository/prayer.go`: no direct tests~~ — Added (`prayer_test.go`) covering active/queued table selection and `Exists` semantics.
+- ~~`internal/repository/phones.go`: no direct tests~~ — Added (`phones_test.go`) covering row↔domain conversion and partition-key attachment for both blocked and intercessor lists.
+- `internal/service/router.go`: missing important edge/error-path coverage — §1.1 added the most critical cases (missing-member routing, blocked-phone-with-no-member-row). Further coverage deferred.
+- `RunScheduledJobs()`: no direct coverage — Deferred (small follow-up if you want it).
 
 ### 5.3 Most important missing regression tests
 - Missing member record -> incoming `pray`, `help`, `stop`
@@ -396,21 +438,35 @@ That is why the most serious current bug can exist while the suite still passes.
 ## 6. Anything Else
 
 ### 6.1 Logging/privacy review
+Status: Accepted as-is (explicit product decision, 2026-05-24).
+
 Files:
 - `internal/service/router.go`
 - `internal/service/prayer.go`
 - `internal/service/member.go`
 - `internal/messaging/pinpoint.go`
 
-The refactor standardized error/log handling in useful ways, but the code now logs raw message bodies and phone numbers in several places. That may be acceptable operationally, but it is a data-handling decision that should be reviewed explicitly rather than inherited accidentally.
+The refactor standardized error/log handling in useful ways, but the code now logs raw message bodies and phone numbers in several places.
+
+Decision: raw phone numbers and message bodies remain in logs. This was reviewed explicitly and accepted on 2026-05-24; it is not an accidental inheritance. Revisit if the deployment context, retention policy, or regulatory posture changes.
 
 ### 6.2 Global-state footgun in profanity handling
+Status: Fixed.
+
 Files:
 - `internal/messaging/profanity.go`
+- `internal/messaging/profanity_test.go`
 
-`CheckProfanity()` mutates `goaway.DefaultProfanities` on each call. It works, but it reintroduces hidden global state into a codebase that otherwise moved toward more explicit dependencies.
+`CheckProfanity()` previously mutated `goaway.DefaultProfanities` on each call.
+
+How it was fixed:
+- The filtered profanity list is now built once at package init from a `slices.Clone` of `goaway.DefaultProfanities` — the third-party library's default slice is never touched.
+- A single `*goaway.ProfanityDetector` is constructed at init using `WithCustomDictionary(filtered, goaway.DefaultFalsePositives, goaway.DefaultFalseNegatives)` and reused across calls.
+- Added `profanity_test.go` covering clean text, the allowlist (`jerk`/`ass`/`butt`), and a regression that asserts `goaway.DefaultProfanities` is unchanged after calls into `CheckProfanity`.
 
 ### 6.3 `cmd/announcer` is still a stub
+Status: Acknowledged (no action). The updated README no longer presents `announcer` as a fully implemented command.
+
 Files:
 - `cmd/announcer/main.go`
 

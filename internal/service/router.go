@@ -40,6 +40,9 @@ func NewRouter(
 func (r *Router) Handle(ctx context.Context, msg domain.TextMessage) error {
 	mem, err := r.members.Get(ctx, msg.Phone)
 	if errors.Is(err, repository.ErrNotFound) {
+		// Synthetic member for pre-membership routing: downstream services
+		// treat zero-value fields (SetupStage, Intercessor, etc.) as
+		// "not yet a member" and key off msg.Phone via mem.Phone.
 		mem = &domain.Member{Phone: msg.Phone}
 	} else if err != nil {
 		return apperr.LogAndWrapError(ctx, err, "failure during stage PRE", "phone", msg.Phone, "msg", msg.Body)

@@ -79,10 +79,7 @@ func (s *MemberService) removeIntercessor(ctx context.Context, mem domain.Member
 	}
 
 	if err = s.moveActivePrayer(ctx, mem); err != nil {
-		restorePhones := &domain.IntercessorPhones{
-			Key:    phones.Key,
-			Phones: originalPhones,
-		}
+		restorePhones := &domain.IntercessorPhones{Phones: originalPhones}
 		if restoreErr := s.intercessors.Save(ctx, restorePhones); restoreErr != nil {
 			return errors.Join(err, restoreErr)
 		}
