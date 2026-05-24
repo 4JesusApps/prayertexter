@@ -13,6 +13,7 @@ packages:
       filename: mocks.go
     interfaces:
       MessageSender: {}
+      PinpointClient: {}
   github.com/4JesusApps/prayertexter/internal/repository:
     interfaces:
       BlockedPhonesRepository: {}

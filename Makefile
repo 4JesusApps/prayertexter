@@ -1,7 +1,7 @@
 MOCKERY_VERSION := v3.7.0
 GOLANGCI_LINT_VERSION := v2.11.4
 
-.PHONY: test lint generate check-mockery build clean
+.PHONY: test test-integration test-all lint generate check-mockery build clean
 
 build:
 	go build -o bin/prayertexter ./cmd/prayertexter
@@ -10,6 +10,13 @@ build:
 
 test:
 	go test ./... -count=1
+
+# test-integration runs the //go:build integration suite against a real
+# DynamoDB Local container spun up via testcontainers-go. Requires Docker.
+test-integration:
+	go test -tags integration ./internal/integration/... -count=1
+
+test-all: test test-integration
 
 lint:
 	docker run --rm -v $(CURDIR):/app -w /app golangci/golangci-lint:$(GOLANGCI_LINT_VERSION) golangci-lint run ./...
