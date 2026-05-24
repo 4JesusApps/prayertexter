@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/4JesusApps/prayertexter/internal/awscfg"
+	"github.com/4JesusApps/prayertexter/internal/buildinfo"
 	"github.com/4JesusApps/prayertexter/internal/config"
 	"github.com/4JesusApps/prayertexter/internal/messaging"
 	"github.com/4JesusApps/prayertexter/internal/repository"
@@ -14,10 +15,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/pinpointsmsvoicev2"
 )
 
-var version string // do not remove or modify
-
 func handler(ctx context.Context) error {
-	slog.InfoContext(ctx, "running statecontroller", "version", version)
+	slog.InfoContext(ctx, "running statecontroller", "version", buildinfo.Version())
 
 	cfg := config.Load()
 

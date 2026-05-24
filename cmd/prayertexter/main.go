@@ -8,6 +8,7 @@ import (
 	"log/slog"
 
 	"github.com/4JesusApps/prayertexter/internal/awscfg"
+	"github.com/4JesusApps/prayertexter/internal/buildinfo"
 	"github.com/4JesusApps/prayertexter/internal/config"
 	"github.com/4JesusApps/prayertexter/internal/domain"
 	"github.com/4JesusApps/prayertexter/internal/messaging"
@@ -19,8 +20,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/pinpointsmsvoicev2"
 )
 
-var version string // do not remove or modify
-
 // messageHandler is the minimal contract processRecords needs from a router.
 // *service.Router satisfies it in production; tests substitute a stub so the
 // SNS parsing loop can be exercised without spinning up the full service graph.
@@ -29,7 +28,7 @@ type messageHandler interface {
 }
 
 func handler(ctx context.Context, snsEvent events.SNSEvent) error {
-	slog.InfoContext(ctx, "running prayertexter", "version", version)
+	slog.InfoContext(ctx, "running prayertexter", "version", buildinfo.Version())
 
 	cfg := config.Load()
 	router, err := newRouter(ctx, cfg)

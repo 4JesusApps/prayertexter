@@ -17,23 +17,19 @@ endif
 
 APPDIR  := ../cmd/$(APP)
 BINARY  := bootstrap
-VERSION := $(shell git describe --tags --long --dirty 2>/dev/null)
-LDFLAGS := -ldflags "-X main.version=$(VERSION)"
 OS      := linux
 OUTDIR  := bin/$(OS)_$(ARCH)/$(APP)
-
-ifeq ($(VERSION),)
-	VERSION := UNKNOWN
-endif
 
 ifeq ($(APP),prayertexter)
 	APPDIR := ../dev/$(APP)
 endif
 
+# Version is embedded automatically by `go build` via debug.ReadBuildInfo
+# (see internal/buildinfo). No ldflags wiring required.
 define BUILD_CMD
 	@mkdir -p $(OUTDIR)
-	@echo "→ Building $(APP) for $(OS)/$(ARCH) (version=$(VERSION))"
-	GOOS=$(OS) GOARCH=$(ARCH) CGO_ENABLED=0 go build -tags lambda.norpc $(LDFLAGS) -o $(OUTDIR)/$(BINARY) $(APPDIR)
+	@echo "→ Building $(APP) for $(OS)/$(ARCH)"
+	GOOS=$(OS) GOARCH=$(ARCH) CGO_ENABLED=0 go build -tags lambda.norpc -o $(OUTDIR)/$(BINARY) $(APPDIR)
 endef
 
 .PHONY: build clean

@@ -12,6 +12,7 @@ import (
 	"net/http"
 
 	"github.com/4JesusApps/prayertexter/internal/awscfg"
+	"github.com/4JesusApps/prayertexter/internal/buildinfo"
 	"github.com/4JesusApps/prayertexter/internal/config"
 	"github.com/4JesusApps/prayertexter/internal/domain"
 	"github.com/4JesusApps/prayertexter/internal/messaging"
@@ -23,11 +24,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/pinpointsmsvoicev2"
 )
 
-// MUST BE SET by go build -ldflags "-X main.version=999" like 0.6.14-0-g26fe727 or 0.6.14-2-g9118702-dirty.
-var version string // do not remove or modify
-
 func handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	slog.InfoContext(ctx, "running prayertexter", "version", version)
+	slog.InfoContext(ctx, "running prayertexter", "version", buildinfo.Version())
 
 	msg, err := parseRequest(req)
 	if err != nil {
