@@ -21,7 +21,7 @@ func handler(ctx context.Context) error {
 
 	cfg := config.Load()
 
-	awsCfg, err := awscfg.GetAwsConfig(ctx)
+	awsCfg, err := awscfg.GetAwsConfig(ctx, cfg.AWS.Region, cfg.AWS.Retry, cfg.AWS.Backoff)
 	if err != nil {
 		return err
 	}

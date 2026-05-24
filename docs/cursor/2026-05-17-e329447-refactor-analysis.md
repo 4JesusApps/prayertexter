@@ -181,19 +181,34 @@ Files:
 `ReminderDate` is initialized lazily in `RemindActiveIntercessors()` instead of when the prayer is first assigned. That delays the first reminder by at least one scheduler cycle, and the `>` comparison pushes it even later.
 
 ### 2.3 Scheduled jobs will miss data at scale
+Status: Fixed.
+
 Files:
 - `internal/repository/dynamodb.go`
-- `internal/repository/prayer.go`
-- `internal/service/prayer.go`
+- `internal/repository/dynamodb_test.go`
 
-`GetAll()` uses a single `Scan` with no pagination. Once the tables outgrow one scan page, queued assignment and reminder jobs will silently ignore rows.
+`GetAll()` used a single `Scan` with no pagination. Once the tables outgrew one scan page, queued assignment and reminder jobs would silently ignore rows.
+
+How it was fixed:
+- `DynamoDBRepository.GetAll()` now loops `Scan` calls, threading `LastEvaluatedKey` from each response into the next request's `ExclusiveStartKey` until DynamoDB reports no more pages. The shared per-call timeout still bounds total work, so a runaway scan surfaces as a returned error (which `RunScheduledJobs()` already aggregates and returns to the Lambda runtime) instead of silent data loss.
+- Added regression coverage in `internal/repository/dynamodb_test.go` (`TestGetAll_Pagination`) that exercises a two-page response and asserts the second `Scan` is issued with the prior page's `LastEvaluatedKey`.
 
 ### 2.4 AWS config is split across two sources of truth
-Files:
-- `internal/config/config.go`
-- `internal/awscfg/awscfg.go`
+Status: Fixed.
 
-The refactor introduced a `Config` struct with `AWS.Region`, `AWS.Backoff`, and `AWS.Retry`, but `GetAwsConfig()` ignores those values and hardcodes retry/backoff defaults while reading region directly from env.
+Files:
+- `internal/awscfg/awscfg.go`
+- `internal/awscfg/awscfg_test.go`
+- `cmd/prayertexter/main.go`
+- `cmd/statecontroller/main.go`
+- `dev/prayertexter/main.go`
+
+The refactor introduced a `Config` struct with `AWS.Region`, `AWS.Backoff`, and `AWS.Retry`, but `GetAwsConfig()` ignored those values and hardcoded retry/backoff defaults while reading region directly from env. The defaults happened to match, so overrides via `PRAY_CONF_AWS_BACKOFF` / `PRAY_CONF_AWS_RETRY` were silently dropped.
+
+How it was fixed:
+- `awscfg.GetAwsConfig` now takes `(ctx, region, maxRetry, maxBackoffSeconds)` as primitives. The `os.Getenv` read and the `defaultRegion`/`defaultMaxRetry`/`defaultMaxBackoff` constants are gone — `internal/config` is the single source for these values.
+- All three lambda entrypoints (`cmd/prayertexter/main.go`, `cmd/statecontroller/main.go`, `dev/prayertexter/main.go`) now pass `cfg.AWS.Region`, `cfg.AWS.Retry`, `cfg.AWS.Backoff` from the loaded config. This matches the existing convention where repository/messaging constructors take primitives unpacked from `config.Config` at the cmd layer.
+- Added `internal/awscfg/awscfg_test.go` (the package was at 0% coverage per §5.2). The test verifies that the passed region and retry count are plumbed through to the returned `aws.Config`.
 
 ### 2.5 Intercessor weekly limit accepts `0`
 Files:

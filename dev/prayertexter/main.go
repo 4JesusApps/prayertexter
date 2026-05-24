@@ -36,7 +36,7 @@ func handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.API
 
 	cfg := config.Load()
 
-	awsCfg, err := awscfg.GetAwsConfig(ctx)
+	awsCfg, err := awscfg.GetAwsConfig(ctx, cfg.AWS.Region, cfg.AWS.Retry, cfg.AWS.Backoff)
 	if err != nil {
 		slog.ErrorContext(ctx, "lambda handler: failed to get aws config", "error", err)
 		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError}, err

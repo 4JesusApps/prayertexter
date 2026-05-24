@@ -90,6 +90,44 @@ func (s *DynamoDBRepoSuite) TestGetAll_Success() {
 	s.Equal("B", members[1].Name)
 }
 
+func (s *DynamoDBRepoSuite) TestGetAll_Pagination() {
+	mem1, _ := attributevalue.MarshalMap(&domain.Member{Phone: "+11111111111", Name: "A"})
+	mem2, _ := attributevalue.MarshalMap(&domain.Member{Phone: "+12222222222", Name: "B"})
+	mem3, _ := attributevalue.MarshalMap(&domain.Member{Phone: "+13333333333", Name: "C"})
+
+	pageBoundary := map[string]types.AttributeValue{
+		"Phone": &types.AttributeValueMemberS{Value: "+12222222222"},
+	}
+
+	s.client.EXPECT().
+		Scan(mock.Anything, mock.MatchedBy(func(input *dynamodb.ScanInput) bool {
+			return input.ExclusiveStartKey == nil
+		})).
+		Return(&dynamodb.ScanOutput{
+			Items:            []map[string]types.AttributeValue{mem1, mem2},
+			LastEvaluatedKey: pageBoundary,
+		}, nil).Once()
+
+	s.client.EXPECT().
+		Scan(mock.Anything, mock.MatchedBy(func(input *dynamodb.ScanInput) bool {
+			if input.ExclusiveStartKey == nil {
+				return false
+			}
+			v, ok := input.ExclusiveStartKey["Phone"].(*types.AttributeValueMemberS)
+			return ok && v.Value == "+12222222222"
+		})).
+		Return(&dynamodb.ScanOutput{
+			Items: []map[string]types.AttributeValue{mem3},
+		}, nil).Once()
+
+	members, err := s.repo.GetAll(s.ctx)
+	s.Require().NoError(err)
+	s.Len(members, 3)
+	s.Equal("A", members[0].Name)
+	s.Equal("B", members[1].Name)
+	s.Equal("C", members[2].Name)
+}
+
 func TestDynamoDBRepoSuite(t *testing.T) {
 	suite.Run(t, new(DynamoDBRepoSuite))
 }
