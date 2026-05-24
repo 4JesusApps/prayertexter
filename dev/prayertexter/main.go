@@ -7,6 +7,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -28,18 +29,38 @@ var version string // do not remove or modify
 func handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	slog.InfoContext(ctx, "running prayertexter", "version", version)
 
-	var msg domain.TextMessage
-	if err := json.Unmarshal([]byte(req.Body), &msg); err != nil {
+	msg, err := parseRequest(req)
+	if err != nil {
 		slog.ErrorContext(ctx, "lambda handler: failed to unmarshal api gateway request", "error", err)
 		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError}, err
 	}
 
 	cfg := config.Load()
+	router, err := newRouter(ctx, cfg)
+	if err != nil {
+		slog.ErrorContext(ctx, "lambda handler: failed to build router", "error", err)
+		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError}, err
+	}
 
+	if err := router.Handle(ctx, msg); err != nil {
+		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError}, err
+	}
+
+	return events.APIGatewayProxyResponse{StatusCode: http.StatusOK, Body: "Success\n"}, nil
+}
+
+func parseRequest(req events.APIGatewayProxyRequest) (domain.TextMessage, error) {
+	var msg domain.TextMessage
+	if err := json.Unmarshal([]byte(req.Body), &msg); err != nil {
+		return domain.TextMessage{}, fmt.Errorf("parse api gateway request: %w", err)
+	}
+	return msg, nil
+}
+
+func newRouter(ctx context.Context, cfg config.Config) (*service.Router, error) {
 	awsCfg, err := awscfg.GetAwsConfig(ctx, cfg.AWS.Region, cfg.AWS.Retry, cfg.AWS.Backoff)
 	if err != nil {
-		slog.ErrorContext(ctx, "lambda handler: failed to get aws config", "error", err)
-		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError}, err
+		return nil, fmt.Errorf("build router: get aws config: %w", err)
 	}
 
 	ddbClnt := dynamodb.NewFromConfig(awsCfg)
@@ -64,13 +85,7 @@ func handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.API
 	memberSvc := service.NewMemberService(members, intercessors, prayers, sender, cfg)
 	prayerSvc := service.NewPrayerService(members, intercessors, prayers, sender, cfg)
 	adminSvc := service.NewAdminService(members, blocked, sender, memberSvc)
-	router := service.NewRouter(members, blocked, memberSvc, prayerSvc, adminSvc)
-
-	if err = router.Handle(ctx, msg); err != nil {
-		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError}, err
-	}
-
-	return events.APIGatewayProxyResponse{StatusCode: http.StatusOK, Body: "Success\n"}, nil
+	return service.NewRouter(members, blocked, memberSvc, prayerSvc, adminSvc), nil
 }
 
 func main() {

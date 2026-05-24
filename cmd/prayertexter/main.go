@@ -21,21 +21,28 @@ import (
 
 var version string // do not remove or modify
 
+// messageHandler is the minimal contract processRecords needs from a router.
+// *service.Router satisfies it in production; tests substitute a stub so the
+// SNS parsing loop can be exercised without spinning up the full service graph.
+type messageHandler interface {
+	Handle(ctx context.Context, msg domain.TextMessage) error
+}
+
 func handler(ctx context.Context, snsEvent events.SNSEvent) error {
 	slog.InfoContext(ctx, "running prayertexter", "version", version)
 
-	if len(snsEvent.Records) == 0 {
-		return errors.New("lambda handler: sns event contained no records")
-	}
-	if len(snsEvent.Records) > 1 {
-		slog.WarnContext(ctx, "processing batched SNS event", "records", len(snsEvent.Records))
-	}
-
 	cfg := config.Load()
+	router, err := newRouter(ctx, cfg)
+	if err != nil {
+		return err
+	}
+	return processRecords(ctx, router, snsEvent.Records)
+}
 
+func newRouter(ctx context.Context, cfg config.Config) (*service.Router, error) {
 	awsCfg, err := awscfg.GetAwsConfig(ctx, cfg.AWS.Region, cfg.AWS.Retry, cfg.AWS.Backoff)
 	if err != nil {
-		return fmt.Errorf("lambda handler: failed to get aws config: %w", err)
+		return nil, fmt.Errorf("lambda handler: failed to get aws config: %w", err)
 	}
 
 	ddbClnt := dynamodb.NewFromConfig(awsCfg)
@@ -60,19 +67,28 @@ func handler(ctx context.Context, snsEvent events.SNSEvent) error {
 	memberSvc := service.NewMemberService(members, intercessors, prayers, sender, cfg)
 	prayerSvc := service.NewPrayerService(members, intercessors, prayers, sender, cfg)
 	adminSvc := service.NewAdminService(members, blocked, sender, memberSvc)
-	router := service.NewRouter(members, blocked, memberSvc, prayerSvc, adminSvc)
+	return service.NewRouter(members, blocked, memberSvc, prayerSvc, adminSvc), nil
+}
+
+func processRecords(ctx context.Context, h messageHandler, records []events.SNSEventRecord) error {
+	if len(records) == 0 {
+		return errors.New("lambda handler: sns event contained no records")
+	}
+	if len(records) > 1 {
+		slog.WarnContext(ctx, "processing batched SNS event", "records", len(records))
+	}
 
 	var recordErrs []error
-	for idx, record := range snsEvent.Records {
+	for idx, record := range records {
 		var msg domain.TextMessage
-		if err = json.Unmarshal([]byte(record.SNS.Message), &msg); err != nil {
+		if err := json.Unmarshal([]byte(record.SNS.Message), &msg); err != nil {
 			recordErrs = append(recordErrs, fmt.Errorf(
 				"lambda handler: failed to unmarshal sns record %d (%s): %w",
 				idx, record.SNS.MessageID, err,
 			))
 			continue
 		}
-		if err = router.Handle(ctx, msg); err != nil {
+		if err := h.Handle(ctx, msg); err != nil {
 			recordErrs = append(recordErrs, fmt.Errorf(
 				"lambda handler: failed to process sns record %d (%s): %w",
 				idx, record.SNS.MessageID, err,
